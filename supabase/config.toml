@@ -1,0 +1,20 @@
+[functions.paypal-api]
+verify_jwt = true
+
+[functions.paypal-webhook]
+verify_jwt = false
+
+[functions.translate-message]
+verify_jwt = true
+
+[functions.nfl-stats]
+verify_jwt = false
+
+[functions.bubble-api]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = true
+
+[functions.summarize-conversation]
+verify_jwt = true

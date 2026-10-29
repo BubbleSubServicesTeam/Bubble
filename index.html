@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/jpeg" href="/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83 copy copy copy.jpg" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" href="/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png" media="(prefers-color-scheme: light)" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+    <title>Bubble</title>
+    <meta name="description" content="Bubble - Chat, call, and share GIFs with friends" />
+    <meta property="og:image" content="/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Bubble" />
+    <link rel="apple-touch-icon" href="/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83 copy copy copy.jpg" />
+    <meta name="theme-color" content="#020617" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <style>
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+      body {
+        overscroll-behavior: none;
+        touch-action: manipulation;
+      }
+      /* Use 100dvh on mobile for correct viewport sizing with Safari's dynamic toolbars */
+      @supports (height: 100dvh) {
+        html, body, #root {
+          height: 100dvh;
+        }
+      }
+    </style>
+    <script>
+      // Apply theme before first paint: dark unless the user explicitly chose light
+      (function () {
+        try {
+          var t = localStorage.getItem('bubble-theme');
+          var dark = t !== 'light' && (t !== 'auto' || !window.matchMedia('(prefers-color-scheme: light)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

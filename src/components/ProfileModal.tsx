@@ -1,0 +1,322 @@
+import { useState, useEffect } from 'react';
+import { supabase, Profile, effectiveStatus } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { useNotifications } from '../lib/notifications';
+import { useLocationSharing } from '../lib/location';
+import Avatar from './Avatar';
+import { LocationMap } from './LocationMap';
+import { X, Mail, Bell, BellOff, MessageCircle, Calendar, Clock, Phone, MapPin, Copy, Check, Navigation, Star, Volume2 } from 'lucide-react';
+
+type Props = {
+  profile: Profile;
+  conversationId?: string;
+  onClose: () => void;
+  onStartChat?: () => void;
+};
+
+export default function ProfileModal({ profile, conversationId, onClose, onStartChat }: Props) {
+  const { user } = useAuth();
+  const { sendNotification } = useNotifications();
+  const [nudgeSent, setNudgeSent] = useState(false);
+  const [nudging, setNudging] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [contactInfo, setContactInfo] = useState<{
+    phone_number: string | null;
+    address: string | null;
+  }>({ phone_number: profile.phone_number ?? null, address: profile.address ?? null });
+
+  const isMe = user?.id === profile.user_id;
+  const status = effectiveStatus(profile);
+  const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.display_name;
+
+  const loc = useLocationSharing(isMe ? null : profile.user_id);
+
+  const [contactPriority, setContactPriority] = useState<'silenced' | 'normal' | 'prioritized'>('normal');
+
+  useEffect(() => {
+    if (profile.user_id) {
+      supabase
+        .from('profiles')
+        .select('phone_number, address')
+        .eq('user_id', profile.user_id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setContactInfo({ phone_number: data.phone_number, address: data.address });
+        });
+    }
+  }, [profile.user_id]);
+
+  useEffect(() => {
+    if (!user || !profile.user_id || isMe) return;
+    supabase
+      .from('contact_preferences')
+      .select('priority')
+      .eq('user_id', user.id)
+      .eq('contact_id', profile.user_id)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setContactPriority(data.priority); });
+  }, [user, profile.user_id, isMe]);
+
+  async function setPriority(priority: 'silenced' | 'normal' | 'prioritized') {
+    if (!user || !profile.user_id) return;
+    setContactPriority(priority);
+    const { data: existing } = await supabase
+      .from('contact_preferences')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('contact_id', profile.user_id)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('contact_preferences').update({ priority, updated_at: new Date().toISOString() }).eq('id', existing.id);
+    } else {
+      await supabase.from('contact_preferences').insert({ user_id: user.id, contact_id: profile.user_id, priority });
+    }
+  }
+
+  async function handleNudge() {
+    if (!user || nudging) return;
+    if (contactPriority === 'silenced') return;
+    setNudging(true);
+    try {
+      await sendNotification(
+        profile.user_id,
+        'mention',
+        `${profile.display_name}, check Bubble!`,
+        'Someone is nudging you to open Bubble.',
+        conversationId
+      );
+      setNudgeSent(true);
+      setTimeout(() => setNudgeSent(false), 3000);
+    } catch (err) {
+      console.error('Nudge failed:', err);
+    } finally {
+      setNudging(false);
+    }
+  }
+
+  function copyToClipboard(value: string, field: string) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  }
+
+  function formatLastSeen(ts?: string) {
+    if (!ts) return 'Unknown';
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const seenDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const dayDiff = Math.round((today.getTime() - seenDay.getTime()) / 86400000);
+    if (dayDiff === 0) {
+      return `Today at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+    if (dayDiff === 1) {
+      return `Yesterday at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+    if (dayDiff < 7) {
+      return `${d.toLocaleDateString([], { weekday: 'long' })} at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+    return d.toLocaleString([], {
+      month: 'long',
+      day: 'numeric',
+      year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-[#0d1117] border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-md mx-4 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cover banner */}
+        <div className="h-24 bg-gradient-to-br from-sky-600/30 via-blue-700/20 to-slate-900 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white/80 hover:text-slate-900 dark:hover:text-white transition-all"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Avatar */}
+        <div className="px-6 -mt-12 relative">
+          <div className="w-24 h-24 rounded-full ring-4 ring-[#0d1117] overflow-hidden shadow-xl">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
+                <span className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {profile.display_name?.charAt(0).toUpperCase() ?? '?'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="px-6 py-4 space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-slate-900 dark:text-white font-bold text-xl">{fullName}</h2>
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                status === 'online' ? 'bg-green-400' : status === 'away' ? 'bg-yellow-400' : 'bg-slate-500'
+              }`} />
+            </div>
+            {profile.display_name !== fullName && (
+              <p className="text-slate-500 text-sm">@{profile.display_name}</p>
+            )}
+            {profile.status_message && (
+              <p className="text-slate-400 text-sm mt-1 italic">"{profile.status_message}"</p>
+            )}
+          </div>
+
+          {/* Details */}
+          <div className="space-y-2.5 pt-2 border-t border-slate-200 dark:border-white/5">
+            {profile.email && (
+              <div className="flex items-center gap-3 text-sm">
+                <Mail size={15} className="text-slate-600 flex-shrink-0" />
+                <span className="text-slate-500 dark:text-slate-400">Email</span>
+                <span className="text-slate-700 dark:text-slate-200 truncate ml-auto text-[13px]">{profile.email}</span>
+                <button
+                  onClick={() => copyToClipboard(profile.email!, 'email')}
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                  title="Copy email"
+                >
+                  {copiedField === 'email' ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                </button>
+              </div>
+            )}
+            {contactInfo.phone_number && (
+              <div className="flex items-center gap-3 text-sm">
+                <Phone size={15} className="text-slate-600 flex-shrink-0" />
+                <span className="text-slate-500 dark:text-slate-400">Phone</span>
+                <span className="text-slate-700 dark:text-slate-200 truncate ml-auto text-[13px]">{contactInfo.phone_number}</span>
+                <button
+                  onClick={() => copyToClipboard(contactInfo.phone_number!, 'phone')}
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                  title="Copy phone number"
+                >
+                  {copiedField === 'phone' ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                </button>
+              </div>
+            )}
+            {contactInfo.address && (
+              <div className="flex items-center gap-3 text-sm">
+                <MapPin size={15} className="text-slate-600 flex-shrink-0" />
+                <span className="text-slate-500 dark:text-slate-400">Address</span>
+                <span className="text-slate-700 dark:text-slate-200 truncate ml-auto text-[13px]">{contactInfo.address}</span>
+                <button
+                  onClick={() => copyToClipboard(contactInfo.address!, 'address')}
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                  title="Copy address"
+                >
+                  {copiedField === 'address' ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-3 text-sm">
+              <Clock size={15} className="text-slate-600 flex-shrink-0" />
+              <span className="text-slate-500 dark:text-slate-400">Last seen</span>
+              <span className="text-slate-700 dark:text-slate-200 ml-auto">{formatLastSeen(profile.last_seen)}</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <Calendar size={15} className="text-slate-600 flex-shrink-0" />
+              <span className="text-slate-500 dark:text-slate-400">Joined</span>
+              <span className="text-slate-700 dark:text-slate-200 ml-auto">
+                {new Date(profile.created_at).toLocaleDateString([], { month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+          </div>
+
+          {/* Location sharing */}
+          {!isMe && (
+            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Navigation size={15} className="text-sky-500" />
+                  <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200">Let {profile.display_name} see my location</span>
+                </div>
+                <button
+                  onClick={() => loc.toggleShare(!loc.shareEnabled)}
+                  title="Toggle location sharing"
+                  className={`relative w-11 h-6 rounded-full transition-all flex-shrink-0 ${
+                    loc.shareEnabled ? 'bg-sky-500' : 'bg-slate-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all ${
+                      loc.shareEnabled ? 'left-[22px]' : 'left-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {loc.shareEnabled && !loc.myLocation && (
+                <button
+                  onClick={() => loc.updateMyLocation()}
+                  className="w-full py-2 text-[12px] text-sky-500 hover:text-sky-400 font-medium transition-colors"
+                >
+                  Share my current location
+                </button>
+              )}
+
+              {loc.theirShareEnabled && loc.theirLocation && (
+                <div className="space-y-1.5">
+                  <p className="text-[12px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <MapPin size={12} className="text-green-400" />
+                    {profile.display_name} shared their location
+                  </p>
+                  <LocationMap
+                    latitude={loc.theirLocation.latitude}
+                    longitude={loc.theirLocation.longitude}
+                    label={`${profile.display_name}'s location`}
+                    height={180}
+                  />
+                </div>
+              )}
+
+              {loc.theirShareEnabled && !loc.theirLocation && (
+                <p className="text-[12px] text-slate-400">{profile.display_name} allowed you to see their location, but hasn't shared coordinates yet.</p>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          {!isMe && (
+            <div className="flex gap-3 pt-2">
+              {onStartChat && (
+                <button
+                  onClick={onStartChat}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-sky-500 hover:bg-sky-400 text-white font-semibold text-sm rounded-2xl transition-all shadow-lg shadow-sky-500/20"
+                >
+                  <MessageCircle size={16} />
+                  Message
+                </button>
+              )}
+              <button
+                onClick={handleNudge}
+                disabled={nudging}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-semibold text-sm rounded-2xl transition-all ${
+                  nudgeSent
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : 'bg-slate-100 dark:bg-white/[0.06] hover:bg-white/[0.10] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10'
+                }`}
+              >
+                <Bell size={16} />
+                {nudgeSent ? 'Nudged!' : 'Nudge'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
