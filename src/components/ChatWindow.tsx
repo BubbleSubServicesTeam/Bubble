@@ -29,7 +29,7 @@ import {
   Paperclip, Copy, Download, FileText,
   DollarSign, Link, BarChart2, ExternalLink, Eye,
   Code2, Link2, Trophy, MessageCircle, Sparkles, Maximize2, Minimize2, BookOpen, ScanText,
-  Bookmark, BookmarkCheck, FolderOpen, Bell, Palette, Star, StarOff
+  Bookmark, BookmarkCheck, FolderOpen, Palette, Star, StarOff
 } from 'lucide-react';
 import { useNotifications } from '../lib/notifications';
 import { useAppLang } from '../lib/i18n';
