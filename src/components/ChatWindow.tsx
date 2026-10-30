@@ -39,6 +39,7 @@ import NotificationSettings from './NotificationSettings';
 import WallpaperPicker from './WallpaperPicker';
 import { getWallpaperCss } from '../lib/wallpapers';
 import { LocationMap, LocationPicker } from './LocationMap';
+import { detectContactInfo, hasNewInfo } from '../lib/contactAutofill';
 
 type Props = {
   conversation: Conversation;
@@ -155,6 +156,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [wallpaper, setWallpaper] = useState('none');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [autofillSuggestion, setAutofillSuggestion] = useState<{
+    senderId: string;
+    senderName: string;
+    info: Record<string, string | null>;
+  } | null>(null);
 
   // Reply selection box
   const [lensActive, setLensActive] = useState(false);
@@ -492,6 +498,25 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           setTimeout(() => scrollToBottom('smooth'), 50);
           // Mark as read when a new message arrives AND the chat is visible
           if (document.visibilityState === 'visible') markAsRead();
+
+          // Contact info autofill: detect phone/address in incoming text messages
+          if (data.message_type === 'text' && data.content && data.sender_id !== user?.id) {
+            const detected = detectContactInfo(data.content);
+            if (detected) {
+              const { data: senderProfile } = await supabase
+                .from('profiles')
+                .select('phone_number, address, city, state, postal_code, country')
+                .eq('user_id', data.sender_id)
+                .maybeSingle();
+              if (senderProfile && hasNewInfo(detected, senderProfile)) {
+                setAutofillSuggestion({
+                  senderId: data.sender_id,
+                  senderName: (data.sender as any)?.display_name ?? 'Someone',
+                  info: detected as Record<string, string | null>,
+                });
+              }
+            }
+          }
         }
       })
       .on('postgres_changes', {
@@ -2210,6 +2235,51 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             else if (opt === 'location') setShowLocationPicker(true);
           }}
         />
+      )}
+
+      {autofillSuggestion && (
+        <div className="absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] left-1/2 -translate-x-1/2 z-[70] w-full max-w-sm px-4">
+          <div className="bg-slate-800 dark:bg-slate-700 text-white rounded-2xl shadow-2xl p-3.5 flex items-start gap-3 animate-in" style={{ animation: 'slideUp 0.25s ease-out' }}>
+            <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center flex-shrink-0">
+              <Phone size={14} className="text-sky-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-white">
+                Save {autofillSuggestion.senderName}'s contact info?
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                Detected: {Object.entries(autofillSuggestion.info)
+                  .filter(([, v]) => v)
+                  .map(([k]) => k.replace('_', ' '))
+                  .join(', ')}
+              </p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={async () => {
+                    const updates: Record<string, string | null> = {};
+                    if (autofillSuggestion.info.phone_number) updates.phone_number = autofillSuggestion.info.phone_number;
+                    if (autofillSuggestion.info.address) updates.address = autofillSuggestion.info.address;
+                    if (autofillSuggestion.info.city) updates.city = autofillSuggestion.info.city;
+                    if (autofillSuggestion.info.state) updates.state = autofillSuggestion.info.state;
+                    if (autofillSuggestion.info.postal_code) updates.postal_code = autofillSuggestion.info.postal_code;
+                    if (autofillSuggestion.info.country) updates.country = autofillSuggestion.info.country;
+                    await supabase.from('profiles').update(updates).eq('user_id', autofillSuggestion.senderId);
+                    setAutofillSuggestion(null);
+                  }}
+                  className="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white text-[12px] font-semibold rounded-lg transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setAutofillSuggestion(null)}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 text-[12px] font-medium rounded-lg transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showLocationPicker && (

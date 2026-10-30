@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Mail, CheckCircle, Sparkles, Camera } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Sparkles, Camera, ChevronDown } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 
@@ -100,6 +100,8 @@ export default function AuthPage() {
 
   // Track which keyboard field is active (only one keyboard visible at a time)
   const [activeField, setActiveField] = useState<string | null>('siEmail');
+  const [showMoreProviders, setShowMoreProviders] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
   function handleAvatarPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -136,6 +138,25 @@ export default function AuthPage() {
       setSiError(typeof err?.message === 'string' ? err.message : 'Sign in failed. Please try again.');
     }
     setSiLoading(false);
+  }
+
+  async function handleOAuth(provider: string, displayName: string) {
+    setOauthLoading(provider);
+    setSiError('');
+    setSuError('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider as any,
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) {
+        setSiError(`${displayName} sign-in isn't available right now. Use email instead.`);
+        setOauthLoading(null);
+      }
+    } catch {
+      setSiError(`${displayName} sign-in isn't available right now. Use email instead.`);
+      setOauthLoading(null);
+    }
   }
 
   function normalizeName(value: string) {
@@ -270,6 +291,146 @@ export default function AuthPage() {
                   Forgot password?
                 </button>
               </form>
+
+              <div className="mt-5 pt-5 border-t border-slate-200 dark:border-white/[0.06]">
+                {/* Primary OAuth providers */}
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOAuth('google', 'Google')}
+                    disabled={!!oauthLoading}
+                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-white dark:bg-white/[0.06] hover:bg-slate-50 dark:hover:bg-white/[0.1] border border-slate-200 dark:border-white/[0.1] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[14px] transition-all disabled:opacity-50"
+                  >
+                    {oauthLoading === 'google' ? <BubbleLoader size={18} /> : (
+                      <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                    )}
+                    Continue with Google
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOAuth('github', 'GitHub')}
+                    disabled={!!oauthLoading}
+                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-slate-900 dark:bg-white/[0.06] hover:bg-slate-800 dark:hover:bg-white/[0.1] border border-slate-700 dark:border-white/[0.1] rounded-xl text-white dark:text-slate-200 font-medium text-[14px] transition-all disabled:opacity-50"
+                  >
+                    {oauthLoading === 'github' ? <BubbleLoader size={18} /> : (
+                      <svg className="w-[18px] h-[18px] fill-white dark:fill-slate-200" viewBox="0 0 24 24">
+                        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                      </svg>
+                    )}
+                    Continue with GitHub
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOAuth('apple', 'Apple')}
+                    disabled={!!oauthLoading}
+                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-black hover:bg-slate-900 border border-slate-800 rounded-xl text-white font-medium text-[14px] transition-all disabled:opacity-50"
+                  >
+                    {oauthLoading === 'apple' ? <BubbleLoader size={18} /> : (
+                      <svg className="w-[18px] h-[18px] fill-white" viewBox="0 0 24 24">
+                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                      </svg>
+                    )}
+                    Continue with Apple
+                  </button>
+                </div>
+
+                {/* "Log in with something else" toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowMoreProviders(s => !s)}
+                  className="w-full flex items-center justify-center gap-1.5 mt-3 text-[13px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                >
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${showMoreProviders ? 'rotate-180' : ''}`} />
+                  Log in with something else
+                </button>
+
+                {showMoreProviders && (
+                  <div className="grid grid-cols-2 gap-2.5 mt-3 animate-in fade-in slide-in-from-top duration-200">
+                    <button
+                      type="button"
+                      onClick={() => handleOAuth('azure', 'Microsoft')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      {oauthLoading === 'azure' ? <BubbleLoader size={16} /> : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                          <path fill="#F25022" d="M0 0h11.5v11.5H0z"/>
+                          <path fill="#7FBA00" d="M12.5 0H24v11.5H12.5z"/>
+                          <path fill="#00A4EF" d="M0 12.5h11.5V24H0z"/>
+                          <path fill="#FFB900" d="M12.5 12.5H24V24H12.5z"/>
+                        </svg>
+                      )}
+                      Microsoft
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOAuth('paypal', 'PayPal')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      {oauthLoading === 'paypal' ? <BubbleLoader size={16} /> : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                          <path fill="#00457C" d="M7.076 21.567H3.43L6.7 2.968h3.652l-3.276 18.6z"/>
+                          <path fill="#298FC2" d="M21.5 3.068C20.79 2.4 19.528 2 17.888 2h-5.04l-.22 1.245h5.118c1.527 0 2.527.523 2.88 1.555.27.8.13 1.827-.02 2.527-.483 2.5-2.033 3.7-4.543 3.7h-3.51l-.97 5.584H7.88l1.97-11.275h5.7c3.04 0 4.83 1.492 4.83 4.03 0 .5-.05.92-.18 1.32z"/>
+                        </svg>
+                      )}
+                      PayPal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSiError('Claude sign-in requires a Client ID. Connect your account from Settings after signing in.')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#D97757" strokeWidth="2" strokeLinejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#D97757" strokeWidth="2" strokeLinejoin="round"/></svg>
+                      Claude
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSiError('Grok sign-in requires a Client ID. Connect your account from Settings after signing in.')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#1DA1F2" strokeWidth="2"/><path d="M8 12h8M12 8v8" stroke="#1DA1F2" strokeWidth="2" strokeLinecap="round"/></svg>
+                      Grok
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSiError('ChatGPT sign-in requires a Client ID. Connect your account from Settings after signing in.')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#10A37F" strokeWidth="2"/><path d="M8 12a4 4 0 018 0" stroke="#10A37F" strokeWidth="2" strokeLinecap="round"/></svg>
+                      ChatGPT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOAuth('facebook', 'Meta')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      {oauthLoading === 'facebook' ? <BubbleLoader size={16} /> : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      )}
+                      Meta
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSiError('Gemini sign-in requires a Client ID. Connect your account from Settings after signing in.')}
+                      disabled={!!oauthLoading}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" fill="#4285F4"/></svg>
+                      Gemini
+                    </button>
+                  </div>
+                )}
+              </div>
 
             </div>
           )}
