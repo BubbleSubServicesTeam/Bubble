@@ -1942,8 +1942,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             <BookOpen size={16} />
           </button>
           <button
-            onClick={() => { scrollToBottom(); inputRef.current?.focus(); }}
-            className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-white shadow-lg transition-all active:scale-90"
+            onClick={() => { scrollToBottom('smooth', true); inputRef.current?.focus(); }}
+            className="w-10 h-10 rounded-full bg-sky-500 hover:bg-sky-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/30 transition-all active:scale-90"
             style={{ animation: 'arrowFadeIn 0.3s ease-out 0.25s both' }}
           >
             <ChevronDown size={16} />
