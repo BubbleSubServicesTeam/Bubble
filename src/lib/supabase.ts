@@ -35,6 +35,10 @@ export type Profile = {
   email?: string | null;
   phone_number?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
   unread_badge_enabled?: boolean | null;
   face_id_enabled?: boolean | null;
 };

@@ -138,15 +138,23 @@ export default function AuthPage() {
     setSiLoading(false);
   }
 
+  function normalizeName(value: string) {
+    return value.trim().replace(/\s+/g, ' ').split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
+  }
+
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setSuError('');
-    if (!suFirstName.trim()) { setSuError('First name is required.'); return; }
-    if (!suLastName.trim()) { setSuError('Last name is required.'); return; }
+    const normalizedFirstName = normalizeName(suFirstName);
+    const normalizedLastName = normalizeName(suLastName);
+    setSuFirstName(normalizedFirstName);
+    setSuLastName(normalizedLastName);
+    if (!normalizedFirstName) { setSuError('First name is required.'); return; }
+    if (!normalizedLastName) { setSuError('Last name is required.'); return; }
     if (suPassword.length < 6) { setSuError('Password must be at least 6 characters.'); return; }
     if (suPassword !== suConfirm) { setSuError('Passwords do not match.'); return; }
     setSuLoading(true);
-    const { error, needsVerification, userId } = await signUp(suEmail, suPassword, suFirstName.trim(), suLastName.trim());
+    const { error, needsVerification, userId } = await signUp(suEmail, suPassword, normalizedFirstName, normalizedLastName);
     if (error) {
       setSuError(error);
     } else {

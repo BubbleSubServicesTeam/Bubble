@@ -112,7 +112,12 @@ export default function PinScreen({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (showPasswordInput || showFingerprint) return;
-      if (e.key >= '0' && e.key <= '9') addDigit(e.key);
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        addDigit(e.key);
+      }
       else if (e.key === 'Backspace') deleteDigit();
     }
     window.addEventListener('keydown', onKey);

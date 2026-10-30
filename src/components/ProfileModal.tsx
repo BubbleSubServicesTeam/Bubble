@@ -24,7 +24,11 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
   const [contactInfo, setContactInfo] = useState<{
     phone_number: string | null;
     address: string | null;
-  }>({ phone_number: profile.phone_number ?? null, address: profile.address ?? null });
+    city: string | null;
+    state: string | null;
+    postal_code: string | null;
+    country: string | null;
+  }>({ phone_number: profile.phone_number ?? null, address: profile.address ?? null, city: profile.city ?? null, state: profile.state ?? null, postal_code: profile.postal_code ?? null, country: profile.country ?? null });
 
   const isMe = user?.id === profile.user_id;
   const status = effectiveStatus(profile);
@@ -38,11 +42,11 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
     if (profile.user_id) {
       supabase
         .from('profiles')
-        .select('phone_number, address')
+        .select('phone_number, address, city, state, postal_code, country')
         .eq('user_id', profile.user_id)
         .maybeSingle()
         .then(({ data }) => {
-          if (data) setContactInfo({ phone_number: data.phone_number, address: data.address });
+          if (data) setContactInfo({ phone_number: data.phone_number, address: data.address, city: data.city, state: data.state, postal_code: data.postal_code, country: data.country });
         });
     }
   }, [profile.user_id]);
@@ -197,6 +201,13 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
                 >
                   {copiedField === 'phone' ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
                 </button>
+              </div>
+            )}
+            {(contactInfo.city || contactInfo.state || contactInfo.postal_code || contactInfo.country) && (
+              <div className="flex items-center gap-3 text-sm">
+                <MapPin size={15} className="text-slate-600 flex-shrink-0" />
+                <span className="text-slate-500 dark:text-slate-400">Location</span>
+                <span className="text-slate-700 dark:text-slate-200 truncate ml-auto text-[13px]">{[contactInfo.city, contactInfo.state, contactInfo.postal_code, contactInfo.country].filter(Boolean).join(', ')}</span>
               </div>
             )}
             {contactInfo.address && (

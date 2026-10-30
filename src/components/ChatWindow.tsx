@@ -1384,14 +1384,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         )}
 
         {/* More menu */}
-        <div className="relative">
+        <div className="relative z-[101]">
           <HeaderBtn title="More options" onClick={() => setShowMenu(s => !s)}>
             <MoreVertical size={18} />
           </HeaderBtn>
           {showMenu && (
             <>
-              <div className="fixed inset-0 z-[10000]" onClick={() => setShowMenu(false)} />
-              <div className="fixed right-4 top-20 z-[10001] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl py-1.5 w-56 overflow-hidden max-h-[70vh] overflow-y-auto">
+              <div className="fixed inset-0 z-[90]" onPointerDown={() => setShowMenu(false)} />
+              <div className="absolute right-0 top-11 z-[100] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl py-1.5 w-56 overflow-hidden max-h-[70vh] overflow-y-auto">
                 {canEditInfo && (
                   <MenuItem icon={<Edit2 size={14} />} onClick={() => { setShowMenu(false); setShowEditInfo(true); }}>
                     {t('editChatInfo')}
@@ -1419,7 +1419,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   </MenuItem>
                 )}
                 {otherProfile && (
-                  <MenuItem icon={<Bell size={14} />} onClick={handleNudge}>
+                  <MenuItem icon={<Bell size={14} />} onClick={() => { setShowMenu(false); handleNudge(); }}>
                     {nudged ? t('nudged') : t('nudge')}
                   </MenuItem>
                 )}

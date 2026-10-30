@@ -565,8 +565,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const patch: Record<string, any> = { ...updates };
     if (updates.first_name !== undefined || updates.last_name !== undefined) {
-      const fn = updates.first_name ?? profile?.first_name ?? '';
-      const ln = updates.last_name ?? profile?.last_name ?? '';
+      const normalizeName = (value: string) => value.trim().replace(/\s+/g, ' ').split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
+      const fn = normalizeName(updates.first_name ?? profile?.first_name ?? '');
+      const ln = normalizeName(updates.last_name ?? profile?.last_name ?? '');
+      patch.first_name = fn;
+      patch.last_name = ln;
       patch.display_name = [fn, ln].filter(Boolean).join(' ') || profile?.display_name;
     }
     const { data } = await supabase.from('profiles').update(patch).eq('user_id', user.id).select().maybeSingle();

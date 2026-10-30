@@ -42,6 +42,12 @@ export default function SettingsModal({ onClose }: Props) {
   // Profile tab
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   const [lastName, setLastName] = useState(profile?.last_name ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number ?? '');
+  const [address, setAddress] = useState(profile?.address ?? '');
+  const [city, setCity] = useState(profile?.city ?? '');
+  const [stateRegion, setStateRegion] = useState(profile?.state ?? '');
+  const [postalCode, setPostalCode] = useState(profile?.postal_code ?? '');
+  const [country, setCountry] = useState(profile?.country ?? '');
   const [statusMsg, setStatusMsg] = useState(profile?.status_message ?? '');
   const [status, setStatus] = useState(profile?.status ?? 'auto');
   const [saved, setSaved] = useState(false);
@@ -244,9 +250,17 @@ export default function SettingsModal({ onClose }: Props) {
     }
   }
 
+  function capitalizeName(value: string) {
+    return value.trim().replace(/\s+/g, ' ').split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
+  }
+
   async function handleSaveProfile() {
+    const normalizedFirstName = capitalizeName(firstName);
+    const normalizedLastName = capitalizeName(lastName);
+    setFirstName(normalizedFirstName);
+    setLastName(normalizedLastName);
     setSaving(true);
-    await updateProfile({ first_name: firstName, last_name: lastName, status_message: statusMsg, status: status as any });
+    await updateProfile({ first_name: normalizedFirstName, last_name: normalizedLastName, phone_number: phoneNumber.trim() || null, address: address.trim() || null, city: city.trim() || null, state: stateRegion.trim() || null, postal_code: postalCode.trim() || null, country: country.trim() || null, status_message: statusMsg, status: status as any });
     setSaved(true);
     setSaving(false);
     setTimeout(() => setSaved(false), 1500);
@@ -255,6 +269,12 @@ export default function SettingsModal({ onClose }: Props) {
   // Track whether profile fields differ from saved values
   const profileChanged = (firstName !== (profile?.first_name ?? '') ||
     lastName !== (profile?.last_name ?? '') ||
+    phoneNumber !== (profile?.phone_number ?? '') ||
+    address !== (profile?.address ?? '') ||
+    city !== (profile?.city ?? '') ||
+    stateRegion !== (profile?.state ?? '') ||
+    postalCode !== (profile?.postal_code ?? '') ||
+    country !== (profile?.country ?? '') ||
     statusMsg !== (profile?.status_message ?? '') ||
     status !== (profile?.status ?? 'auto'));
 
@@ -1084,6 +1104,26 @@ export default function SettingsModal({ onClose }: Props) {
                   <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
                     className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-[14px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all" />
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-slate-200 dark:border-white/[0.06] p-4">
+                <p className="text-[13px] font-semibold text-slate-900 dark:text-white">Contact details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['Phone number', phoneNumber, setPhoneNumber],
+                    ['Street address', address, setAddress],
+                    ['City', city, setCity],
+                    ['State / region', stateRegion, setStateRegion],
+                    ['Postal / ZIP', postalCode, setPostalCode],
+                    ['Country', country, setCountry],
+                  ].map(([label, value, setter]) => (
+                    <div key={label as string} className="space-y-1.5">
+                      <label className="block text-[12px] font-medium text-slate-500 dark:text-slate-400">{label as string}</label>
+                      <input type="text" value={value as string} onChange={e => (setter as (value: string) => void)(e.target.value)} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-500">Only add details you want available on your Bubble profile.</p>
               </div>
 
               <div className="space-y-1.5">
