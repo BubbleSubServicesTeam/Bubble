@@ -4,8 +4,9 @@ import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
 import Avatar from './Avatar';
-import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Trophy, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Trophy, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, Compass } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
+import { ContactPriorityMap, conversationPriority, priorityRank } from '../lib/contactPriority';
 
 type FFLeague = {
   id: string; name: string; conversation_id: string | null;
@@ -15,11 +16,13 @@ type FFLeague = {
 
 type Props = {
   conversations: Conversation[];
+  contactPriorities: ContactPriorityMap;
   loading?: boolean;
   selectedId: string | null;
   onSelect: (conv: Conversation) => void;
   onNewChat: () => void;
   onGifStudio: () => void;
+  onOpenDiscover: () => void;
   onSettings: () => void;
   onOpenPeopleDrawer?: () => void;
   showTrash?: boolean;
@@ -30,7 +33,7 @@ type Props = {
   onToggleFantasyLeagues?: () => void;
 };
 
-export default function Sidebar({ conversations, loading, selectedId, onSelect, onNewChat, onGifStudio, onSettings, onOpenPeopleDrawer, showTrash, onToggleTrash, onOpenFantasyLeagues, onCreateFantasyLeague, showFantasyLeagues, onToggleFantasyLeagues }: Props) {
+export default function Sidebar({ conversations, contactPriorities, loading, selectedId, onSelect, onNewChat, onGifStudio, onOpenDiscover, onSettings, onOpenPeopleDrawer, showTrash, onToggleTrash, onOpenFantasyLeagues, onCreateFantasyLeague, showFantasyLeagues, onToggleFantasyLeagues }: Props) {
   const { profile, user, signOut } = useAuth();
   const { theme, resolvedTheme } = useTheme();
   const { t } = useAppLang();
@@ -81,9 +84,15 @@ export default function Sidebar({ conversations, loading, selectedId, onSelect, 
     return smartName(other, allPeers).toLowerCase().includes(query);
   });
 
+  function effectiveUnread(conv: Conversation) {
+    return conversationPriority(conv, myUserId, contactPriorities) === 'silenced' ? 0 : (conv.unread_count ?? 0);
+  }
+
   const ordered = [...filtered].sort((a, b) => {
+    const rankDiff = priorityRank(conversationPriority(a, myUserId, contactPriorities)) - priorityRank(conversationPriority(b, myUserId, contactPriorities));
+    if (rankDiff !== 0) return rankDiff;
     if (sortMode === 'name') return getConvName(a).localeCompare(getConvName(b));
-    if (sortMode === 'unread') return (b.unread_count ?? 0) - (a.unread_count ?? 0) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    if (sortMode === 'unread') return effectiveUnread(b) - effectiveUnread(a) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     if (sortMode === 'active') return (messageCounts[b.id] ?? 0) - (messageCounts[a.id] ?? 0) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
   });
@@ -166,7 +175,7 @@ export default function Sidebar({ conversations, loading, selectedId, onSelect, 
   function renderConv(conv: Conversation) {
     const isSelected = conv.id === selectedId;
     const other = getConvAvatar(conv);
-    const unread = conv.unread_count ?? 0;
+    const unread = effectiveUnread(conv);
     const name = getConvName(conv);
     const lastMsg = getLastMsg(conv);
     const time = formatTime(conv.last_message?.created_at ?? conv.updated_at);
@@ -233,6 +242,7 @@ export default function Sidebar({ conversations, loading, selectedId, onSelect, 
           <IconBtn onClick={onOpenFantasyLeagues ?? (() => {})} title="Fantasy Leagues">
             <Trophy size={15} />
           </IconBtn>
+          <IconBtn onClick={onOpenDiscover} title="Discover"><Compass size={15} /></IconBtn>
           <IconBtn onClick={onGifStudio} title="GIF Studio"><Sparkles size={15} /></IconBtn>
           <IconBtn onClick={onToggleTrash} title="Trash"><Trash2 size={15} danger={showTrash} /></IconBtn>
           <button

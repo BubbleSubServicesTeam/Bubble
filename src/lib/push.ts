@@ -157,7 +157,7 @@ export async function showPushNotification(title: string, body: string, tag?: st
   }
 }
 
-export async function sendPushToRecipient(recipientId: string, title: string, body: string, tag?: string, data?: Record<string, any>) {
+export async function sendPushToRecipient(recipientId: string, senderId: string | undefined, title: string, body: string, tag?: string, data?: Record<string, any>) {
   try {
     const pushUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push/send`;
     const { data: session } = await supabase.auth.getSession();
@@ -168,7 +168,7 @@ export async function sendPushToRecipient(recipientId: string, title: string, bo
         'Authorization': `Bearer ${session?.session?.access_token ?? ''}`,
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ recipient_id: recipientId, title, body, tag, data }),
+      body: JSON.stringify({ recipient_id: recipientId, sender_id: senderId, title, body, tag, data }),
     });
     if (!res.ok) return;
     const result = await res.json();

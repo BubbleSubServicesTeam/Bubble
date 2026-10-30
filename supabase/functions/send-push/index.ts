@@ -41,13 +41,28 @@ Deno.serve(async (req: Request) => {
 
     // POST /send — send a push notification to all of a user's devices
     if (req.method === "POST" && (path === "/send" || path === "")) {
-      const { recipient_id, title, body, tag, data } = await req.json();
+      const { recipient_id, sender_id, title, body, tag, data } = await req.json();
 
       if (!recipient_id || !title) {
         return new Response(
           JSON.stringify({ error: "recipient_id and title are required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      if (sender_id) {
+        const { data: pref } = await supabase
+          .from("contact_preferences")
+          .select("priority")
+          .eq("user_id", recipient_id)
+          .eq("contact_id", sender_id)
+          .maybeSingle();
+        if (pref?.priority === "silenced") {
+          return new Response(
+            JSON.stringify({ sent: 0, reason: "silenced" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
 
       const { data: subs, error: subErr } = await supabase

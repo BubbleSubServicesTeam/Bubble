@@ -3,9 +3,11 @@ import { useAuth } from './lib/auth';
 import { useTheme, getLogoUrl } from './lib/theme';
 import { useAppLang } from './lib/i18n';
 import { supabase, Conversation, Message, Profile } from './lib/supabase';
+import { ContactPriorityMap, CONTACT_PRIORITY_CHANGED_EVENT, conversationPriority, fetchContactPriorities } from './lib/contactPriority';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import GifStudio from './components/GifStudio';
+import DiscoverModal from './components/DiscoverModal';
 import NewChatModal from './components/NewChatModal';
 import SettingsModal from './components/SettingsModal';
 import PeopleDrawer from './components/PeopleDrawer';
@@ -17,6 +19,16 @@ export default function ChatApp() {
   const { user, profile } = useAuth();
   const { theme, resolvedTheme } = useTheme();
   const [showTrash, setShowTrash] = useState(false);
+  const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
+  const [showDiscover, setShowDiscover] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = () => { fetchContactPriorities(user.id).then(setContactPriorities); };
+    load();
+    window.addEventListener(CONTACT_PRIORITY_CHANGED_EVENT, load);
+    return () => window.removeEventListener(CONTACT_PRIORITY_CHANGED_EVENT, load);
+  }, [user]);
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     if (user) {
       try {
@@ -372,13 +384,15 @@ export default function ChatApp() {
 
   // Update browser tab title with unread count when setting is enabled
   useEffect(() => {
-    const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count ?? 0), 0);
+    const totalUnread = conversations.reduce((sum, c) => (
+      conversationPriority(c, user?.id, contactPriorities) === 'silenced' ? sum : sum + (c.unread_count ?? 0)
+    ), 0);
     if (profile?.unread_badge_enabled && totalUnread > 0) {
       document.title = `(${totalUnread}) Bubble`;
     } else {
       document.title = 'Bubble';
     }
-  }, [conversations, profile?.unread_badge_enabled]);
+  }, [conversations, contactPriorities, user?.id, profile?.unread_badge_enabled]);
 
   return (
     <div
@@ -405,11 +419,13 @@ export default function ChatApp() {
       <div className={`${selected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-auto flex-shrink-0`}>
         <Sidebar
           conversations={conversations}
+          contactPriorities={contactPriorities}
           loading={convLoading}
           selectedId={selected?.id ?? null}
           onSelect={handleSelectConv}
           onNewChat={() => setShowNewChat(true)}
           onGifStudio={() => setShowGifStudio(true)}
+          onOpenDiscover={() => setShowDiscover(true)}
           onSettings={() => setShowSettings(true)}
           onOpenPeopleDrawer={() => setShowPeopleDrawer(true)}
           onOpenFantasyLeagues={() => { setShowFantasyLeagues(true); setShowTrash(false); setSelected(null); }}
@@ -474,6 +490,9 @@ export default function ChatApp() {
           onCreated={handleNewChatCreated}
           preloadedProfiles={allProfiles}
         />
+      )}
+      {showDiscover && (
+        <DiscoverModal onClose={() => setShowDiscover(false)} />
       )}
       {showGifStudio && (
         <GifStudio

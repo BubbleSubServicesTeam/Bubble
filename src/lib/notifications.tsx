@@ -85,7 +85,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` },
         async (payload) => {
           const notif = payload.new as Notification;
-          // Fetch sender profile
+          let silenced = false;
           if (notif.sender_id) {
             const { data: senderData } = await supabase
               .from('profiles')
@@ -93,8 +93,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               .eq('user_id', notif.sender_id)
               .maybeSingle();
             if (senderData) (notif as any).sender = senderData;
+            const { data: pref } = await supabase
+              .from('contact_preferences')
+              .select('priority')
+              .eq('user_id', user.id)
+              .eq('contact_id', notif.sender_id)
+              .maybeSingle();
+            silenced = pref?.priority === 'silenced';
           }
           setNotifications(prev => [notif, ...prev]);
+          if (silenced) return;
           showToast(notif);
           showPushNotification(notif.title, notif.body ?? '', notif.id);
         }
@@ -165,7 +173,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       conversation_id: conversationId ?? null,
     });
     // Send real Web Push to all of the recipient's devices
-    sendPushToRecipient(recipientId, title, body, 'bubble-notification', {
+    sendPushToRecipient(recipientId, user.id, title, body, 'bubble-notification', {
       conversation_id: conversationId ?? null,
       type,
     });

@@ -5,6 +5,7 @@ import { useNotifications } from '../lib/notifications';
 import { useLocationSharing } from '../lib/location';
 import Avatar from './Avatar';
 import { LocationMap } from './LocationMap';
+import { saveContactPriority } from '../lib/contactPriority';
 import { X, Mail, Bell, BellOff, MessageCircle, Calendar, Clock, Phone, MapPin, Copy, Check, Navigation, Star, Volume2 } from 'lucide-react';
 
 type Props = {
@@ -60,17 +61,7 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
   async function setPriority(priority: 'silenced' | 'normal' | 'prioritized') {
     if (!user || !profile.user_id) return;
     setContactPriority(priority);
-    const { data: existing } = await supabase
-      .from('contact_preferences')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('contact_id', profile.user_id)
-      .maybeSingle();
-    if (existing) {
-      await supabase.from('contact_preferences').update({ priority, updated_at: new Date().toISOString() }).eq('id', existing.id);
-    } else {
-      await supabase.from('contact_preferences').insert({ user_id: user.id, contact_id: profile.user_id, priority });
-    }
+    await saveContactPriority(user.id, profile.user_id, priority);
   }
 
   async function handleNudge() {
@@ -286,6 +277,45 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
               {loc.theirShareEnabled && !loc.theirLocation && (
                 <p className="text-[12px] text-slate-400">{profile.display_name} allowed you to see their location, but hasn't shared coordinates yet.</p>
               )}
+            </div>
+          )}
+
+          {/* Contact priority */}
+          {!isMe && (
+            <div className="space-y-2.5 pt-2 border-t border-slate-200 dark:border-white/5">
+              <div>
+                <p className="text-[13px] font-semibold text-slate-900 dark:text-white">Contact priority</p>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400">
+                  {contactPriority === 'silenced' && 'Silenced: no unread badges or push alerts, and their chats sit at the bottom.'}
+                  {contactPriority === 'normal' && 'Normal: standard notifications and chat order.'}
+                  {contactPriority === 'prioritized' && 'Prioritized: their chats stay at the top of your list.'}
+                </p>
+              </div>
+              <div role="radiogroup" aria-label="Contact priority" className="grid grid-cols-3 gap-2 p-1 rounded-2xl bg-slate-100 dark:bg-white/[0.04]">
+                {([
+                  { key: 'silenced', label: 'Silenced', icon: BellOff },
+                  { key: 'normal', label: 'Normal', icon: Volume2 },
+                  { key: 'prioritized', label: 'Priority', icon: Star },
+                ] as const).map(({ key, label, icon: Icon }) => {
+                  const active = contactPriority === key;
+                  return (
+                    <button
+                      key={key}
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setPriority(key)}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-semibold transition-all active:scale-[0.97] ${
+                        active
+                          ? 'bg-white dark:bg-white/[0.12] text-slate-900 dark:text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <Icon size={14} />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

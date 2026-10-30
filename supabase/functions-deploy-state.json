@@ -1,0 +1,33 @@
+{
+  "projectId": "68254368",
+  "functions": {
+    "bubble-api": {
+      "hasChanged": false,
+      "hash": "a33a2b5a1a5dd4cc98495577ff7a5aeb32e8e69898e37f2f771591f6c1a07f5f"
+    },
+    "nfl-stats": {
+      "hasChanged": false,
+      "hash": "08350e8c367fc3bb16464468c9f3d907aadcca94015aa92b57e8193976d6e819"
+    },
+    "paypal-api": {
+      "hasChanged": false,
+      "hash": "ea6b63ce02d2f65d432ad337aaa98a21cd6a924cea3b76d0a6db4b2e03780a7f"
+    },
+    "paypal-webhook": {
+      "hasChanged": false,
+      "hash": "e2be761879df7fe498fef16d47126f63fe9ee168ccb848f3ccb536f54cc49791"
+    },
+    "send-push": {
+      "hasChanged": false,
+      "hash": "570e00a831073c670f2177c8da384d8dd5b82052d774be35b1d4c576a6006147"
+    },
+    "summarize-conversation": {
+      "hasChanged": false,
+      "hash": "c68a5c09d44165cb50a758c576332c2d43bc35af713e396c50e6a017ef5b0ab2"
+    },
+    "translate-message": {
+      "hasChanged": false,
+      "hash": "749f68e48c039283eda3e7ac9af912ee8920c34ed928a1699960d27958ff0037"
+    }
+  }
+}
