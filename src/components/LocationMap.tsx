@@ -26,7 +26,14 @@ export function LocationMap({ latitude, longitude, label, height = 200, classNam
           loading="lazy"
           title={label ?? 'Location'}
         />
-        <div className="absolute inset-0" />
+        {interactive && (
+          <button
+            type="button"
+            onClick={() => setFullscreen(true)}
+            className="absolute inset-0 cursor-pointer"
+            aria-label="Open map fullscreen"
+          />
+        )}
         {interactive && (
           <div className="absolute top-2 right-2 flex gap-1.5">
             <a

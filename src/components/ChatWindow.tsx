@@ -38,6 +38,7 @@ import FilesViewer from './FilesViewer';
 import NotificationSettings from './NotificationSettings';
 import WallpaperPicker from './WallpaperPicker';
 import { getWallpaperCss } from '../lib/wallpapers';
+import { LocationMap, LocationPicker } from './LocationMap';
 
 type Props = {
   conversation: Conversation;
@@ -53,6 +54,46 @@ const EMOJI_LIST = [
   '😭','🙄','😬','🤫','🤔','👿','😈','😂','☠','😮',
   '😩','🤧','🤮','😢','🌐','🗑','⌚','🚫','⚠️','🎉'
 ];
+
+type LensRect = { left: number; top: number; right: number; bottom: number };
+type LensEdge = 'move' | 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+type LensDrag = { edge: LensEdge; startX: number; startY: number; startRect: LensRect; latest: LensRect };
+type LensHit = { id: string; text: string; mine: boolean };
+
+const LENS_HANDLES: { edge: Exclude<LensEdge, 'move'>; pos: string; cursor: string }[] = [
+  { edge: 'nw', pos: 'left-0 top-0 -translate-x-1/2 -translate-y-1/2', cursor: 'nwse-resize' },
+  { edge: 'n', pos: 'left-1/2 top-0 -translate-x-1/2 -translate-y-1/2', cursor: 'ns-resize' },
+  { edge: 'ne', pos: 'right-0 top-0 translate-x-1/2 -translate-y-1/2', cursor: 'nesw-resize' },
+  { edge: 'e', pos: 'right-0 top-1/2 translate-x-1/2 -translate-y-1/2', cursor: 'ew-resize' },
+  { edge: 'se', pos: 'right-0 bottom-0 translate-x-1/2 translate-y-1/2', cursor: 'nwse-resize' },
+  { edge: 's', pos: 'left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2', cursor: 'ns-resize' },
+  { edge: 'sw', pos: 'left-0 bottom-0 -translate-x-1/2 translate-y-1/2', cursor: 'nesw-resize' },
+  { edge: 'w', pos: 'left-0 top-1/2 -translate-x-1/2 -translate-y-1/2', cursor: 'ew-resize' },
+];
+
+function moveLensRect(drag: LensDrag, dx: number, dy: number, width: number, height: number): LensRect {
+  const s = drag.startRect;
+  const clampX = (v: number) => Math.min(Math.max(v, 0), width);
+  const clampY = (v: number) => Math.min(Math.max(v, 0), height);
+  if (drag.edge === 'move') {
+    const w = s.right - s.left;
+    const h = s.bottom - s.top;
+    const left = Math.min(Math.max(s.left + dx, 0), Math.max(width - w, 0));
+    const top = Math.min(Math.max(s.top + dy, 0), Math.max(height - h, 0));
+    return { left, top, right: left + w, bottom: top + h };
+  }
+  let { left, top, right, bottom } = s;
+  if (drag.edge.includes('w')) left = clampX(s.left + dx);
+  if (drag.edge.includes('e')) right = clampX(s.right + dx);
+  if (drag.edge.includes('n')) top = clampY(s.top + dy);
+  if (drag.edge.includes('s')) bottom = clampY(s.bottom + dy);
+  return {
+    left: Math.min(left, right),
+    top: Math.min(top, bottom),
+    right: Math.max(left, right),
+    bottom: Math.max(top, bottom),
+  };
+}
 
 export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLeave, onTrash, onMembersChanged }: Props) {
   const { user, profile } = useAuth();
@@ -113,80 +154,100 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [wallpaper, setWallpaper] = useState('none');
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
-  // Lens-style text selection box state
+  // Reply selection box
   const [lensActive, setLensActive] = useState(false);
-  const [lensBox, setLensBox] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
-  const lensStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [lensRect, setLensRect] = useState<LensRect | null>(null);
+  const [lensHits, setLensHits] = useState<LensHit[]>([]);
+  const [lensScope, setLensScope] = useState<'all' | 'mine'>('all');
+  const lensDragRef = useRef<LensDrag | null>(null);
+  const lensSelected = lensHits.filter(h => lensScope === 'all' || h.mine);
 
-  const lensMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!lensActive) return;
+  function startLensReply() {
+    setLensActive(true);
+    setLensRect(null);
+    setLensHits([]);
+    setLensScope('all');
+  }
+
+  function closeLens() {
+    setLensActive(false);
+    setLensRect(null);
+    setLensHits([]);
+    lensDragRef.current = null;
+  }
+
+  function lensPoint(e: React.PointerEvent) {
     const rect = scrollRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    lensStartRef.current = { x, y };
-    setLensBox({ startX: x, startY: y, endX: x, endY: y });
-  }, [lensActive]);
+    return { x: e.clientX - (rect?.left ?? 0), y: e.clientY - (rect?.top ?? 0) };
+  }
 
-  const lensMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!lensActive || !lensStartRef.current) return;
-    const rect = scrollRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setLensBox(prev => prev ? { ...prev, endX: x, endY: y } : null);
-  }, [lensActive]);
+  function beginLensDrag(e: React.PointerEvent<HTMLElement>, edge: LensEdge, startRect: LensRect) {
+    const p = lensPoint(e);
+    lensDragRef.current = { edge, startX: p.x, startY: p.y, startRect, latest: startRect };
+    setLensRect(startRect);
+    setLensHits([]);
+    scrollRef.current?.setPointerCapture(e.pointerId);
+  }
 
-  const lensMouseUp = useCallback(() => {
-    if (!lensActive || !lensBox) { lensStartRef.current = null; return; }
-    const scrollRect = scrollRef.current?.getBoundingClientRect();
-    if (!scrollRect) { lensStartRef.current = null; setLensBox(null); return; }
+  function onLensPointerDown(e: React.PointerEvent<HTMLElement>) {
+    const p = lensPoint(e);
+    beginLensDrag(e, 'se', { left: p.x, top: p.y, right: p.x, bottom: p.y });
+  }
 
-    const boxLeft = Math.min(lensBox.startX, lensBox.endX);
-    const boxRight = Math.max(lensBox.startX, lensBox.endX);
-    const boxTop = Math.min(lensBox.startY, lensBox.endY);
-    const boxBottom = Math.max(lensBox.startY, lensBox.endY);
+  function onLensPointerMove(e: React.PointerEvent<HTMLElement>) {
+    const drag = lensDragRef.current;
+    if (!drag) return;
+    const p = lensPoint(e);
+    const el = scrollRef.current;
+    const next = moveLensRect(drag, p.x - drag.startX, p.y - drag.startY, el?.clientWidth ?? 0, el?.clientHeight ?? 0);
+    drag.latest = next;
+    setLensRect(next);
+  }
 
-    if (boxRight - boxLeft < 10 || boxBottom - boxTop < 10) {
-      lensStartRef.current = null;
-      setLensBox(null);
+  function onLensPointerUp() {
+    const drag = lensDragRef.current;
+    if (!drag) return;
+    lensDragRef.current = null;
+    const { latest } = drag;
+    if (latest.right - latest.left < 10 || latest.bottom - latest.top < 10) {
+      setLensRect(null);
+      setLensHits([]);
       return;
     }
-
-    // Find all message text elements that intersect the box
-    const msgEls = scrollRef.current?.querySelectorAll('[data-msg-text]') ?? [];
-    const selectedTexts: string[] = [];
-    const selectedMsgIds: string[] = [];
-    msgEls.forEach(el => {
-      const r = el.getBoundingClientRect();
-      const elLeft = r.left - scrollRect.left;
-      const elRight = r.right - scrollRect.left;
-      const elTop = r.top - scrollRect.top;
-      const elBottom = r.bottom - scrollRect.top;
-      if (elRight > boxLeft && elLeft < boxRight && elBottom > boxTop && elTop < boxBottom) {
-        const text = (el as HTMLElement).dataset.msgText;
-        const msgId = (el as HTMLElement).dataset.msgId;
-        if (text && text.trim()) {
-          selectedTexts.push(text.trim());
-          if (msgId) selectedMsgIds.push(msgId);
-        }
-      }
+    const el = scrollRef.current;
+    if (!el) return;
+    const origin = el.getBoundingClientRect();
+    const hits: LensHit[] = [];
+    el.querySelectorAll<HTMLElement>('[data-msg-text]').forEach(node => {
+      const text = node.dataset.msgText?.trim();
+      const id = node.dataset.msgId;
+      if (!text || !id) return;
+      const r = node.getBoundingClientRect();
+      const overlaps =
+        r.right - origin.left > latest.left &&
+        r.left - origin.left < latest.right &&
+        r.bottom - origin.top > latest.top &&
+        r.top - origin.top < latest.bottom;
+      if (overlaps) hits.push({ id, text, mine: messages.find(m => m.id === id)?.sender_id === user?.id });
     });
+    setLensHits(hits);
+  }
 
-    if (selectedTexts.length > 0) {
-      const quoted = selectedTexts.join('\n');
-      // Set a proper reply to the first selected message
-      const firstMsg = selectedMsgIds[0] ? messages.find(m => m.id === selectedMsgIds[0]) : null;
-      if (firstMsg) setReplyTo(firstMsg);
-      // Also insert the quoted text so the recipient sees what was selected
-      setText(prev => prev + (prev ? '\n' : '') + `> ${quoted}\n`);
-      inputRef.current?.focus();
-    }
-    setLensActive(false);
-    setLensBox(null);
-    lensStartRef.current = null;
-  }, [lensActive, lensBox]);
+  function stopLensTouch(e: React.TouchEvent) {
+    e.stopPropagation();
+  }
+
+  function confirmLensReply() {
+    if (lensSelected.length === 0) return;
+    const quoted = lensSelected.map(h => `> ${h.text}`).join('\n');
+    const first = messages.find(m => m.id === lensSelected[0].id);
+    if (first) setReplyTo(first);
+    setText(prev => prev + (prev ? '\n' : '') + quoted + '\n');
+    closeLens();
+    inputRef.current?.focus();
+  }
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1139,6 +1200,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     if (msg.message_type === 'iframe') return `Embed: ${msg.file_name || msg.content}`;
     if (msg.message_type === 'code') return msg.file_name ? `Code: ${msg.file_name}` : `Code: ${msg.code_language || 'snippet'}`;
     if (msg.message_type === 'file') return msg.file_name ?? 'File';
+    if (msg.message_type === 'location') return `Location: ${msg.file_name ?? 'Shared'}`;
     return msg.content ?? '';
   }
 
@@ -1381,12 +1443,18 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        onMouseDown={lensActive ? lensMouseDown : undefined}
-        onMouseMove={lensActive ? lensMouseMove : undefined}
-        onMouseUp={lensActive ? lensMouseUp : undefined}
-        onMouseLeave={lensActive ? lensMouseUp : undefined}
+        onPointerDown={lensActive ? onLensPointerDown : undefined}
+        onPointerMove={lensActive ? onLensPointerMove : undefined}
+        onPointerUp={lensActive ? onLensPointerUp : undefined}
+        onPointerCancel={lensActive ? onLensPointerUp : undefined}
+        onTouchStart={lensActive ? stopLensTouch : undefined}
+        onTouchMove={lensActive ? stopLensTouch : undefined}
+        onTouchEnd={lensActive ? stopLensTouch : undefined}
         className={`flex-1 overflow-y-auto px-4 py-4 space-y-0.5 scrollbar-thin ${lensActive ? 'cursor-crosshair' : ''}`}
-        style={wallpaper !== 'none' ? { background: getWallpaperCss(wallpaper) } : undefined}
+        style={{
+          ...(wallpaper !== 'none' ? { background: getWallpaperCss(wallpaper) } : {}),
+          ...(lensActive ? { touchAction: 'none' } : {}),
+        }}
       >
         {grouped.map(group => (
           <div key={group.date}>
@@ -1422,7 +1490,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   </div>
 
                   {/* Bubble */}
-                  {(() => { const isMedia = msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'iframe' || msg.message_type === 'code'; return (
+                  {(() => { const isMedia = msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'iframe' || msg.message_type === 'code' || msg.message_type === 'location'; return (
                   <div className={`flex flex-col ${isMedia ? 'max-w-[min(100%,calc(100vw-5rem))]' : 'max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
                     {!isMe && conversation.is_group && isFirst && (
                       <button onClick={() => msg.sender && setShowProfile(msg.sender as Profile)} className="text-[11px] text-slate-500 font-medium mb-1 ml-1 hover:text-sky-500 transition-colors">{getSenderName(msg)}</button>
@@ -1436,7 +1504,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                     )}
 
                     <div className={`relative rounded-2xl overflow-hidden ${
-                      msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'voicemail' || msg.message_type === 'poll' || msg.message_type === 'form' || msg.message_type === 'iframe' || msg.message_type === 'money' || msg.message_type === 'code' ? '' :
+                      msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'voicemail' || msg.message_type === 'poll' || msg.message_type === 'form' || msg.message_type === 'iframe' || msg.message_type === 'money' || msg.message_type === 'code' || msg.message_type === 'location' ? '' :
                       isMe ? 'bg-sky-500 text-white shadow-[0_1px_2px_rgba(2,132,199,0.25)]' : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-100 text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
                     } ${replyTarget ? 'rounded-tl-md rounded-tr-md' : ''}`}>
 
@@ -1543,6 +1611,16 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       {msg.message_type === 'iframe' && msg.content && (
                         <EmbedFrame url={msg.content} file_name={msg.file_name} />
                       )}
+
+                      {msg.message_type === 'location' && msg.content && (() => {
+                        const [lat, lng] = msg.content.split(',').map(Number);
+                        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+                        return (
+                          <div className="w-full max-w-[min(360px,calc(100vw-3rem))]">
+                            <LocationMap latitude={lat} longitude={lng} label={msg.file_name ?? 'Meeting point'} height={160} />
+                          </div>
+                        );
+                      })()}
 
                       {msg.message_type === 'code' && msg.content && (() => {
                         const codeLang = msg.code_language || 'code';
@@ -1680,14 +1758,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   {/* Actions */}
                   {isHovered && (
                     <div className={`flex items-center gap-0.5 flex-shrink-0 self-end mb-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <MsgAction onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }} title="Reply">
+                      <MsgAction onClick={startLensReply} title="Reply">
                         <Reply size={13} />
                       </MsgAction>
-                      {msg.message_type === 'text' && (
-                        <MsgAction onClick={() => { setLensActive(true); setLensBox(null); }} title="Select text to reply">
-                          <ScanText size={13} />
-                        </MsgAction>
-                      )}
                       {msg.message_type === 'text' && (
                         <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy">
                           {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
@@ -1749,33 +1822,85 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         <div ref={bottomRef} />
       </div>
 
-      {/* Lens-style text selection overlay */}
+      {/* Reply selection overlay */}
+      {lensActive && lensRect && (
+        <div
+          onTouchStart={stopLensTouch}
+          onTouchMove={stopLensTouch}
+          onTouchEnd={stopLensTouch}
+          className="absolute pointer-events-none border-2 border-sky-500 bg-sky-500/15 rounded-md z-20"
+          style={{
+            left: lensRect.left,
+            top: lensRect.top,
+            width: lensRect.right - lensRect.left,
+            height: lensRect.bottom - lensRect.top,
+          }}
+        >
+          <div
+            onPointerDown={e => beginLensDrag(e, 'move', lensRect)}
+            className="absolute inset-0 pointer-events-auto touch-none cursor-move"
+          />
+          {LENS_HANDLES.map(h => (
+            <div
+              key={h.edge}
+              onPointerDown={e => beginLensDrag(e, h.edge, lensRect)}
+              className={`absolute w-7 h-7 flex items-center justify-center pointer-events-auto touch-none ${h.pos}`}
+              style={{ cursor: h.cursor }}
+            >
+              <span className="w-3.5 h-3.5 rounded-full bg-sky-500 border-2 border-white shadow" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {lensActive && (
-        <>
-          <div className="flex-shrink-0 px-4 py-2 bg-sky-500/10 border-t border-sky-500/20 flex items-center justify-between">
+        <div
+          onTouchStart={stopLensTouch}
+          onTouchMove={stopLensTouch}
+          onTouchEnd={stopLensTouch}
+          className="flex-shrink-0 px-3 py-2.5 bg-sky-500/10 border-t border-sky-500/20 flex flex-wrap items-center justify-between gap-2"
+        >
+          {lensRect ? (
+            <div className="flex items-center gap-2">
+              <div className="flex p-0.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10">
+                {(['all', 'mine'] as const).map(scope => (
+                  <button
+                    key={scope}
+                    onClick={() => setLensScope(scope)}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
+                      lensScope === scope ? 'bg-sky-500 text-white shadow' : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {scope === 'all' ? 'Everyone' : 'Only mine'}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[12px] text-slate-600 dark:text-slate-300">{lensSelected.length} selected</span>
+            </div>
+          ) : (
             <span className="text-[12px] text-sky-600 dark:text-sky-400 font-medium flex items-center gap-1.5">
               <ScanText size={14} />
-              Drag a box around any messages to quote them in your reply
+              Drag over messages to select them
             </span>
-            <button
-              onClick={() => { setLensActive(false); setLensBox(null); lensStartRef.current = null; }}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          {lensBox && (
-            <div
-              className="absolute pointer-events-none border-2 border-sky-500 bg-sky-500/15 rounded-md z-20"
-              style={{
-                left: Math.min(lensBox.startX, lensBox.endX),
-                top: Math.min(lensBox.startY, lensBox.endY),
-                width: Math.abs(lensBox.endX - lensBox.startX),
-                height: Math.abs(lensBox.endY - lensBox.startY),
-              }}
-            />
           )}
-        </>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={closeLens}
+              className="px-3 py-1.5 rounded-xl text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            {lensRect && (
+              <button
+                onClick={confirmLensReply}
+                disabled={lensSelected.length === 0}
+                className="px-4 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold transition-all"
+              >
+                Reply
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Emoji reaction picker — fixed bottom sheet so it never gets clipped */}
@@ -2080,6 +2205,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             else if (opt === 'selfie') setShowSelfieModal(true);
             else if (opt === 'money') setShowSendMoney(true);
             else if (opt === 'gif') setShowGifPicker(true);
+            else if (opt === 'location') setShowLocationPicker(true);
+          }}
+        />
+      )}
+
+      {showLocationPicker && (
+        <LocationPicker
+          onClose={() => setShowLocationPicker(false)}
+          onPick={(lat, lng, label) => {
+            setShowLocationPicker(false);
+            sendMessage('location', { content: `${lat},${lng}`, file_name: label });
           }}
         />
       )}
