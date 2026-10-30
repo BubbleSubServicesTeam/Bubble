@@ -1439,6 +1439,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         <DraftPanel leagueId={ffLeagueId} />
       ) : (
       <>
+      <div className="relative flex-1 min-h-0 flex flex-col">
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -1852,6 +1853,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           ))}
         </div>
       )}
+      </div>
 
       {lensActive && (
         <div
