@@ -44,7 +44,10 @@ const ADDRESS_REGEX = /(\d{1,6}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Street|St|
 // Match a ZIP code (5 digits, optionally with -1234)
 const ZIP_REGEX = /\b(\d{5}(?:-\d{4})?)\b/g;
 
+const CODE_MARKERS = /<\/?(html|body|div|span|script|style|table|img|a|p)\b[^>]*>|\b(function\s*\w*\s*\(|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|document\.|console\.|=>)/i;
+
 export function detectContactInfo(text: string): DetectedContactInfo | null {
+  if (CODE_MARKERS.test(text)) return null;
   const result: DetectedContactInfo = {};
   let found = false;
 

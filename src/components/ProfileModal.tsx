@@ -28,7 +28,8 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
     state: string | null;
     postal_code: string | null;
     country: string | null;
-  }>({ phone_number: profile.phone_number ?? null, address: profile.address ?? null, city: profile.city ?? null, state: profile.state ?? null, postal_code: profile.postal_code ?? null, country: profile.country ?? null });
+  }>({ phone_number: profile.phone_number ?? null, address: null, city: null, state: null, postal_code: null, country: null });
+  const [isCloseFriend, setIsCloseFriend] = useState(false);
 
   const isMe = user?.id === profile.user_id;
   const status = effectiveStatus(profile);
@@ -39,33 +40,63 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
   const [contactPriority, setContactPriority] = useState<'silenced' | 'normal' | 'prioritized'>('normal');
 
   useEffect(() => {
-    if (profile.user_id) {
+    if (!profile.user_id) return;
+    if (isMe) {
       supabase
         .from('profiles')
         .select('phone_number, address, city, state, postal_code, country')
         .eq('user_id', profile.user_id)
         .maybeSingle()
-        .then(({ data }) => {
-          if (data) setContactInfo({ phone_number: data.phone_number, address: data.address, city: data.city, state: data.state, postal_code: data.postal_code, country: data.country });
-        });
+        .then(({ data }) => { if (data) setContactInfo(data); });
+      return;
     }
-  }, [profile.user_id]);
+    supabase
+      .from('profiles')
+      .select('phone_number')
+      .eq('user_id', profile.user_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setContactInfo(prev => ({ ...prev, phone_number: data.phone_number }));
+      });
+    supabase
+      .rpc('get_close_friend_location', { p_user_id: profile.user_id })
+      .then(({ data }) => {
+        const row = Array.isArray(data) ? data[0] : null;
+        if (row) setContactInfo(prev => ({ ...prev, address: row.address, city: row.city, state: row.state, postal_code: row.postal_code, country: row.country }));
+      });
+  }, [profile.user_id, isMe]);
 
   useEffect(() => {
     if (!user || !profile.user_id || isMe) return;
     supabase
       .from('contact_preferences')
-      .select('priority')
+      .select('priority, is_close_friend')
       .eq('user_id', user.id)
       .eq('contact_id', profile.user_id)
       .maybeSingle()
-      .then(({ data }) => { if (data) setContactPriority(data.priority); });
+      .then(({ data }) => {
+        if (data) setContactPriority(data.priority);
+        setIsCloseFriend(data?.is_close_friend ?? false);
+      });
   }, [user, profile.user_id, isMe]);
 
   async function setPriority(priority: 'silenced' | 'normal' | 'prioritized') {
     if (!user || !profile.user_id) return;
     setContactPriority(priority);
     await saveContactPriority(user.id, profile.user_id, priority);
+  }
+
+  async function toggleCloseFriend() {
+    if (!user || !profile.user_id) return;
+    const next = !isCloseFriend;
+    setIsCloseFriend(next);
+    const { error } = await supabase
+      .from('contact_preferences')
+      .upsert(
+        { user_id: user.id, contact_id: profile.user_id, is_close_friend: next },
+        { onConflict: 'user_id,contact_id' }
+      );
+    if (error) setIsCloseFriend(!next);
   }
 
   async function handleNudge() {
@@ -203,7 +234,7 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
                 </button>
               </div>
             )}
-            {(contactInfo.city || contactInfo.state || contactInfo.postal_code || contactInfo.country) && (
+            {!isMe && (contactInfo.city || contactInfo.state || contactInfo.postal_code || contactInfo.country) && (
               <div className="flex items-center gap-3 text-sm">
                 <MapPin size={15} className="text-slate-600 flex-shrink-0" />
                 <span className="text-slate-500 dark:text-slate-400">Location</span>
@@ -288,6 +319,31 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
               {loc.theirShareEnabled && !loc.theirLocation && (
                 <p className="text-[12px] text-slate-400">{profile.display_name} allowed you to see their location, but hasn't shared coordinates yet.</p>
               )}
+            </div>
+          )}
+
+          {/* Close friend */}
+          {!isMe && (
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-white/5">
+              <div>
+                <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200">Close friend</p>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400">Lets {profile.display_name} see your city, address, and location.</p>
+              </div>
+              <button
+                onClick={toggleCloseFriend}
+                role="switch"
+                aria-checked={isCloseFriend}
+                title="Toggle close friend"
+                className={`relative w-11 h-6 rounded-full transition-all flex-shrink-0 ${
+                  isCloseFriend ? 'bg-sky-500' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all ${
+                    isCloseFriend ? 'left-[22px]' : 'left-0.5'
+                  }`}
+                />
+              </button>
             </div>
           )}
 

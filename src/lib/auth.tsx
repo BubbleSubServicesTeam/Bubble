@@ -336,6 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Tab hidden (lid closed, backgrounded) — mark offline immediately
         updateOnlineStatus(false);
+        lockApp();
       }
     };
 
@@ -357,6 +358,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, [user, updateOnlineStatus]);
+
+  useEffect(() => {
+    if (!user) return;
+    const IDLE_MS = 60_000;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const armIdle = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => lockApp(), IDLE_MS);
+    };
+    const events = ['pointerdown', 'keydown', 'touchstart', 'mousemove', 'scroll'] as const;
+    events.forEach(ev => window.addEventListener(ev, armIdle, { passive: true }));
+    armIdle();
+    return () => {
+      events.forEach(ev => window.removeEventListener(ev, armIdle));
+      if (idleTimer) clearTimeout(idleTimer);
+    };
+  }, [user]);
 
   async function unlockWithPin(pin: string): Promise<boolean> {
     if (!profile?.pin_hash) return false;
