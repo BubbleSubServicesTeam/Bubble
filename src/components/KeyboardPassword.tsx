@@ -334,10 +334,10 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             </>
           ) : (
             <span className="text-slate-400 dark:placeholder-slate-600">
-              {placeholder ?? (isEmail ? 'you@example.com' : 'Start typing...')}
               {active && (
-                <span className="inline-block w-[1.5px] h-[15px] bg-sky-500 align-baseline ml-0.5" style={BLINK_STYLE} />
+                <span className="inline-block w-[1.5px] h-[15px] bg-sky-500 align-baseline mr-0.5" style={BLINK_STYLE} />
               )}
+              {placeholder ?? (isEmail ? 'you@example.com' : 'Start typing...')}
             </span>
           )}
         </div>

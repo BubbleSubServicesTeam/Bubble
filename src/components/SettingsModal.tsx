@@ -1606,7 +1606,7 @@ export default function SettingsModal({ onClose }: Props) {
 
           {tab === 'apikeys' && user && <ApiKeysTab userId={user.id} />}
 
-          {tab === 'clientids' && user && <ClientIdsTab userId={user.id} />
+          {tab === 'clientids' && user && <ClientIdsTab userId={user.id} />}
 
           {tab === 'language' && (
             <div className="p-6 space-y-5">

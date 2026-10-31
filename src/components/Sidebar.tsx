@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
 import Avatar from './Avatar';
-import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Trophy, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, Compass } from 'lucide-react';
+import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Trophy, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import { ContactPriorityMap, conversationPriority, priorityRank } from '../lib/contactPriority';
 
@@ -89,6 +89,9 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   }
 
   const ordered = [...filtered].sort((a, b) => {
+    // My Notes (self-chat) always stays at the very top
+    if (a.is_self_chat && !b.is_self_chat) return -1;
+    if (b.is_self_chat && !a.is_self_chat) return 1;
     const rankDiff = priorityRank(conversationPriority(a, myUserId, contactPriorities)) - priorityRank(conversationPriority(b, myUserId, contactPriorities));
     if (rankDiff !== 0) return rankDiff;
     if (sortMode === 'name') return getConvName(a).localeCompare(getConvName(b));
@@ -242,7 +245,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
           <IconBtn onClick={onOpenFantasyLeagues ?? (() => {})} title="Fantasy Leagues">
             <Trophy size={15} />
           </IconBtn>
-          <IconBtn onClick={onOpenDiscover} title="Discover"><Compass size={15} /></IconBtn>
+
           <IconBtn onClick={onGifStudio} title="GIF Studio"><Sparkles size={15} /></IconBtn>
           <IconBtn onClick={onToggleTrash} title="Trash"><Trash2 size={15} danger={showTrash} /></IconBtn>
           <button

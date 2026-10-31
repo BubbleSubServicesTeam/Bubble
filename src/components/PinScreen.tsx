@@ -109,16 +109,26 @@ export default function PinScreen({
     setError('');
   }
 
+  // Blur any focused input/textarea when the PIN screen appears so
+  // physical-keyboard digits don't leak into the chat text box underneath
+  useEffect(() => {
+    if (!showPasswordInput && !showFingerprint) {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+        el.blur();
+      }
+    }
+  }, [showPasswordInput, showFingerprint]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (showPasswordInput || showFingerprint) return;
-      const target = e.target as HTMLElement | null;
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
+        e.stopPropagation();
         addDigit(e.key);
       }
-      else if (e.key === 'Backspace') deleteDigit();
+      else if (e.key === 'Backspace') { e.preventDefault(); deleteDigit(); }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

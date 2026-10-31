@@ -8,7 +8,6 @@ import Sidebar from './components/Sidebar';
 import { saveCurrentLocation } from './lib/location';
 import ChatWindow from './components/ChatWindow';
 import GifStudio from './components/GifStudio';
-import DiscoverModal from './components/DiscoverModal';
 import NewChatModal from './components/NewChatModal';
 import SettingsModal from './components/SettingsModal';
 import PeopleDrawer from './components/PeopleDrawer';
@@ -21,7 +20,6 @@ export default function ChatApp() {
   const { theme, resolvedTheme } = useTheme();
   const [showTrash, setShowTrash] = useState(false);
   const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
-  const [showDiscover, setShowDiscover] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -434,7 +432,6 @@ export default function ChatApp() {
           onSelect={handleSelectConv}
           onNewChat={() => setShowNewChat(true)}
           onGifStudio={() => setShowGifStudio(true)}
-          onOpenDiscover={() => setShowDiscover(true)}
           onSettings={() => setShowSettings(true)}
           onOpenPeopleDrawer={() => setShowPeopleDrawer(true)}
           onOpenFantasyLeagues={() => { setShowFantasyLeagues(true); setShowTrash(false); setSelected(null); }}
@@ -499,9 +496,6 @@ export default function ChatApp() {
           onCreated={handleNewChatCreated}
           preloadedProfiles={allProfiles}
         />
-      )}
-      {showDiscover && (
-        <DiscoverModal onClose={() => setShowDiscover(false)} />
       )}
       {showGifStudio && (
         <GifStudio
