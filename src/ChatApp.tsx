@@ -276,6 +276,7 @@ export default function ChatApp() {
   function handleSelectConv(conv: Conversation) {
     setShowFantasyLeagues(false);
     setSelected(conv);
+    try { window.history.pushState({ bubbleChat: conv.id }, ''); } catch {}
     // NOTE: last_read_at is now updated inside ChatWindow when messages are actually visible,
     // not here on selection — so read receipts only fire when the user truly sees the messages.
     setConversations(prev =>
@@ -388,6 +389,16 @@ export default function ChatApp() {
       }
     }
   }, [selected]);
+
+  useEffect(() => {
+    function onPopState() {
+      setSelected(null);
+      setShowFantasyLeagues(false);
+      setShowTrash(false);
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // Update browser tab title with unread count when setting is enabled
   useEffect(() => {

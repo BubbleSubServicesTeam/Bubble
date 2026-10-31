@@ -1275,9 +1275,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   }
 
   // Render text with auto-linked URLs
-  function renderTextContent(content: string) {
+  function renderTextContent(content: string, mine: boolean = false) {
     if (!content) return null;
-    const urlRegex = /(https?:\/\/[^\s]+)|(?:\b([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+(?:\/[^\s]*)?))/gi;
+    const urlRegex = /https?:\/\/[^\s]+/g;
     const parts: { text: string; isUrl: boolean }[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
@@ -1285,23 +1285,25 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       if (match.index > lastIndex) {
         parts.push({ text: content.slice(lastIndex, match.index), isUrl: false });
       }
-      const url = match[0];
-      parts.push({ text: url, isUrl: true });
-      lastIndex = match.index + url.length;
+      parts.push({ text: match[0], isUrl: true });
+      lastIndex = match.index + match[0].length;
     }
     if (lastIndex < content.length) {
       parts.push({ text: content.slice(lastIndex), isUrl: false });
     }
+    if (parts.length === 0) {
+      return <span>{content}</span>;
+    }
     return parts.map((part, i) => {
       if (part.isUrl) {
-        const href = part.text.startsWith('http://') || part.text.startsWith('https://') ? part.text : 'https://' + part.text;
         return (
           <a
             key={i}
-            href={href}
+            href={part.text}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline decoration-white/40 hover:decoration-white/80 transition-all break-all"
+            className="underline font-medium hover:opacity-80 transition-all break-all"
+            style={{ color: mine ? '#e0f2fe' : '#0ea5e9' }}
             onClick={e => e.stopPropagation()}
           >
             {part.text}
@@ -1343,7 +1345,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       {/* Header */}
       <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-200 dark:border-white/[0.05] bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm" style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))' }}>
         {onBack && (
-          <button onClick={onBack} className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-all flex-shrink-0">
+          <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-all flex-shrink-0">
             <ArrowLeft size={20} />
           </button>
         )}
@@ -1560,7 +1562,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         ) : (
                           <div className="px-3.5 py-2" data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
                             <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
-                              {renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''))}
+                              {renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
                               {msg.edited_at && <span className="text-[10px] opacity-60 ml-1.5">(edited)</span>}
                             </p>
                             {translations[msg.id] && !showOriginalIds.has(msg.id) && (
