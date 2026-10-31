@@ -40,7 +40,7 @@ import WallpaperPicker from './WallpaperPicker';
 import { getWallpaperCss } from '../lib/wallpapers';
 import { LocationMap, LocationPicker } from './LocationMap';
 import { detectContactInfo, hasNewInfo } from '../lib/contactAutofill';
-import { fetchContactDetails, saveContactDetails, type ContactDetails } from '../lib/contactDetails';
+import { fetchContactDetails, saveContactDetails, CONTACT_DETAIL_FIELDS, type ContactDetails } from '../lib/contactDetails';
 
 type Props = {
   conversation: Conversation;
@@ -2242,13 +2242,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-medium text-white">
-                Save {autofillSuggestion.senderName}'s contact info?
+                Save this to your contact info for {autofillSuggestion.senderName}?
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                Detected: {Object.entries(autofillSuggestion.info)
-                  .filter(([, v]) => v)
-                  .map(([k]) => k.replace('_', ' '))
-                  .join(', ')}
+                {CONTACT_DETAIL_FIELDS
+                  .filter(f => autofillSuggestion.info[f.key])
+                  .map(f => `${f.label}: ${autofillSuggestion.info[f.key]}`)
+                  .join(' · ')}
               </p>
               <div className="flex gap-2 mt-2">
                 <button
