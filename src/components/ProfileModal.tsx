@@ -44,12 +44,21 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
   useEffect(() => {
     if (!profile.user_id) return;
     if (isMe) {
+      // Own profile: phone_number is readable directly; restricted columns come from the RPC
       supabase
         .from('profiles')
-        .select('phone_number, address, city, state, postal_code, country')
+        .select('phone_number')
         .eq('user_id', profile.user_id)
         .maybeSingle()
-        .then(({ data }) => { if (data) setContactInfo(data); });
+        .then(({ data }) => {
+          if (data) setContactInfo(prev => ({ ...prev, phone_number: data.phone_number }));
+        });
+      supabase
+        .rpc('get_own_contact_info')
+        .then(({ data }) => {
+          const row = Array.isArray(data) ? data[0] : data;
+          if (row) setContactInfo(prev => ({ ...prev, ...row }));
+        });
       return;
     }
     supabase

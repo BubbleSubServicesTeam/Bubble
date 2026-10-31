@@ -8,6 +8,7 @@ import { LANGUAGES, LANG_FLAGS, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
 import PayPalTab from './PayPalTab';
 import ApiKeysTab from './ApiKeysTab';
+import ClientIdsTab from './ClientIdsTab';
 import LocationPrivacySettings from './LocationPrivacySettings';
 import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
@@ -22,7 +23,7 @@ import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
 
 type Props = { onClose: () => void };
-type Tab = 'profile' | 'appearance' | 'security' | 'account' | 'paypal' | 'language' | 'blocked' | 'apikeys';
+type Tab = 'profile' | 'appearance' | 'security' | 'account' | 'paypal' | 'language' | 'blocked' | 'apikeys' | 'clientids';
 type DeleteStep = 'confirm' | 'password' | 'verify_email' | 'enter_code';
 type PinSetupStep = 'menu' | 'choose_length' | 'enter_new' | 'confirm_new' | 'done';
 type PasswordStep = 'pin_gate' | 'form' | 'forgot_pin' | 'forgot_password' | 'email_sent' | 'done';
@@ -1063,6 +1064,11 @@ export default function SettingsModal({ onClose }: Props) {
               tab === 'apikeys' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Code2 size={15} /> {t('tabApiKeys')}
           </button>
+          <button onClick={() => setTab('clientids')}
+            className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
+              tab === 'clientids' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
+            <Globe size={15} /> Client IDs
+          </button>
         </div>
 
         <div className="overflow-y-auto flex-1 scrollbar-thin">
@@ -1599,6 +1605,8 @@ export default function SettingsModal({ onClose }: Props) {
           {tab === 'paypal' && user && <PayPalTab userId={user.id} />}
 
           {tab === 'apikeys' && user && <ApiKeysTab userId={user.id} />}
+
+          {tab === 'clientids' && user && <ClientIdsTab userId={user.id} />
 
           {tab === 'language' && (
             <div className="p-6 space-y-5">

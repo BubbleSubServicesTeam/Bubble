@@ -77,8 +77,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle();
 
         if (data) {
-          setProfile(data);
-          return data;
+          // Restricted contact columns (address, city, state, postal_code, country) are no longer
+          // directly readable via SELECT — fetch them through the owner-scoped RPC.
+          const { data: ownContact } = await supabase.rpc('get_own_contact_info');
+          const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
+          const merged = { ...data, ...contactRow };
+          setProfile(merged);
+          return merged;
         }
 
         if (error) {
@@ -591,7 +596,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       patch.display_name = [fn, ln].filter(Boolean).join(' ') || profile?.display_name;
     }
     const { data } = await supabase.from('profiles').update(patch).eq('user_id', user.id).select().maybeSingle();
-    if (data) setProfile(data);
+    if (data) {
+      const { data: ownContact } = await supabase.rpc('get_own_contact_info');
+      const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
+      setProfile({ ...data, ...contactRow });
+    }
   }
 
   async function sendDeleteVerification(email: string) {
