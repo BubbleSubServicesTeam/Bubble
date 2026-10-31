@@ -1277,11 +1277,24 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   // Render text with auto-linked URLs
   function renderTextContent(content: string) {
     if (!content) return null;
-    const urlRegex = /(https?:\/\/[^\s]+)|([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+(?:\/[^\s]*)?)/gi;
-    const parts = content.split(urlRegex);
+    const urlRegex = /(https?:\/\/[^\s]+)|(?:\b([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+(?:\/[^\s]*)?))/gi;
+    const parts: { text: string; isUrl: boolean }[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = urlRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ text: content.slice(lastIndex, match.index), isUrl: false });
+      }
+      const url = match[0];
+      parts.push({ text: url, isUrl: true });
+      lastIndex = match.index + url.length;
+    }
+    if (lastIndex < content.length) {
+      parts.push({ text: content.slice(lastIndex), isUrl: false });
+    }
     return parts.map((part, i) => {
-      if (part && i % 2 === 1) {
-        const href = part.startsWith('http://') || part.startsWith('https://') ? part : 'https://' + part;
+      if (part.isUrl) {
+        const href = part.text.startsWith('http://') || part.text.startsWith('https://') ? part.text : 'https://' + part.text;
         return (
           <a
             key={i}
@@ -1291,11 +1304,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             className="underline decoration-white/40 hover:decoration-white/80 transition-all break-all"
             onClick={e => e.stopPropagation()}
           >
-            {part}
+            {part.text}
           </a>
         );
       }
-      return <span key={i}>{part}</span>;
+      return <span key={i}>{part.text}</span>;
     });
   }
 
@@ -1320,7 +1333,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   return (
     <div
-      className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 relative transition-colors duration-300"
+      className="flex flex-col h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative transition-colors duration-300"
       onClick={(e) => {
         const t = e.target as HTMLElement;
         if (t.closest('button, a, input, textarea, select, [role="dialog"], [contenteditable]')) return;
@@ -1473,7 +1486,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         onTouchStart={lensActive ? stopLensTouch : undefined}
         onTouchMove={lensActive ? stopLensTouch : undefined}
         onTouchEnd={lensActive ? stopLensTouch : undefined}
-        className={`flex-1 overflow-y-auto px-4 py-4 space-y-0.5 scrollbar-thin ${lensActive ? 'cursor-crosshair' : ''}`}
+        className={`flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-0.5 scrollbar-thin ${lensActive ? 'cursor-crosshair' : ''}`}
         style={{
           ...(wallpaper !== 'none' ? { background: getWallpaperCss(wallpaper) } : {}),
           ...(lensActive ? { touchAction: 'none' } : {}),
