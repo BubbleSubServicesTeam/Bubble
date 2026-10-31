@@ -8,6 +8,8 @@ import { LANGUAGES, LANG_FLAGS, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
 import PayPalTab from './PayPalTab';
 import ApiKeysTab from './ApiKeysTab';
+import LocationPrivacySettings from './LocationPrivacySettings';
+import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
   X, Check, Camera, AlertTriangle,
   ArrowLeft, Eye, EyeOff, Mail, Trash2, User, Shield, Sun, Moon, Palette, DollarSign, Lock, Delete, Globe, ChevronDown, Ban,
@@ -1545,6 +1547,9 @@ export default function SettingsModal({ onClose }: Props) {
                   Change Password
                 </button>
               </div>
+
+              <LocationPrivacySettings />
+              <NotificationPrivacySettings />
             </div>
           )}
 

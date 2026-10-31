@@ -5,6 +5,7 @@ import { useAppLang } from './lib/i18n';
 import { supabase, Conversation, Message, Profile } from './lib/supabase';
 import { ContactPriorityMap, CONTACT_PRIORITY_CHANGED_EVENT, conversationPriority, fetchContactPriorities } from './lib/contactPriority';
 import Sidebar from './components/Sidebar';
+import { saveCurrentLocation } from './lib/location';
 import ChatWindow from './components/ChatWindow';
 import GifStudio from './components/GifStudio';
 import DiscoverModal from './components/DiscoverModal';
@@ -21,6 +22,14 @@ export default function ChatApp() {
   const [showTrash, setShowTrash] = useState(false);
   const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
   const [showDiscover, setShowDiscover] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const key = `bubble-location-prompted:${user.id}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+    saveCurrentLocation(user.id);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;

@@ -77,9 +77,17 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      const { data: privacy } = await supabase
+        .from("profiles")
+        .select("push_show_preview, push_show_sender")
+        .eq("user_id", recipient_id)
+        .maybeSingle();
+      const showPreview = privacy?.push_show_preview !== false;
+      const showSender = privacy?.push_show_sender !== false;
+
       const payload = JSON.stringify({
-        title,
-        body: body ?? "",
+        title: showSender ? title : "Bubble",
+        body: showPreview ? (body ?? "") : "New message",
         tag: tag ?? "bubble-notification",
         data: data ?? {},
       });

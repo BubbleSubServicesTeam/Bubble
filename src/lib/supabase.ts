@@ -25,6 +25,8 @@ export type Profile = {
   last_seen: string;
   created_at: string;
   native_language: string | null;
+  push_show_preview: boolean;
+  push_show_sender: boolean;
   pin_hash: string | null;
   pin_length: number | null;
   pin_voluntary: boolean | null;

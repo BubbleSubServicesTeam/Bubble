@@ -40,6 +40,7 @@ import WallpaperPicker from './WallpaperPicker';
 import { getWallpaperCss } from '../lib/wallpapers';
 import { LocationMap, LocationPicker } from './LocationMap';
 import { detectContactInfo, hasNewInfo } from '../lib/contactAutofill';
+import { fetchContactDetails, saveContactDetails, type ContactDetails } from '../lib/contactDetails';
 
 type Props = {
   conversation: Conversation;
@@ -503,12 +504,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           if (data.message_type === 'text' && data.content && data.sender_id !== user?.id) {
             const detected = detectContactInfo(data.content);
             if (detected) {
-              const { data: senderProfile } = await supabase
-                .from('profiles')
-                .select('phone_number, address, city, state, postal_code, country')
-                .eq('user_id', data.sender_id)
-                .maybeSingle();
-              if (senderProfile && hasNewInfo(detected, senderProfile)) {
+              const existingDetails = user ? await fetchContactDetails(user.id, data.sender_id) : null;
+              if (hasNewInfo(detected, existingDetails ?? {})) {
                 setAutofillSuggestion({
                   senderId: data.sender_id,
                   senderName: (data.sender as any)?.display_name ?? 'Someone',
@@ -2256,14 +2253,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={async () => {
-                    const updates: Record<string, string | null> = {};
-                    if (autofillSuggestion.info.phone_number) updates.phone_number = autofillSuggestion.info.phone_number;
-                    if (autofillSuggestion.info.address) updates.address = autofillSuggestion.info.address;
-                    if (autofillSuggestion.info.city) updates.city = autofillSuggestion.info.city;
-                    if (autofillSuggestion.info.state) updates.state = autofillSuggestion.info.state;
-                    if (autofillSuggestion.info.postal_code) updates.postal_code = autofillSuggestion.info.postal_code;
-                    if (autofillSuggestion.info.country) updates.country = autofillSuggestion.info.country;
-                    await supabase.from('profiles').update(updates).eq('user_id', autofillSuggestion.senderId);
+                    if (!user) return;
+                    const patch = Object.fromEntries(
+                      Object.entries(autofillSuggestion.info).filter(([, v]) => v),
+                    ) as Partial<ContactDetails>;
+                    await saveContactDetails(user.id, autofillSuggestion.senderId, patch);
                     setAutofillSuggestion(null);
                   }}
                   className="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white text-[12px] font-semibold rounded-lg transition-colors"

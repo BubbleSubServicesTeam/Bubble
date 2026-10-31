@@ -3,10 +3,12 @@ import { supabase, Profile, effectiveStatus } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useNotifications } from '../lib/notifications';
 import { useLocationSharing } from '../lib/location';
+import LocationShareControl from './LocationShareControl';
+import ContactDetailsForm from './ContactDetailsForm';
 import Avatar from './Avatar';
 import { LocationMap } from './LocationMap';
 import { saveContactPriority } from '../lib/contactPriority';
-import { X, Mail, Bell, BellOff, MessageCircle, Calendar, Clock, Phone, MapPin, Copy, Check, Navigation, Star, Volume2 } from 'lucide-react';
+import { X, Mail, Bell, BellOff, MessageCircle, Calendar, Clock, Phone, MapPin, Copy, Check, Star, Volume2 } from 'lucide-react';
 
 type Props = {
   profile: Profile;
@@ -272,34 +274,11 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
           {/* Location sharing */}
           {!isMe && (
             <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Navigation size={15} className="text-sky-500" />
-                  <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200">Let {profile.display_name} see my location</span>
-                </div>
-                <button
-                  onClick={() => loc.toggleShare(!loc.shareEnabled)}
-                  title="Toggle location sharing"
-                  className={`relative w-11 h-6 rounded-full transition-all flex-shrink-0 ${
-                    loc.shareEnabled ? 'bg-sky-500' : 'bg-slate-300 dark:bg-slate-700'
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all ${
-                      loc.shareEnabled ? 'left-[22px]' : 'left-0.5'
-                    }`}
-                  />
-                </button>
+              <div className="flex items-center gap-2">
+                <MapPin size={15} className="text-sky-500" />
+                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200">Location</span>
               </div>
-
-              {loc.shareEnabled && !loc.myLocation && (
-                <button
-                  onClick={() => loc.updateMyLocation()}
-                  className="w-full py-2 text-[12px] text-sky-500 hover:text-sky-400 font-medium transition-colors"
-                >
-                  Share my current location
-                </button>
-              )}
+              <LocationShareControl viewerId={profile.user_id} viewerName={profile.display_name} />
 
               {loc.theirShareEnabled && loc.theirLocation && (
                 <div className="space-y-1.5">
@@ -313,6 +292,14 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
                     label={`${profile.display_name}'s location`}
                     height={180}
                   />
+                  <ul className="space-y-1">
+                    {loc.theirDeviceLocations.map(device => (
+                      <li key={device.device_id} className="flex items-center justify-between text-[12px] text-slate-500 dark:text-slate-400">
+                        <span className="truncate">{device.device_label ?? device.device_id}</span>
+                        <span className="flex-shrink-0 ml-3">{formatLastSeen(device.updated_at)}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
@@ -321,6 +308,8 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
               )}
             </div>
           )}
+
+          {!isMe && <ContactDetailsForm contactId={profile.user_id} contactName={profile.display_name} />}
 
           {/* Close friend */}
           {!isMe && (

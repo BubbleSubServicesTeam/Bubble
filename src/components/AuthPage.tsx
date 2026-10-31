@@ -369,47 +369,6 @@ export default function AuthPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleOAuth('paypal', 'PayPal')}
-                      disabled={!!oauthLoading}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
-                    >
-                      {oauthLoading === 'paypal' ? <BubbleLoader size={16} /> : (
-                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                          <path fill="#00457C" d="M7.076 21.567H3.43L6.7 2.968h3.652l-3.276 18.6z"/>
-                          <path fill="#298FC2" d="M21.5 3.068C20.79 2.4 19.528 2 17.888 2h-5.04l-.22 1.245h5.118c1.527 0 2.527.523 2.88 1.555.27.8.13 1.827-.02 2.527-.483 2.5-2.033 3.7-4.543 3.7h-3.51l-.97 5.584H7.88l1.97-11.275h5.7c3.04 0 4.83 1.492 4.83 4.03 0 .5-.05.92-.18 1.32z"/>
-                        </svg>
-                      )}
-                      PayPal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSiError('Claude sign-in requires a Client ID. Connect your account from Settings after signing in.')}
-                      disabled={!!oauthLoading}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#D97757" strokeWidth="2" strokeLinejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#D97757" strokeWidth="2" strokeLinejoin="round"/></svg>
-                      Claude
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSiError('Grok sign-in requires a Client ID. Connect your account from Settings after signing in.')}
-                      disabled={!!oauthLoading}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#1DA1F2" strokeWidth="2"/><path d="M8 12h8M12 8v8" stroke="#1DA1F2" strokeWidth="2" strokeLinecap="round"/></svg>
-                      Grok
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSiError('ChatGPT sign-in requires a Client ID. Connect your account from Settings after signing in.')}
-                      disabled={!!oauthLoading}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#10A37F" strokeWidth="2"/><path d="M8 12a4 4 0 018 0" stroke="#10A37F" strokeWidth="2" strokeLinecap="round"/></svg>
-                      ChatGPT
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => handleOAuth('facebook', 'Meta')}
                       disabled={!!oauthLoading}
                       className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
@@ -418,15 +377,6 @@ export default function AuthPage() {
                         <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                       )}
                       Meta
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSiError('Gemini sign-in requires a Client ID. Connect your account from Settings after signing in.')}
-                      disabled={!!oauthLoading}
-                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-700 dark:text-slate-200 font-medium text-[13px] transition-all disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" fill="#4285F4"/></svg>
-                      Gemini
                     </button>
                   </div>
                 )}
