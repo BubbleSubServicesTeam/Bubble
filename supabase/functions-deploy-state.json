@@ -9,6 +9,10 @@
       "hasChanged": false,
       "hash": "08350e8c367fc3bb16464468c9f3d907aadcca94015aa92b57e8193976d6e819"
     },
+    "oauth-provider": {
+      "hasChanged": false,
+      "hash": "5328e6bc5ba378f423664da5b1bb60ca27ec1803e97af306d7e18ce3f0abdbe8"
+    },
     "paypal-api": {
       "hasChanged": false,
       "hash": "ea6b63ce02d2f65d432ad337aaa98a21cd6a924cea3b76d0a6db4b2e03780a7f"

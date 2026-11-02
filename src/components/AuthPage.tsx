@@ -1,11 +1,18 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { AUTH_ROUTES, ROUTES, currentPath } from '../lib/routes';
 import { ArrowLeft, Mail, CheckCircle, Sparkles, Camera } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 
 type Screen = 'signin' | 'signup' | 'verify' | 'forgot' | 'forgot_sent' | 'reset';
+
+const SCREEN_ROUTES: Partial<Record<Screen, string>> = {
+  signin: ROUTES.login,
+  signup: ROUTES.signup,
+  forgot: ROUTES.forgotPassword,
+};
 
 function InputField({
   label, type = 'text', value, onChange, placeholder, autoFocus = false, children,
@@ -54,9 +61,14 @@ function PrimaryButton({ children, loading, onClick, type = 'button', disabled }
   );
 }
 
-export default function AuthPage() {
+export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?: 'signin' | 'signup' | 'forgot' }) {
   const { signIn, signUp, sendPasswordReset } = useAuth();
-  const [screen, setScreen] = useState<Screen>('signin');
+  const [screen, setScreen] = useState<Screen>(initialScreen);
+
+  useEffect(() => {
+    const route = SCREEN_ROUTES[screen];
+    if (route && AUTH_ROUTES.includes(currentPath())) window.history.replaceState(null, '', route);
+  }, [screen]);
 
   // Sign in
   const [siEmail, setSiEmail] = useState('');

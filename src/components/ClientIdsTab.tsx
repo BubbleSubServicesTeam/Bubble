@@ -35,6 +35,10 @@ function buildCallbackUrl(website: string, path: string): string {
   return `${website.trim().replace(/\/$/, '')}/${trimmedPath.replace(/^\//, '')}`;
 }
 
+function buildSignInLink(clientId: string, redirectUri: string): string {
+  return `${window.location.origin}/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+}
+
 export default function ClientIdsTab({ userId }: { userId: string }) {
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +138,7 @@ export default function ClientIdsTab({ userId }: { userId: string }) {
       <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 space-y-2">
         <div className="flex items-center gap-2 text-[13px] font-medium text-slate-700 dark:text-slate-200"><Globe size={13} className="text-sky-500" /> OAuth endpoints</div>
         <div className="space-y-1 text-[12px] font-mono text-slate-500 dark:text-slate-400">
+          <p>Sign-in page: /oauth/authorize?client_id=…&amp;redirect_uri=…&amp;state=…</p>
           <p>Authorize: /functions/v1/oauth-provider/authorize</p>
           <p>Token: /functions/v1/oauth-provider/token</p>
           <p>User info: /functions/v1/oauth-provider/userinfo</p>
@@ -169,7 +174,7 @@ export default function ClientIdsTab({ userId }: { userId: string }) {
         <button onClick={handleCreate} disabled={creating} className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 text-white font-semibold text-[13px] rounded-xl">{creating ? <BubbleLoader size={16} /> : <Plus size={14} />} Create Client ID</button>
       </div>
 
-      {loading ? <div className="flex justify-center py-4"><BubbleLoader size={24} /></div> : clients.length === 0 ? <div className="text-center py-6"><p className="text-slate-400 text-[13px]">No Client IDs yet.</p></div> : <div className="space-y-2">{clients.map(client => <div key={client.id} className="bg-slate-100 dark:bg-white/[0.04] rounded-xl p-3 space-y-2"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center"><KeyRound size={14} className="text-sky-500" /></div><div className="flex-1 min-w-0"><p className="text-slate-900 dark:text-white text-[13px] font-medium truncate">{client.name}</p><p className="text-slate-400 text-[11px] font-mono truncate">{client.client_id}</p></div><button onClick={() => handleRevoke(client.id)} disabled={revokingId === client.id} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 disabled:opacity-50" title="Revoke client">{revokingId === client.id ? <BubbleLoader size={13} /> : <Trash2 size={14} />}</button></div><p className="text-slate-500 dark:text-slate-400 text-[11px] truncate pl-11">{client.website_url}</p>{client.redirect_uris.map(uri => <p key={uri} className="text-slate-500 dark:text-slate-400 text-[11px] truncate pl-11">{uri}</p>)}</div>)}</div>}
+      {loading ? <div className="flex justify-center py-4"><BubbleLoader size={24} /></div> : clients.length === 0 ? <div className="text-center py-6"><p className="text-slate-400 text-[13px]">No Client IDs yet.</p></div> : <div className="space-y-2">{clients.map(client => <div key={client.id} className="bg-slate-100 dark:bg-white/[0.04] rounded-xl p-3 space-y-2"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center"><KeyRound size={14} className="text-sky-500" /></div><div className="flex-1 min-w-0"><p className="text-slate-900 dark:text-white text-[13px] font-medium truncate">{client.name}</p><p className="text-slate-400 text-[11px] font-mono truncate">{client.client_id}</p></div><button onClick={() => handleRevoke(client.id)} disabled={revokingId === client.id} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 disabled:opacity-50" title="Revoke client">{revokingId === client.id ? <BubbleLoader size={13} /> : <Trash2 size={14} />}</button></div><p className="text-slate-500 dark:text-slate-400 text-[11px] truncate pl-11">{client.website_url}</p>{client.redirect_uris.map(uri => { const linkKey = `signin-${client.id}-${uri}`; return <div key={uri} className="flex items-center gap-2 pl-11"><p className="text-slate-500 dark:text-slate-400 text-[11px] truncate flex-1">{uri}</p><button onClick={() => copyValue(buildSignInLink(client.client_id, uri), linkKey)} className="text-sky-500 hover:text-sky-400 text-[11px] flex items-center gap-1 flex-shrink-0">{copiedField === linkKey ? <Check size={11} /> : <Copy size={11} />} Copy sign-in link</button></div>; })}</div>)}</div>}
     </div>
   );
 }

@@ -10,6 +10,8 @@ import CallModal from './components/CallModal';
 import InstallPrompt from './components/InstallPrompt';
 import BubbleLoader from './components/BubbleLoader';
 import PinScreen from './components/PinScreen';
+import OAuthAuthorizePage from './components/OAuthAuthorizePage';
+import { ROUTES, currentPath } from './lib/routes';
 
 function isRunningAsPWA(): boolean {
   return (
@@ -26,10 +28,17 @@ function isChromeOnIOS(): boolean {
   return /CriOS/.test(navigator.userAgent) && /iPhone|iPad|iPod/.test(navigator.userAgent);
 }
 
+function initialAuthScreen(path: string): 'signin' | 'signup' | 'forgot' {
+  if (path === ROUTES.signup) return 'signup';
+  if (path === ROUTES.forgotPassword) return 'forgot';
+  return 'signin';
+}
+
 function AppInner() {
   const { user, loading, profile, pinLocked, unlockWithPin, unlockWithPassword, lockApp } = useAuth();
   const { t } = useAppLang();
   const [installDismissed, setInstallDismissed] = useState(false);
+  const path = currentPath();
 
   // Shift+Space manually locks the app if the user has a PIN set
   useEffect(() => {
@@ -45,6 +54,12 @@ function AppInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [user, profile, pinLocked, lockApp]);
 
+  useEffect(() => {
+    if (user && (path === ROUTES.login || path === ROUTES.signup || path === ROUTES.forgotPassword)) {
+      window.history.replaceState(null, '', ROUTES.home);
+    }
+  }, [user, path]);
+
   // Install prompt only for users who aren't logged in yet
   if (!user && !loading && isMobileBrowser() && !isRunningAsPWA() && !installDismissed) {
     return <InstallPrompt onContinue={() => setInstallDismissed(true)} />;
@@ -52,7 +67,7 @@ function AppInner() {
 
   if (loading) return <LoadingScreen />;
 
-  if (!user) return <AuthPage />;
+  if (!user) return <AuthPage initialScreen={initialAuthScreen(path)} />;
 
   // Mount the chat app always (even behind PIN) so data preloads while typing
   const chatApp = (
@@ -79,6 +94,15 @@ function AppInner() {
       />
     </div>
   ) : null;
+
+  if (path === ROUTES.oauthAuthorize) {
+    return (
+      <>
+        <OAuthAuthorizePage />
+        {pinOverlay}
+      </>
+    );
+  }
 
   return (
     <>

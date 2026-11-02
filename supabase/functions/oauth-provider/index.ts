@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const ALLOWED_SCOPES = ["openid", "profile", "email"];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,11 +20,11 @@ function json(data: unknown, status = 200) {
   });
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
 
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/oauth/, "");
+  const path = "/" + (url.pathname.split("/").filter(Boolean).pop() ?? "");
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -31,6 +32,27 @@ serve(async (req: Request) => {
   );
 
   try {
+    // GET /oauth/client — public details shown on the consent page
+    if (path === "/client" && req.method === "GET") {
+      const clientId = url.searchParams.get("client_id");
+      const redirectUri = url.searchParams.get("redirect_uri");
+      if (!clientId || !redirectUri) return json({ error: "invalid_request" }, 400);
+
+      const { data: client } = await supabase
+        .from("oauth_clients")
+        .select("name, website_url, redirect_uris")
+        .eq("client_id", clientId)
+        .is("revoked_at", null)
+        .maybeSingle();
+
+      if (!client) return json({ error: "invalid_client" }, 404);
+      return json({
+        name: client.name,
+        website_url: client.website_url,
+        redirect_uri_valid: client.redirect_uris.includes(redirectUri),
+      });
+    }
+
     // POST /oauth/authorize — creates an authorization code for the authenticated user
     if (path === "/authorize" && req.method === "POST") {
       const authHeader = req.headers.get("Authorization");
@@ -44,7 +66,8 @@ serve(async (req: Request) => {
       const body = await req.json();
       const clientId: string = body.client_id;
       const redirectUri: string = body.redirect_uri;
-      const scopes: string[] = body.scopes ?? ["openid", "profile", "email"];
+      const requestedScopes: string[] = Array.isArray(body.scopes) ? body.scopes : ALLOWED_SCOPES;
+      const scopes = requestedScopes.filter((s) => ALLOWED_SCOPES.includes(s));
 
       if (!clientId || !redirectUri) return json({ error: "invalid_request" }, 400);
 
