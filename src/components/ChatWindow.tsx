@@ -10,6 +10,7 @@ import { Bell, Languages } from 'lucide-react';
 import GifPicker from './GifPicker';
 import GroupInfoModal from './GroupInfoModal';
 import AttachMenu from './AttachMenu';
+import { ROUTES, absoluteUrl } from '../lib/routes';
 import PollCreator, { PollData } from './PollCreator';
 import FormCreator, { FormData as FormCreatorData } from './FormCreator';
 import IframeModal from './IframeModal';
@@ -119,6 +120,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function copyChatLink() {
+    navigator.clipboard.writeText(absoluteUrl(ROUTES.chat(conversation.id)));
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }
   const [showEditInfo, setShowEditInfo] = useState(false);
   const [editName, setEditName] = useState(conversation.name ?? '');
   const [editAvatarUrl, setEditAvatarUrl] = useState(conversation.avatar_url ?? '');
@@ -1429,6 +1437,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             <>
               <div className="fixed inset-0 z-[90]" onPointerDown={() => setShowMenu(false)} />
               <div className="absolute right-0 top-11 z-[100] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl py-1.5 w-56 overflow-hidden max-h-[70vh] overflow-y-auto">
+                <MenuItem icon={<Link2 size={14} />} onClick={() => { setShowMenu(false); copyChatLink(); }}>
+                  {linkCopied ? 'Link copied' : 'Copy chat link'}
+                </MenuItem>
                 {canEditInfo && (
                   <MenuItem icon={<Edit2 size={14} />} onClick={() => { setShowMenu(false); setShowEditInfo(true); }}>
                     {t('editChatInfo')}

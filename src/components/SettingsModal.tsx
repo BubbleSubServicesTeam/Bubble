@@ -21,9 +21,10 @@ import { getBiometricCapability, enrollFingerprintWithPattern, listFingerprints,
 import { listDeviceSessions, deleteDeviceSession, type DeviceSession } from '../lib/deviceSessions';
 import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
+import type { SettingsTab } from '../lib/routes';
 
-type Props = { onClose: () => void };
-type Tab = 'profile' | 'appearance' | 'security' | 'account' | 'paypal' | 'language' | 'blocked' | 'apikeys' | 'clientids';
+type Props = { onClose: () => void; initialTab: SettingsTab; onTabChange: (tab: SettingsTab) => void };
+type Tab = SettingsTab;
 type DeleteStep = 'confirm' | 'password' | 'verify_email' | 'enter_code';
 type PinSetupStep = 'menu' | 'choose_length' | 'enter_new' | 'confirm_new' | 'done';
 type PasswordStep = 'pin_gate' | 'form' | 'forgot_pin' | 'forgot_password' | 'email_sent' | 'done';
@@ -36,11 +37,12 @@ const statuses = [
   { value: 'offline', label: 'Appear Offline', color: 'bg-slate-500' },
 ] as const;
 
-export default function SettingsModal({ onClose }: Props) {
+export default function SettingsModal({ onClose, initialTab, onTabChange }: Props) {
   const { user, profile, updateProfile, deleteAccount, setupPin, removePin, changePassword, changeEmail, verifyPinForSensitiveAction, sendPasswordReset } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { t } = useAppLang();
-  const [tab, setTab] = useState<Tab>('profile');
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const selectTab = (next: Tab) => { setTab(next); onTabChange(next); };
 
   // Profile tab
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
@@ -1024,47 +1026,47 @@ export default function SettingsModal({ onClose }: Props) {
         </div>
 
         <div className="grid grid-cols-4 gap-1 border-b border-slate-200 dark:border-white/[0.06] px-3 py-2 flex-shrink-0">
-          <button onClick={() => setTab('profile')}
+          <button onClick={() => selectTab('profile')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'profile' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <User size={15} /> {t('tabProfile')}
           </button>
-          <button onClick={() => setTab('appearance')}
+          <button onClick={() => selectTab('appearance')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'appearance' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Palette size={15} /> {t('tabAppearance')}
           </button>
-          <button onClick={() => setTab('security')}
+          <button onClick={() => selectTab('security')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'security' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Shield size={15} /> {t('tabSecurity')}
           </button>
-          <button onClick={() => setTab('language')}
+          <button onClick={() => selectTab('language')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'language' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Globe size={15} /> {t('tabLanguage')}
           </button>
-          <button onClick={() => setTab('account')}
+          <button onClick={() => selectTab('account')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'account' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Mail size={15} /> {t('tabAccount')}
           </button>
-          <button onClick={() => setTab('paypal')}
+          <button onClick={() => selectTab('paypal')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'paypal' ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <DollarSign size={15} /> {t('tabPayPal')}
           </button>
-          <button onClick={() => { setTab('blocked'); loadBlockedUsers(); }}
+          <button onClick={() => { selectTab('blocked'); loadBlockedUsers(); }}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'blocked' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Ban size={15} /> {t('tabBlocked')}
           </button>
-          <button onClick={() => setTab('apikeys')}
+          <button onClick={() => selectTab('apikeys')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'apikeys' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Code2 size={15} /> {t('tabApiKeys')}
           </button>
-          <button onClick={() => setTab('clientids')}
+          <button onClick={() => selectTab('clientids')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
               tab === 'clientids' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Globe size={15} /> Client IDs

@@ -12,13 +12,13 @@ import NewChatModal from './components/NewChatModal';
 import SettingsModal from './components/SettingsModal';
 import PeopleDrawer from './components/PeopleDrawer';
 import FantasyFootballModal from './components/FantasyFootballModal';
+import { ROUTES, parseAppRoute, currentPath } from './lib/routes';
 import { MessageCircle, StickyNote, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export default function ChatApp() {
   const { t } = useAppLang();
   const { user, profile } = useAuth();
   const { theme, resolvedTheme } = useTheme();
-  const [showTrash, setShowTrash] = useState(false);
   const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
 
   useEffect(() => {
@@ -53,13 +53,15 @@ export default function ChatApp() {
     }
     return true;
   });
+  const [route, setRoute] = useState(() => parseAppRoute(currentPath()));
   const [selected, setSelected] = useState<Conversation | null>(null);
-  const [showNewChat, setShowNewChat] = useState(false);
-  const [showGifStudio, setShowGifStudio] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showPeopleDrawer, setShowPeopleDrawer] = useState(false);
-  const [showFantasyLeagues, setShowFantasyLeagues] = useState(false);
-  const [showFantasyManager, setShowFantasyManager] = useState(false);
+  const showNewChat = route.kind === 'newChat';
+  const showGifStudio = route.kind === 'gifs';
+  const showPeopleDrawer = route.kind === 'people';
+  const showFantasyLeagues = route.kind === 'fantasy' || route.kind === 'fantasyNew';
+  const showFantasyManager = route.kind === 'fantasyNew';
+  const showTrash = route.kind === 'trash';
+  const isPanelRoute = route.kind !== 'home' && route.kind !== 'chat';
   const [selfChatId, setSelfChatId] = useState<string | null>(null);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const loadInProgress = useRef(false);
@@ -273,10 +275,26 @@ export default function ChatApp() {
     }
   }
 
+  function go(path: string, replace = false) {
+    if (currentPath() !== path) {
+      if (replace) window.history.replaceState({ bubbleApp: true }, '', path);
+      else window.history.pushState({ bubbleApp: true }, '', path);
+    }
+    setRoute(parseAppRoute(path));
+  }
+
+  function goHome() {
+    go(ROUTES.home, isPanelRoute);
+  }
+
+  function closeOverlay() {
+    if (window.history.state?.bubbleApp) window.history.back();
+    else go(selected ? ROUTES.chat(selected.id) : ROUTES.home, true);
+  }
+
   function handleSelectConv(conv: Conversation) {
-    setShowFantasyLeagues(false);
+    go(ROUTES.chat(conv.id), isPanelRoute);
     setSelected(conv);
-    try { window.history.pushState({ bubbleChat: conv.id }, ''); } catch {}
     // NOTE: last_read_at is now updated inside ChatWindow when messages are actually visible,
     // not here on selection — so read receipts only fire when the user truly sees the messages.
     setConversations(prev =>
@@ -317,12 +335,12 @@ export default function ChatApp() {
   }
 
   function handleNewChatCreated(conv: Conversation) {
-    setShowNewChat(false);
     // Prepend the new conversation immediately instead of waiting for reload
     setConversations(prev => {
       if (prev.some(c => c.id === conv.id)) return prev;
       return [conv, ...prev];
     });
+    go(ROUTES.chat(conv.id), isPanelRoute);
     setSelected(conv);
     // Force a reload in the background to get fresh data — reset the guard
     loadInProgress.current = false;
@@ -331,7 +349,7 @@ export default function ChatApp() {
 
   function handleLeaveOrTrash(convId: string) {
     setConversations(prev => prev.filter(c => c.id !== convId));
-    if (selected?.id === convId) setSelected(null);
+    if (selected?.id === convId) goHome();
   }
 
   // Mobile touch: swipe left/right for navigation arrows
@@ -365,7 +383,7 @@ export default function ChatApp() {
     const elapsed = Date.now() - start.time;
 
     if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 60 && elapsed < 500) {
-      if (deltaX > 0 && selected) setSelected(null); // swipe right -> back
+      if (deltaX > 0 && selected) goHome(); // swipe right -> back
     }
     touchStartRef.current = null;
   }, [selected]);
@@ -384,21 +402,25 @@ export default function ChatApp() {
     // Horizontal swipe with enough momentum (Apple Magic Mouse / trackpad)
     if (Math.abs(acc.x) > 80 && Math.abs(acc.x) > Math.abs(acc.y) * 1.5) {
       if (acc.x > 0 && selected) {
-        setSelected(null); // swipe right -> back
+        goHome(); // swipe right -> back
         acc.x = 0; acc.y = 0;
       }
     }
   }, [selected]);
 
   useEffect(() => {
-    function onPopState() {
-      setSelected(null);
-      setShowFantasyLeagues(false);
-      setShowTrash(false);
-    }
+    const onPopState = () => setRoute(parseAppRoute(currentPath()));
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  useEffect(() => {
+    if (route.kind === 'chat') {
+      setSelected(conversations.find(c => c.id === route.id) ?? null);
+    } else if (route.kind === 'home' || route.kind === 'fantasy') {
+      setSelected(null);
+    }
+  }, [route, conversations]);
 
   // Update browser tab title with unread count when setting is enabled
   useEffect(() => {
@@ -441,16 +463,16 @@ export default function ChatApp() {
           loading={convLoading}
           selectedId={selected?.id ?? null}
           onSelect={handleSelectConv}
-          onNewChat={() => setShowNewChat(true)}
-          onGifStudio={() => setShowGifStudio(true)}
-          onSettings={() => setShowSettings(true)}
-          onOpenPeopleDrawer={() => setShowPeopleDrawer(true)}
-          onOpenFantasyLeagues={() => { setShowFantasyLeagues(true); setShowTrash(false); setSelected(null); }}
-          onCreateFantasyLeague={() => setShowFantasyManager(true)}
+          onNewChat={() => go(ROUTES.newChat)}
+          onGifStudio={() => go(ROUTES.gifs)}
+          onSettings={() => go(ROUTES.settings())}
+          onOpenPeopleDrawer={() => go(ROUTES.people)}
+          onOpenFantasyLeagues={() => go(ROUTES.fantasy)}
+          onCreateFantasyLeague={() => go(ROUTES.fantasyNew)}
           showFantasyLeagues={showFantasyLeagues}
-          onToggleFantasyLeagues={() => { setShowFantasyLeagues(false); setSelected(null); }}
+          onToggleFantasyLeagues={goHome}
           showTrash={showTrash}
-          onToggleTrash={() => setShowTrash(t => !t)}
+          onToggleTrash={() => (showTrash ? closeOverlay() : go(ROUTES.trash))}
         />
       </div>
 
@@ -460,8 +482,8 @@ export default function ChatApp() {
           <ChatWindow
             key={selected.id}
             conversation={selected}
-            onOpenGifStudio={() => setShowGifStudio(true)}
-            onBack={() => setSelected(null)}
+            onOpenGifStudio={() => go(ROUTES.gifs)}
+            onBack={goHome}
             onLeave={handleLeaveOrTrash}
             onTrash={handleLeaveOrTrash}
             onMembersChanged={loadConversations}
@@ -478,7 +500,7 @@ export default function ChatApp() {
             </p>
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => setShowNewChat(true)}
+                onClick={() => go(ROUTES.newChat)}
                 className="flex items-center gap-2 px-7 py-3.5 bg-sky-500 hover:bg-sky-400 text-white font-semibold text-[15px] rounded-2xl transition-all shadow-lg shadow-sky-500/25"
               >
                 <MessageCircle size={18} />
@@ -503,29 +525,35 @@ export default function ChatApp() {
 
       {showNewChat && (
         <NewChatModal
-          onClose={() => setShowNewChat(false)}
+          onClose={closeOverlay}
           onCreated={handleNewChatCreated}
           preloadedProfiles={allProfiles}
         />
       )}
       {showGifStudio && (
         <GifStudio
-          onClose={() => setShowGifStudio(false)}
+          onClose={closeOverlay}
           conversations={conversations}
           onShareGif={handleShareGif}
         />
       )}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {route.kind === 'settings' && (
+        <SettingsModal
+          onClose={closeOverlay}
+          initialTab={route.tab}
+          onTabChange={tab => go(ROUTES.settings(tab), true)}
+        />
+      )}
       {showPeopleDrawer && (
         <PeopleDrawer
-          onClose={() => setShowPeopleDrawer(false)}
+          onClose={closeOverlay}
           onSelectChat={handleSelectConv}
         />
       )}
       {showFantasyManager && (
         <FantasyFootballModal
-          onClose={() => setShowFantasyManager(false)}
-          onCreated={(conv) => { setShowFantasyManager(false); setShowFantasyLeagues(false); handleNewChatCreated(conv); }}
+          onClose={closeOverlay}
+          onCreated={handleNewChatCreated}
         />
       )}
     </div>
