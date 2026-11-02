@@ -26,7 +26,7 @@ export default function PinScreen({
   title, subtitle,
 }: Props) {
   const { resolvedTheme } = useTheme();
-  const { user, profile, unlockWithFingerprint, signOut } = useAuth();
+  const { user, profile, authLockedUntil, unlockWithFingerprint, signOut } = useAuth();
   const [digits, setDigits] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,6 +39,7 @@ export default function PinScreen({
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
+  const [lockRemaining, setLockRemaining] = useState(0);
 
   // Check biometric capability on mount
   useEffect(() => {
@@ -59,13 +60,24 @@ export default function PinScreen({
   // - device has a touchscreen
   const fingerprintAvailable = !setupMode && !!profile?.fingerprint_enabled && bioMode === 'touch';
 
+  useEffect(() => {
+    const updateRemaining = () => {
+      const remaining = authLockedUntil ? Math.max(0, new Date(authLockedUntil).getTime() - Date.now()) : 0;
+      setLockRemaining(remaining);
+      if (remaining === 0 && authLockedUntil) setError('');
+    };
+    updateRemaining();
+    const timer = setInterval(updateRemaining, 1000);
+    return () => clearInterval(timer);
+  }, [authLockedUntil]);
+
   function triggerShake() {
     setShake(true);
     setTimeout(() => setShake(false), 500);
   }
 
   async function addDigit(d: string) {
-    if (loading || digits.length >= pinLength) return;
+    if (loading || lockRemaining > 0 || digits.length >= pinLength) return;
     setError('');
     const next = [...digits, d];
     setDigits(next);
@@ -82,9 +94,12 @@ export default function PinScreen({
           const newAttempts = attempts + 1;
           setAttempts(newAttempts);
           triggerShake();
-          if (newAttempts >= 5) { setShowPasswordInput(true); return; }
-          setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
           setDigits([]);
+          if (authLockedUntil || newAttempts >= 5) {
+            setError('Bubble is temporarily locked after too many incorrect attempts.');
+          } else {
+            setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
+          }
         }
         setLoading(false);
       }
@@ -92,12 +107,12 @@ export default function PinScreen({
   }
 
   async function handlePasswordUnlock() {
-    if (!password.trim()) return;
+    if (!password.trim() || lockRemaining > 0) return;
     setPasswordLoading(true);
     setPasswordError('');
     const ok = await onUsePassword(password);
     if (!ok) {
-      setPasswordError('Incorrect password. Try again.');
+      setPasswordError(authLockedUntil ? 'Bubble is temporarily locked after too many incorrect attempts.' : 'Incorrect password. Try again.');
       setPassword('');
     }
     setPasswordLoading(false);
@@ -279,6 +294,12 @@ export default function PinScreen({
           </div>
         )}
 
+        {lockRemaining > 0 && (
+          <div className="bg-amber-500/[0.08] border border-amber-500/[0.2] rounded-xl px-4 py-3 w-full text-center">
+            <p className="text-amber-400 text-[13px] font-medium">Bubble is temporarily locked</p>
+            <p className="text-amber-300/80 text-[12px] mt-1">Try again in {Math.ceil(lockRemaining / 60000)} minute{Math.ceil(lockRemaining / 60000) === 1 ? '' : 's'}.</p>
+          </div>
+        )}
         {loading && <BubbleLoader size={28} />}
 
         {/* ──── PASSWORD MODE: keypad hidden, full password UI ──── */}
@@ -300,7 +321,7 @@ export default function PinScreen({
             )}
             <button
               onClick={handlePasswordUnlock}
-              disabled={passwordLoading || !password.trim()}
+              disabled={passwordLoading || lockRemaining > 0 || !password.trim()}
               className="w-full py-3.5 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 text-white font-semibold text-[15px] rounded-xl transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2"
             >
               {passwordLoading ? <BubbleLoader size={22} /> : 'Unlock'}

@@ -43,6 +43,8 @@ export type Profile = {
   country?: string | null;
   unread_badge_enabled?: boolean | null;
   face_id_enabled?: boolean | null;
+  auth_failed_attempts?: number;
+  auth_locked_until?: string | null;
 };
 
 export function getDisplayName(profile: Profile | null | undefined, showFull = false): string {
