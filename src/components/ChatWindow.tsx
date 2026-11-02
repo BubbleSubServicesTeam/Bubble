@@ -496,7 +496,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             }
             return [...prev, data as Message];
           });
-          setTimeout(() => scrollToBottom('smooth'), 50);
+          requestAnimationFrame(() => scrollToBottom('auto'), 0);
           // Mark as read when a new message arrives AND the chat is visible
           if (document.visibilityState === 'visible') markAsRead();
 
@@ -672,7 +672,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     // Clear draft after sending
     localStorage.removeItem(`bubble-draft-${conversation.id}`);
     setReplyTo(null);
-    requestAnimationFrame(() => scrollToBottom('smooth', true));
+    requestAnimationFrame(() => scrollToBottom('auto', true));
     const { data, error } = await supabase.from('messages').insert(payload).select('id').single();
     if (error) {
       // Remove optimistic message on failure
@@ -713,7 +713,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     };
     setMessages(prev => [...prev, optimisticMsg]);
     setReplyTo(null);
-    scrollToBottom();
+    requestAnimationFrame(() => scrollToBottom('auto', true));
     const { data, error } = await supabase.from('messages').insert(payload).select('id').single();
     if (error) {
       setMessages(prev => prev.filter(m => m.id !== tempId));
@@ -791,7 +791,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         reactions: {},
       };
       setMessages(prev => [...prev, { ...textPayload, id: tempId, created_at: new Date().toISOString(), edited_at: null, deleted_at: null, duration_seconds: null, sender: profile ?? undefined }]);
-      scrollToBottom();
+      requestAnimationFrame(() => scrollToBottom('auto', true));
       await supabase.from('messages').insert(textPayload);
     }
     await sendMessage('iframe', { content: url, file_name: title });
@@ -1980,7 +1980,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           </button>
           <button
             onClick={() => { scrollToBottom('smooth', true); inputRef.current?.focus(); }}
-            className="w-10 h-10 rounded-full bg-sky-500 hover:bg-sky-400 flex items-center justify-center text-white shadow-lg shadow-sky-500/30 transition-all active:scale-90"
+            className="w-8 h-8 rounded-full bg-slate-200/90 dark:bg-slate-700/90 hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 dark:text-slate-400 shadow-md transition-all active:scale-90"
             style={{ animation: 'arrowFadeIn 0.3s ease-out 0.25s both' }}
           >
             <ChevronDown size={16} />
