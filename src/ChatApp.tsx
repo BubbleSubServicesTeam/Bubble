@@ -541,7 +541,9 @@ export default function ChatApp() {
         <SettingsModal
           onClose={closeOverlay}
           initialTab={route.tab}
+          initialSub={route.sub}
           onTabChange={tab => go(ROUTES.settings(tab), true)}
+          onSubChange={sub => go(ROUTES.settings(route.tab, sub), true)}
         />
       )}
       {showPeopleDrawer && (

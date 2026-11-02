@@ -21,9 +21,9 @@ import { getBiometricCapability, enrollFingerprintWithPattern, listFingerprints,
 import { listDeviceSessions, deleteDeviceSession, type DeviceSession } from '../lib/deviceSessions';
 import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
-import type { SettingsTab } from '../lib/routes';
+import type { SettingsSub, SettingsTab } from '../lib/routes';
 
-type Props = { onClose: () => void; initialTab: SettingsTab; onTabChange: (tab: SettingsTab) => void };
+type Props = { onClose: () => void; initialTab: SettingsTab; initialSub: SettingsSub | null; onTabChange: (tab: SettingsTab) => void; onSubChange: (sub: SettingsSub | null) => void };
 type Tab = SettingsTab;
 type DeleteStep = 'confirm' | 'password' | 'verify_email' | 'enter_code';
 type PinSetupStep = 'menu' | 'choose_length' | 'enter_new' | 'confirm_new' | 'done';
@@ -37,7 +37,7 @@ const statuses = [
   { value: 'offline', label: 'Appear Offline', color: 'bg-slate-500' },
 ] as const;
 
-export default function SettingsModal({ onClose, initialTab, onTabChange }: Props) {
+export default function SettingsModal({ onClose, initialTab, initialSub, onTabChange, onSubChange }: Props) {
   const { user, profile, updateProfile, deleteAccount, setupPin, removePin, changePassword, changeEmail, verifyPinForSensitiveAction, sendPasswordReset } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { t } = useAppLang();
@@ -63,7 +63,7 @@ export default function SettingsModal({ onClose, initialTab, onTabChange }: Prop
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // PIN setup flow
-  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(initialSub === 'pin');
   const [pinSetupStep, setPinSetupStep] = useState<PinSetupStep>('menu');
   const [pinDigits, setPinDigits] = useState<string[]>([]);
   const [pinConfirmDigits, setPinConfirmDigits] = useState<string[]>([]);
@@ -72,7 +72,7 @@ export default function SettingsModal({ onClose, initialTab, onTabChange }: Prop
   const [pinLength, setPinLength] = useState(4);
 
   // Fingerprint management
-  const [showFingerprintSetup, setShowFingerprintSetup] = useState(false);
+  const [showFingerprintSetup, setShowFingerprintSetup] = useState(initialSub === 'fingerprint');
   const [fingerprints, setFingerprints] = useState<FingerprintRecord[]>([]);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
   const [enrollLabel, setEnrollLabel] = useState('');
@@ -90,7 +90,7 @@ export default function SettingsModal({ onClose, initialTab, onTabChange }: Prop
   useEffect(() => { getBiometricCapability().then(setBioMode); }, []);
 
   // Change password flows
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(initialSub === 'password');
   const [passwordStep, setPasswordStep] = useState<PasswordStep>('pin_gate');
   const [gateDigits, setGateDigits] = useState<string[]>([]);
   const [gateError, setGateError] = useState('');
@@ -103,7 +103,7 @@ export default function SettingsModal({ onClose, initialTab, onTabChange }: Prop
   const [currentPassword, setCurrentPassword] = useState('');
 
   // Email change
-  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [showEmailChange, setShowEmailChange] = useState(initialSub === 'email');
   const [newEmail, setNewEmail] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailError, setEmailError] = useState('');
@@ -221,7 +221,7 @@ export default function SettingsModal({ onClose, initialTab, onTabChange }: Prop
   }
 
   // Delete account flow
-  const [showDelete, setShowDelete] = useState(false);
+  const [showDelete, setShowDelete] = useState(initialSub === 'delete');
   const [deleteStep, setDeleteStep] = useState<DeleteStep>('confirm');
   const [deletePassword, setDeletePassword] = useState('');
   const [showDeletePass, setShowDeletePass] = useState(false);
@@ -229,6 +229,14 @@ export default function SettingsModal({ onClose, initialTab, onTabChange }: Prop
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteOtpCode, setDeleteOtpCode] = useState('');
   const [pendingDeletePassword, setPendingDeletePassword] = useState('');
+
+  const activeSub: SettingsSub | null = showPinSetup ? 'pin'
+    : showPasswordChange ? 'password'
+    : showEmailChange ? 'email'
+    : showFingerprintSetup ? 'fingerprint'
+    : showDelete ? 'delete'
+    : null;
+  useEffect(() => { onSubChange(activeSub); }, [activeSub]);
 
   async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

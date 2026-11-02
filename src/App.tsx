@@ -11,7 +11,7 @@ import InstallPrompt from './components/InstallPrompt';
 import BubbleLoader from './components/BubbleLoader';
 import PinScreen from './components/PinScreen';
 import OAuthAuthorizePage from './components/OAuthAuthorizePage';
-import { ROUTES, currentPath } from './lib/routes';
+import { ROUTES, UNLOCK_RETURN_KEY, currentPath } from './lib/routes';
 
 function isRunningAsPWA(): boolean {
   return (
@@ -60,6 +60,22 @@ function AppInner() {
     }
   }, [user, path]);
 
+  const hasLock = !!(profile?.pin_hash && profile?.pin_voluntary) || !!(profile?.fingerprint_enabled && (profile?.unlock_preference === 'fingerprint' || profile?.unlock_preference === 'both'));
+  const pinLockActive = Boolean(user && pinLocked && hasLock);
+
+  useEffect(() => {
+    if (pinLockActive) {
+      if (currentPath() === ROUTES.unlock) return;
+      sessionStorage.setItem(UNLOCK_RETURN_KEY, window.location.pathname);
+      window.history.replaceState(null, '', ROUTES.unlock);
+    } else if (currentPath() === ROUTES.unlock) {
+      const returnPath = sessionStorage.getItem(UNLOCK_RETURN_KEY) ?? ROUTES.home;
+      sessionStorage.removeItem(UNLOCK_RETURN_KEY);
+      window.history.replaceState(null, '', returnPath);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, [pinLockActive]);
+
   // Install prompt only for users who aren't logged in yet
   if (!user && !loading && isMobileBrowser() && !isRunningAsPWA() && !installDismissed) {
     return <InstallPrompt onContinue={() => setInstallDismissed(true)} />;
@@ -79,11 +95,9 @@ function AppInner() {
     </NotificationProvider>
   );
 
-  const hasLock = !!(profile?.pin_hash && profile?.pin_voluntary) || !!(profile?.fingerprint_enabled && (profile?.unlock_preference === 'fingerprint' || profile?.unlock_preference === 'both'));
-
   // Chat app stays mounted in the same tree position whether locked or not,
   // so unlocking the PIN returns you to your exact spot — nothing remounts.
-  const pinOverlay = user && pinLocked && hasLock ? (
+  const pinOverlay = pinLockActive ? (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
       <PinScreen
         onUnlock={unlockWithPin}
