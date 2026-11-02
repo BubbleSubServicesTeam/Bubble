@@ -317,7 +317,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           {displayValue ? (
             <>
               {active && cursorPos === 0 && (
-                <span className="inline-block w-[1.5px] h-[15px] bg-sky-500 align-baseline flex-shrink-0" style={BLINK_STYLE} />
+                <span className="inline-block w-[1.5px] h-[16px] bg-sky-500 align-middle flex-shrink-0" style={BLINK_STYLE} />
               )}
               {Array.from(displayValue).map((char, i) => (
                 <span
@@ -327,7 +327,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
                 >
                   {char}
                   {active && i === cursorPos - 1 && (
-                    <span className="inline-block w-[1.5px] h-[15px] bg-sky-500 align-baseline" style={BLINK_STYLE} />
+                    <span className="inline-block w-[1.5px] h-[16px] bg-sky-500 align-middle" style={BLINK_STYLE} />
                   )}
                 </span>
               ))}
@@ -335,7 +335,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           ) : (
             <span className="text-slate-400 dark:placeholder-slate-600">
               {active && (
-                <span className="inline-block w-[1.5px] h-[15px] bg-sky-500 align-baseline mr-0.5" style={BLINK_STYLE} />
+                <span className="inline-block w-[1.5px] h-[16px] bg-sky-500 align-middle mr-0.5" style={BLINK_STYLE} />
               )}
               {placeholder ?? (isEmail ? 'you@example.com' : 'Start typing...')}
             </span>

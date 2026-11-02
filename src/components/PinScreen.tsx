@@ -26,7 +26,7 @@ export default function PinScreen({
   title, subtitle,
 }: Props) {
   const { resolvedTheme } = useTheme();
-  const { user, profile, authLockedUntil, unlockWithFingerprint, signOut } = useAuth();
+  const { user, profile, pinLockedUntil, passwordLockedUntil, unlockWithFingerprint, signOut } = useAuth();
   const [digits, setDigits] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,10 @@ export default function PinScreen({
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
-  const [lockRemaining, setLockRemaining] = useState(0);
+  const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(true);
+  const [pinRemaining, setPinRemaining] = useState(0);
+  const [passwordRemaining, setPasswordRemaining] = useState(0);
+  const lockRemaining = showPasswordInput ? passwordRemaining : pinRemaining;
 
   // Check biometric capability on mount
   useEffect(() => {
@@ -62,14 +65,16 @@ export default function PinScreen({
 
   useEffect(() => {
     const updateRemaining = () => {
-      const remaining = authLockedUntil ? Math.max(0, new Date(authLockedUntil).getTime() - Date.now()) : 0;
-      setLockRemaining(remaining);
-      if (remaining === 0 && authLockedUntil) setError('');
+      const pinLeft = pinLockedUntil ? Math.max(0, new Date(pinLockedUntil).getTime() - Date.now()) : 0;
+      const passwordLeft = passwordLockedUntil ? Math.max(0, new Date(passwordLockedUntil).getTime() - Date.now()) : 0;
+      setPinRemaining(pinLeft);
+      setPasswordRemaining(passwordLeft);
+      if (pinLeft === 0 && pinLockedUntil) setError('');
     };
     updateRemaining();
     const timer = setInterval(updateRemaining, 1000);
     return () => clearInterval(timer);
-  }, [authLockedUntil]);
+  }, [pinLockedUntil, passwordLockedUntil]);
 
   function triggerShake() {
     setShake(true);
@@ -95,7 +100,7 @@ export default function PinScreen({
           setAttempts(newAttempts);
           triggerShake();
           setDigits([]);
-          if (authLockedUntil || newAttempts >= 5) {
+          if (newAttempts >= 5) {
             setError('Bubble is temporarily locked after too many incorrect attempts.');
           } else {
             setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
@@ -107,12 +112,12 @@ export default function PinScreen({
   }
 
   async function handlePasswordUnlock() {
-    if (!password.trim() || lockRemaining > 0) return;
+    if (!password.trim() || passwordRemaining > 0) return;
     setPasswordLoading(true);
     setPasswordError('');
     const ok = await onUsePassword(password);
     if (!ok) {
-      setPasswordError(authLockedUntil ? 'Bubble is temporarily locked after too many incorrect attempts.' : 'Incorrect password. Try again.');
+      setPasswordError(passwordRemaining > 0 ? 'Password is temporarily locked after too many incorrect attempts.' : 'Incorrect password. Try again.');
       setPassword('');
     }
     setPasswordLoading(false);
@@ -296,7 +301,7 @@ export default function PinScreen({
 
         {lockRemaining > 0 && (
           <div className="bg-amber-500/[0.08] border border-amber-500/[0.2] rounded-xl px-4 py-3 w-full text-center">
-            <p className="text-amber-400 text-[13px] font-medium">Bubble is temporarily locked</p>
+            <p className="text-amber-400 text-[13px] font-medium">{showPasswordInput ? 'Password is temporarily locked' : 'PIN is temporarily locked'}</p>
             <p className="text-amber-300/80 text-[12px] mt-1">Try again in {Math.ceil(lockRemaining / 60000)} minute{Math.ceil(lockRemaining / 60000) === 1 ? '' : 's'}.</p>
           </div>
         )}
@@ -315,13 +320,16 @@ export default function PinScreen({
               onChange={setPassword}
               placeholder="Enter your password"
               onSubmit={handlePasswordUnlock}
+              active={passwordKeyboardOpen}
+              onActivate={() => setPasswordKeyboardOpen(true)}
+              onDismiss={() => setPasswordKeyboardOpen(false)}
             />
             {passwordError && (
               <p className="text-red-400 text-[13px] text-center">{passwordError}</p>
             )}
             <button
               onClick={handlePasswordUnlock}
-              disabled={passwordLoading || lockRemaining > 0 || !password.trim()}
+              disabled={passwordLoading || passwordRemaining > 0 || !password.trim()}
               className="w-full py-3.5 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 text-white font-semibold text-[15px] rounded-xl transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2"
             >
               {passwordLoading ? <BubbleLoader size={22} /> : 'Unlock'}

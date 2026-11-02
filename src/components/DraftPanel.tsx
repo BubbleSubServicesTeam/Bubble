@@ -356,7 +356,7 @@ export default function DraftPanel({ leagueId }: Props) {
 
   const mySleeperRoster = sleeperRosters.find(r => {
     const su = sleeperUsers.find(u => u.user_id === r.owner_id);
-    return su?.username === league?.sleeper_username || r.owner_id === sleeperUser?.user_id;
+    return su?.username === league?.sleeper_username;
   });
   const myMatchup = sleeperMatchups.find(m => m.roster_id === mySleeperRoster?.roster_id);
   const opponentMatchup = sleeperMatchups.find(m => m.matchup_id === myMatchup?.matchup_id && m.roster_id !== mySleeperRoster?.roster_id);

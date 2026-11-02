@@ -4,7 +4,7 @@ import { supabase, smartName, Profile } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
-import { LANGUAGES, LANG_FLAGS, flagUrl } from '../lib/translate';
+import { LANGUAGES, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
 import PayPalTab from './PayPalTab';
 import ApiKeysTab from './ApiKeysTab';

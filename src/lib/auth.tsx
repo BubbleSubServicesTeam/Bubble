@@ -389,7 +389,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function unlockWithPin(pin: string): Promise<boolean> {
     if (!profile?.pin_hash) return false;
-    if (authLockedUntil && new Date(authLockedUntil) > new Date()) return false;
+    if (pinLockedUntil && new Date(pinLockedUntil) > new Date()) return false;
     const hashed = await hashPin(pin);
     if (hashed === profile.pin_hash) {
       await supabase.rpc('clear_pin_failures');
@@ -397,9 +397,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPinLocked(false);
       return true;
     }
-    const { data } = await supabase.rpc('record_auth_failure');
+    const { data } = await supabase.rpc('record_pin_failure');
     const row = Array.isArray(data) ? data[0] : data;
-    if (row?.is_locked) setAuthLockedUntil(row.locked_until);
+    if (row?.is_locked) setPinLockedUntil(row.locked_until);
     return false;
   }
 
@@ -419,7 +419,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function unlockWithPassword(password: string): Promise<boolean> {
     if (!user?.email) return false;
-    if (authLockedUntil && new Date(authLockedUntil) > new Date()) return false;
+    if (passwordLockedUntil && new Date(passwordLockedUntil) > new Date()) return false;
     const request = supabase.auth.signInWithPassword({ email: user.email, password });
     const result = await Promise.race([
       request,

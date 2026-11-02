@@ -36,7 +36,6 @@ function buildCallbackUrl(website: string, path: string): string {
 }
 
 export default function ClientIdsTab({ userId }: { userId: string }) {
-  const { user } = useAuth();
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
