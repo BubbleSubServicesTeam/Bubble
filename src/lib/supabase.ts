@@ -45,6 +45,10 @@ export type Profile = {
   face_id_enabled?: boolean | null;
   auth_failed_attempts?: number;
   auth_locked_until?: string | null;
+  pin_failed_attempts?: number;
+  pin_locked_until?: string | null;
+  password_failed_attempts?: number;
+  password_locked_until?: string | null;
 };
 
 export function getDisplayName(profile: Profile | null | undefined, showFull = false): string {

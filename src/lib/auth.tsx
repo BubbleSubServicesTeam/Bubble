@@ -47,7 +47,8 @@ type AuthCtx = {
   changePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
   changeEmail: (newEmail: string) => Promise<string | null>;
   verifyPinForSensitiveAction: (pin: string) => Promise<boolean>;
-  authLockedUntil: string | null;
+  pinLockedUntil: string | null;
+  passwordLockedUntil: string | null;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -57,7 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [pinLocked, setPinLocked] = useState(false);
-  const [authLockedUntil, setAuthLockedUntil] = useState<string | null>(null);
+  const [pinLockedUntil, setPinLockedUntil] = useState<string | null>(null);
+  const [passwordLockedUntil, setPasswordLockedUntil] = useState<string | null>(null);
   const [pinSetupRequired, setPinSetupRequired] = useState(false);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pinStateResolved = useRef(false);
@@ -84,7 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const { data: ownContact } = await supabase.rpc('get_own_contact_info');
           const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
           const merged = { ...data, ...contactRow };
-          setAuthLockedUntil(merged.auth_locked_until ?? null);
+          setPinLockedUntil(merged.pin_locked_until ?? null);
+          setPasswordLockedUntil(merged.password_locked_until ?? null);
           setProfile(merged);
           return merged;
         }
@@ -389,8 +392,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (authLockedUntil && new Date(authLockedUntil) > new Date()) return false;
     const hashed = await hashPin(pin);
     if (hashed === profile.pin_hash) {
-      await supabase.rpc('clear_auth_failures');
-      setAuthLockedUntil(null);
+      await supabase.rpc('clear_pin_failures');
+      setPinLockedUntil(null);
       setPinLocked(false);
       return true;
     }
@@ -425,13 +428,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ),
     ]);
     if (result.error) {
-      const { data } = await supabase.rpc('record_auth_failure');
+      const { data } = await supabase.rpc('record_password_failure');
       const row = Array.isArray(data) ? data[0] : data;
-      if (row?.is_locked) setAuthLockedUntil(row.locked_until);
+      if (row?.is_locked) setPasswordLockedUntil(row.locked_until);
       return false;
     }
-    await supabase.rpc('clear_auth_failures');
-    setAuthLockedUntil(null);
+    await supabase.rpc('clear_password_failures');
+    setPasswordLockedUntil(null);
     setPinLocked(false);
     return true;
   }
@@ -601,7 +604,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (user) { try { localStorage.removeItem(`bubble-has-pin-${user.id}`); } catch { /* ignore */ } }
     setPinLocked(false);
-    setAuthLockedUntil(null);
+    setPinLockedUntil(null);
+    setPasswordLockedUntil(null);
     setPinSetupRequired(false);
     pinStateResolved.current = false;
     signedInHandled.current = false;
@@ -678,7 +682,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, profile, loading, pinLocked, pinSetupRequired, authLockedUntil,
+      user, profile, loading, pinLocked, pinSetupRequired, pinLockedUntil, passwordLockedUntil,
       unlockWithPin, unlockWithPassword, unlockWithFingerprint, bypassPin, lockApp,
       signIn, signUp, signOut, updateProfile, deleteAccount, cancelAccountDeletion,
       sendPasswordReset, sendDeleteVerification, verifyDeleteOTP,
