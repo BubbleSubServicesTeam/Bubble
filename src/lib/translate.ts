@@ -75,6 +75,7 @@ export async function translateText(text: string, targetLang: string): Promise<T
     const data: unknown = await resp.json();
     if (!data || typeof data !== 'object' || !('translatedText' in data) || typeof data.translatedText !== 'string' || !data.translatedText.trim()) return null;
     const response = data as Record<string, unknown>;
+    if (response.sameLanguage === true) return null;
     const result: TranslationResult = {
       translatedText: response.translatedText as string,
       detectedLang: typeof response.detectedLang === 'string' ? response.detectedLang : null,
