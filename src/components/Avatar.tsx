@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Profile, effectiveStatus } from '../lib/supabase';
 
 type AvatarProps = {
@@ -24,33 +25,38 @@ const statusColors = {
 
 export default function Avatar({ profile, size = 'md', showStatus = false, className = '' }: AvatarProps) {
   const s = sizeMap[size];
-  const initials = profile?.display_name
-    ? profile.display_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : '?';
-  
+  const name = profile?.display_name?.trim() || '';
+  const nameParts = name.split(/\s+/).filter(Boolean);
+  const initials = nameParts.length > 1
+    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+    : nameParts[0]?.slice(0, 2).toUpperCase() || '?';
+  const [imageFailed, setImageFailed] = useState(false);
   const colors = [
     'from-sky-500 to-blue-600',
-    'from-violet-500 to-purple-600',
-    'from-pink-500 to-rose-600',
-    'from-emerald-500 to-teal-600',
-    'from-orange-500 to-amber-600',
-    'from-cyan-500 to-blue-500',
+    'from-teal-500 to-cyan-600',
+    'from-rose-500 to-orange-500',
+    'from-emerald-500 to-green-600',
+    'from-amber-500 to-orange-600',
+    'from-cyan-500 to-sky-600',
   ];
-  const colorIndex = profile?.display_name
-    ? profile.display_name.charCodeAt(0) % colors.length
-    : 0;
+  const colorIndex = name ? name.charCodeAt(0) % colors.length : 0;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [profile?.avatar_url]);
 
   return (
     <div className={`relative flex-shrink-0 ${s.outer} ${className}`}>
-      {profile?.avatar_url ? (
+      {profile?.avatar_url && !imageFailed ? (
         <img
           src={profile.avatar_url}
-          alt={profile.display_name}
-          className={`${s.outer} rounded-full object-cover`}
+          alt={name || 'Profile picture'}
+          onError={() => setImageFailed(true)}
+          className={`${s.outer} rounded-full object-cover ring-1 ring-white/10`}
         />
       ) : (
-        <div className={`${s.outer} rounded-full bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center`}>
-          <span className={`${s.text} font-bold text-white`}>{initials}</span>
+        <div className={`${s.outer} rounded-full bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center ring-1 ring-white/15 shadow-lg`}>
+          <span className={`${s.text} font-bold tracking-wide text-white`}>{initials}</span>
         </div>
       )}
       {showStatus && profile && (

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useTheme, getLogoUrl } from '../lib/theme';
 import { Delete, Fingerprint, ArrowLeft, KeyRound, LogOut } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
@@ -25,7 +24,6 @@ export default function PinScreen({
   pinLength = 4, setupMode = false, onSetupComplete,
   title, subtitle,
 }: Props) {
-  const { resolvedTheme } = useTheme();
   const { user, profile, pinLockedUntil, passwordLockedUntil, unlockWithFingerprint, signOut } = useAuth();
   const [digits, setDigits] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -40,9 +38,21 @@ export default function PinScreen({
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
   const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(true);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [pinRemaining, setPinRemaining] = useState(0);
   const [passwordRemaining, setPasswordRemaining] = useState(0);
   const lockRemaining = showPasswordInput ? passwordRemaining : pinRemaining;
+  const displayName = userName?.trim() || user?.email?.split('@')[0] || 'Bubble account';
+  const nameParts = displayName.split(/\s+/).filter(Boolean);
+  const avatarInitials = nameParts.length > 1
+    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+    : displayName.slice(0, 2).toUpperCase();
+
+  useEffect(() => {
+    setAvatarFailed(false);
+    setAvatarLoaded(false);
+  }, [avatarUrl]);
 
   // Check biometric capability on mount
   useEffect(() => {
@@ -205,17 +215,20 @@ export default function PinScreen({
       >
         {/* Avatar + name */}
         <div className="flex flex-col items-center gap-2.5">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={userName}
-              className="w-20 h-20 rounded-full object-cover ring-4 ring-sky-500/20 shadow-2xl"
-            />
+          {avatarUrl && !avatarFailed ? (
+            <div className="relative w-20 h-20">
+              {!avatarLoaded && <div className="absolute inset-0 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse ring-4 ring-sky-500/10" />}
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                onLoad={() => setAvatarLoaded(true)}
+                onError={() => { setAvatarFailed(true); setAvatarLoaded(false); }}
+                className={`w-20 h-20 rounded-full object-cover ring-4 ring-sky-500/20 shadow-2xl transition-opacity ${avatarLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
+            </div>
           ) : (
-            <div
-              className="w-20 h-20 rounded-full bg-sky-500/15 flex items-center justify-center ring-4 ring-sky-500/20 shadow-2xl"
-            >
-              <img src={getLogoUrl(resolvedTheme)} alt="Bubble" className="w-10 h-10 rounded-full object-cover" />
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-sky-500 via-cyan-500 to-blue-700 flex items-center justify-center ring-4 ring-sky-500/20 shadow-2xl">
+              <span className="text-white text-xl font-bold tracking-wide">{avatarInitials}</span>
             </div>
           )}
           {userName && (
