@@ -163,6 +163,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showFilesViewer, setShowFilesViewer] = useState(false);
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
+  const [showChatViewSettings, setShowChatViewSettings] = useState(false);
+  const [openPosition, setOpenPosition] = useState<'last_read' | 'bottom'>('bottom');
+  const [openPositionLoaded, setOpenPositionLoaded] = useState(false);
   const [wallpaper, setWallpaper] = useState('none');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [autofillSuggestion, setAutofillSuggestion] = useState<{
@@ -265,6 +268,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const initialPositionKeyRef = useRef<string | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -354,6 +358,23 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         setSavedMsgIds(new Set((data ?? []).map(d => d.message_id).filter(Boolean) as string[]));
       });
   }, [user, conversation.id]);
+
+  // Load chat opening preference
+  useEffect(() => {
+    initialPositionKeyRef.current = null;
+    setOpenPositionLoaded(false);
+    if (!user || !conversation.id) return;
+    supabase
+      .from('conversation_notification_settings')
+      .select('open_position')
+      .eq('user_id', user.id)
+      .eq('conversation_id', conversation.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setOpenPosition(data?.open_position === 'last_read' ? 'last_read' : 'bottom');
+        setOpenPositionLoaded(true);
+      });
+  }, [user?.id, conversation.id]);
 
   // Load wallpaper
   useEffect(() => {
@@ -623,10 +644,41 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       try { localStorage.setItem(cacheKey, JSON.stringify(msgs)); } catch { /* ignore */ }
     }
     setLoadingMessages(false);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollToBottom('auto', true));
-    });
     setTimeout(() => inputRef.current?.focus(), 200);
+  }
+
+  useEffect(() => {
+    if (!openPositionLoaded || loadingMessages || messages.length === 0 || initialPositionKeyRef.current === conversation.id) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    initialPositionKeyRef.current = conversation.id;
+    requestAnimationFrame(() => {
+      if (openPosition === 'last_read' && lastReadAt) {
+        const firstUnread = messages.find(message => new Date(message.created_at).getTime() > new Date(lastReadAt).getTime());
+        const target = firstUnread ? el.querySelector<HTMLElement>(`[data-message-id="${firstUnread.id}"]`) : null;
+        if (target) {
+          el.scrollTo({ top: Math.max(0, target.offsetTop - el.offsetTop), behavior: 'auto' });
+          return;
+        }
+      }
+      el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+    });
+  }, [openPositionLoaded, loadingMessages, messages.length, openPosition, lastReadAt, conversation.id]);
+
+  async function saveOpenPosition(position: 'last_read' | 'bottom') {
+    if (!user) return;
+    setOpenPosition(position);
+    const { data: existing } = await supabase
+      .from('conversation_notification_settings')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('conversation_id', conversation.id)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('conversation_notification_settings').update({ open_position: position }).eq('id', existing.id);
+    } else {
+      await supabase.from('conversation_notification_settings').insert({ user_id: user.id, conversation_id: conversation.id, open_position: position });
+    }
   }
 
   function scrollToBottom(behavior: ScrollBehavior = 'smooth', force = false) {
@@ -1461,6 +1513,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 <MenuItem icon={<Bell size={14} />} onClick={() => { setShowMenu(false); setShowNotifSettings(true); }}>
                   Notification settings
                 </MenuItem>
+                <MenuItem icon={<MessageCircle size={14} />} onClick={() => { setShowMenu(false); setShowChatViewSettings(true); }}>
+                  Chat opening position
+                </MenuItem>
                 <MenuItem icon={<Palette size={14} />} onClick={() => { setShowMenu(false); setShowWallpaperPicker(true); }}>
                   Wallpaper
                 </MenuItem>
@@ -1529,6 +1584,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               return (
                 <div
                   key={msg.id}
+                  data-message-id={msg.id}
                   className={`flex items-end gap-2 group select-none ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirst ? 'mt-3' : 'mt-0.5'}`}
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                   onMouseEnter={() => setHoveredId(msg.id)}
@@ -2421,6 +2477,26 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
       {showFilesViewer && (
         <FilesViewer conversationId={conversation.id} onClose={() => setShowFilesViewer(false)} />
+      )}
+
+      {showChatViewSettings && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowChatViewSettings(false)}>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={event => event.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-white/5">
+              <h2 className="text-slate-900 dark:text-white font-bold text-lg">Chat opening position</h2>
+              <button onClick={() => setShowChatViewSettings(false)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-2">
+              <p className="text-[12px] text-slate-500 dark:text-slate-400 mb-3">Choose where this chat starts when you open it.</p>
+              {([['last_read', 'Start at last read', 'Show the first unread message at the top.'], ['bottom', 'Always show newest', 'Open at the bottom of the chat.']] as const).map(([value, title, description]) => (
+                <button key={value} onClick={() => { saveOpenPosition(value); setShowChatViewSettings(false); }} className={`w-full text-left p-3 rounded-2xl border transition-all ${openPosition === value ? 'border-sky-500 bg-sky-500/10' : 'border-slate-200 dark:border-white/10 hover:border-sky-400/50'}`}>
+                  <p className="text-[13px] font-semibold text-slate-900 dark:text-white">{title}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">{description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {showNotifSettings && (

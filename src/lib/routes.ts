@@ -28,7 +28,7 @@ export const ROUTES = {
   chat: (id: string) => `/chat/${encodeURIComponent(id)}`,
   settings: (tab: SettingsTab = 'profile', sub: SettingsSub | null = null) => {
     if (sub) return `/settings/${tab}/${sub}`;
-    return tab === 'profile' ? '/settings' : `/settings/${tab}`;
+    return `/settings/${tab}`;
   },
   newChat: '/new-chat',
   gifs: '/gifs',

@@ -43,7 +43,7 @@ export default function ClientIdsTab({ userId }: { userId: string }) {
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('https://');
+  const [websiteUrl, setWebsiteUrl] = useState(() => window.location.origin);
   const [callbackPaths, setCallbackPaths] = useState(['/oauth/callback']);
   const [creating, setCreating] = useState(false);
   const [newSecret, setNewSecret] = useState<NewSecret | null>(null);
@@ -66,10 +66,12 @@ export default function ClientIdsTab({ userId }: { userId: string }) {
   useEffect(() => { load(); }, [userId]);
 
   async function handleCreate() {
-    const website = websiteUrl.trim().replace(/\/$/, '');
-    const paths = callbackPaths.map(path => path.trim()).filter(Boolean);
-    if (!name.trim() || !website || !paths.length) {
-      setError('App name, website, and at least one callback sublink are required.');
+    const website = (websiteUrl.trim() || window.location.origin).replace(/\/$/, '');
+    const paths = callbackPaths.map(path => path.trim()).filter(Boolean).length > 0
+      ? callbackPaths.map(path => path.trim()).filter(Boolean)
+      : ['/oauth/callback'];
+    if (!name.trim()) {
+      setError('Enter an app name to create a Client ID.');
       return;
     }
     if (!isValidWebUrl(website)) {
@@ -103,7 +105,7 @@ export default function ClientIdsTab({ userId }: { userId: string }) {
     setClients(prev => [data as OAuthClient, ...prev]);
     setNewSecret({ clientId, secret });
     setName('');
-    setWebsiteUrl('https://');
+    setWebsiteUrl(window.location.origin);
     setCallbackPaths(['/oauth/callback']);
     setCreating(false);
   }
@@ -161,10 +163,11 @@ export default function ClientIdsTab({ userId }: { userId: string }) {
 
       <div className="space-y-3 rounded-2xl border border-slate-200 dark:border-white/[0.06] p-4">
         <p className="text-[13px] font-semibold text-slate-900 dark:text-white">Register an app</p>
+        <p className="text-[12px] text-slate-500 dark:text-slate-400">Name your app. Bubble creates the Client ID, secret, callback, and sign-in link automatically.</p>
         <input value={name} onChange={event => setName(event.target.value)} placeholder="App name (for example, GitHub project)" maxLength={60} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-[14px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
-        <label className="space-y-1 block"><span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Main website</span><input value={websiteUrl} onChange={event => setWebsiteUrl(event.target.value)} placeholder="https://github.com" maxLength={200} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-[14px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" /></label>
+        <label className="space-y-1 block"><span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Main website <span className="font-normal text-slate-400">(optional)</span></span><input value={websiteUrl} onChange={event => setWebsiteUrl(event.target.value)} placeholder={window.location.origin} maxLength={200} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-[14px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" /></label>
         <div className="space-y-2">
-          <div className="flex items-center justify-between"><span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Callback sublinks</span><button type="button" onClick={() => setCallbackPaths(paths => [...paths, ''])} className="text-[12px] text-sky-500 hover:text-sky-400 flex items-center gap-1"><Plus size={13} /> Add sublink</button></div>
+          <div className="flex items-center justify-between"><span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Callback sublinks <span className="font-normal text-slate-400">(optional)</span></span><button type="button" onClick={() => setCallbackPaths(paths => [...paths, ''])} className="text-[12px] text-sky-500 hover:text-sky-400 flex items-center gap-1"><Plus size={13} /> Add sublink</button></div>
           {callbackPaths.map((path, index) => (
             <div key={index} className="flex items-center gap-2"><Link2 size={14} className="text-slate-400 flex-shrink-0" /><input value={path} onChange={event => setCallbackPaths(paths => paths.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder="/your-name/your-project/oauth/callback" maxLength={200} className="flex-1 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />{callbackPaths.length > 1 && <button type="button" onClick={() => setCallbackPaths(paths => paths.filter((_, itemIndex) => itemIndex !== index))} className="text-slate-400 hover:text-red-400"><X size={15} /></button>}</div>
           ))}
