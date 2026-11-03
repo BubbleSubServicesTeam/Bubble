@@ -74,16 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function fetchProfile(userId: string): Promise<Profile | null> {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select(PROFILE_COLUMNS)
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (data) {
+        const [{ data, error }, { data: ownContact }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select(PROFILE_COLUMNS)
+            .eq('user_id', userId)
+            .maybeSingle(),
           // Restricted contact columns (address, city, state, postal_code, country) are no longer
           // directly readable via SELECT — fetch them through the owner-scoped RPC.
-          const { data: ownContact } = await supabase.rpc('get_own_contact_info');
+          supabase.rpc('get_own_contact_info'),
+        ]);
+
+        if (data) {
           const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
           const merged = { ...data, ...contactRow };
           setPinLockedUntil(merged.pin_locked_until ?? null);
