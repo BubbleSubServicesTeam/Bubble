@@ -148,6 +148,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [undoEdit, setUndoEdit] = useState<{ messageId: string; previousContent: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   const [typingUsers, setTypingUsers] = useState<Profile[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pastedCode, setPastedCode] = useState('');
   const [pastedLang, setPastedLang] = useState('');
   const [codeViewModes, setCodeViewModes] = useState<Record<string, 'preview' | 'raw'>>({});
@@ -278,22 +279,48 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     ? conversation.members?.find(m => m.user_id !== user?.id) ?? null
     : null;
 
-  // Load draft from localStorage on conversation switch
+  // Load the cloud draft first, with the local copy as an immediate fallback.
   useEffect(() => {
+    let cancelled = false;
     const draftKey = `bubble-draft-${conversation.id}`;
-    const saved = localStorage.getItem(draftKey);
-    setText(saved ?? '');
-  }, [conversation.id]);
+    const localDraft = localStorage.getItem(draftKey) ?? '';
+    setText(localDraft);
+    if (!user) return () => { cancelled = true; };
+    supabase
+      .from('conversation_notification_settings')
+      .select('draft_text')
+      .eq('user_id', user.id)
+      .eq('conversation_id', conversation.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.draft_text !== undefined) setText(data.draft_text ?? '');
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, conversation.id]);
 
-  // Save draft to localStorage on text change (debounced via timeout)
   useEffect(() => {
     const draftKey = `bubble-draft-${conversation.id}`;
-    if (text.trim()) {
-      localStorage.setItem(draftKey, text);
-    } else {
-      localStorage.removeItem(draftKey);
-    }
-  }, [text, conversation.id]);
+    if (text) localStorage.setItem(draftKey, text);
+    else localStorage.removeItem(draftKey);
+    if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current);
+    draftSaveTimeoutRef.current = setTimeout(async () => {
+      if (!user) return;
+      const { data: existing } = await supabase
+        .from('conversation_notification_settings')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('conversation_id', conversation.id)
+        .maybeSingle();
+      if (existing) {
+        await supabase.from('conversation_notification_settings').update({ draft_text: text }).eq('id', existing.id);
+      } else {
+        await supabase.from('conversation_notification_settings').insert({ user_id: user.id, conversation_id: conversation.id, draft_text: text });
+      }
+    }, 500);
+    return () => {
+      if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current);
+    };
+  }, [text, user?.id, conversation.id]);
 
   useEffect(() => {
     const textarea = inputRef.current;
@@ -1444,7 +1471,12 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             else if (otherProfile) setShowProfile(otherProfile);
           }}
 >
-          <p className="text-slate-900 dark:text-white font-semibold text-[15px] truncate leading-tight">{convName}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-slate-900 dark:text-white font-semibold text-[15px] truncate leading-tight">{convName}</p>
+            <button onClick={event => { event.stopPropagation(); startLensReply(); }} className="w-7 h-7 rounded-lg flex items-center justify-center text-sky-500 hover:bg-sky-500/10 transition-colors flex-shrink-0" title="Select text to reply">
+              <Reply size={14} />
+            </button>
+          </div>
           {conversation.is_group ? (
             <p className="text-slate-500 text-[12px]">{conversation.members?.length ?? 0} members</p>
           ) : !conversation.is_self_chat && (
@@ -1907,13 +1939,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           </div>
         ))}
 
-        {loadingMessages && messages.length === 0 && (Date.now() - new Date(conversation.created_at).getTime() > 10000) && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
-            <BubbleLoader size={32} />
-            <p className="text-slate-500 text-[13px]">Loading messages...</p>
-          </div>
-        )}
-
         {messages.length === 0 && !loadingMessages && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
             <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
@@ -2150,7 +2175,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               disabled={isBlocked}
               rows={1}
               className="flex-1 bg-transparent text-[14px] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none resize-none scrollbar-thin disabled:opacity-50"
-              style={{ maxHeight: 300, height: 'auto' }}
+              style={{ maxHeight: '60vh', height: 'auto', overflowY: 'hidden' }}
               onInput={e => {
                 const t = e.currentTarget;
                 t.style.height = 'auto';
