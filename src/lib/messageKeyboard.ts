@@ -7,9 +7,9 @@ const CHANGE_EVENT = 'bubble-message-keyboard-change';
 
 function readMessageKeyboard(): MessageKeyboard {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'bubble' ? 'bubble' : 'system';
+    return localStorage.getItem(STORAGE_KEY) === 'system' ? 'system' : 'bubble';
   } catch {
-    return 'system';
+    return 'bubble';
   }
 }
 

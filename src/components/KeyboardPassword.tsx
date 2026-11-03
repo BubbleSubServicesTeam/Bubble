@@ -14,6 +14,7 @@ type Props = {
   onDismiss?: () => void;
   onTab?: (shiftKey: boolean) => void;
   cursorAtEnd?: boolean;
+  showField?: boolean;
 };
 
 type KeyMode = 'letters' | 'numbers' | 'symbols';
@@ -63,7 +64,7 @@ const PRESSED_KEY_CLASS = 'bg-white dark:bg-white text-slate-900 scale-95 shadow
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
-export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false }: Props) {
+export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true }: Props) {
   const [show, setShow] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [shift, setShift] = useState(false);
@@ -441,6 +442,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           50%, 100% { opacity: 0; }
         }
       `}</style>
+      {showField && (<>
       <label className="block text-[13px] font-medium text-slate-400">{label}</label>
       <div
         tabIndex={0}
@@ -497,6 +499,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           )}
         </div>
       </div>
+      </>)}
 
       {/* Accent character popup */}
       {accentPopup && createPortal(

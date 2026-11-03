@@ -2237,6 +2237,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 active={bubbleKeyboardOpen}
                 onDismiss={() => setBubbleKeyboardOpen(false)}
                 cursorAtEnd
+                showField={false}
               />
             )}
           </div>
