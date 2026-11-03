@@ -1012,11 +1012,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (file.size > 50 * 1024 * 1024) { alert('File must be under 50 MB.'); return; }
+    if (file.size > 5 * 1024 * 1024 * 1024) { alert('File must be 5 GB or smaller.'); return; }
     setUploadingFile(true);
     try {
       const path = `uploads/${user.id}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from('media').upload(path, file, { contentType: file.type, upsert: true });
+      const { error } = await supabase.storage.from('media').upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
       const isImage = file.type.startsWith('image/');

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, smartName, Profile } from '../lib/supabase';
+import { regionsByCountry, postalCodePatterns } from '../lib/regions';
 import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
@@ -276,6 +277,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   }
 
   async function handleSaveProfile() {
+    if (postalError) return;
     const normalizedFirstName = capitalizeName(firstName);
     const normalizedLastName = capitalizeName(lastName);
     setFirstName(normalizedFirstName);
@@ -286,6 +288,9 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
     setSaving(false);
     setTimeout(() => setSaved(false), 1500);
   }
+
+  const postalRule = country ? postalCodePatterns[country] : undefined;
+  const postalError = postalRule && postalCode.trim() && !postalRule.pattern.test(postalCode.trim()) ? postalRule.hint : '';
 
   // Track whether profile fields differ from saved values
   const profileChanged = (firstName !== (profile?.first_name ?? '') ||
@@ -1150,13 +1155,19 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                       <div key={fieldLabel} className="space-y-1.5">
                         <label htmlFor={inputId} className="block text-[12px] font-medium text-slate-500 dark:text-slate-400">{fieldLabel}</label>
                         {fieldLabel === 'Country' ? (
-                          <select id={inputId} value={value as string} onChange={e => update(e.target.value)} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20">
+                          <select id={inputId} value={value as string} onChange={e => { update(e.target.value); setStateRegion(''); }} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20">
                             <option value="">Select a country</option>
                             {countries.map(option => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        ) : fieldLabel === 'State / region' && regionsByCountry[country] ? (
+                          <select id={inputId} value={value as string} onChange={e => update(e.target.value)} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20">
+                            <option value="">Select a state or province</option>
+                            {regionsByCountry[country].map(option => <option key={option} value={option}>{option}</option>)}
                           </select>
                         ) : (
                           <input id={inputId} type="text" value={value as string} onChange={e => update(e.target.value)} autoComplete={fieldLabel === 'City' ? 'address-level2' : fieldLabel === 'Postal / ZIP' ? 'postal-code' : 'street-address'} inputMode={fieldLabel === 'Postal / ZIP' ? 'numeric' : 'text'} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
                         )}
+                        {fieldLabel === 'Postal / ZIP' && postalError && <p className="text-[11px] text-red-400">{postalError}</p>}
                       </div>
                     );
                   })}
