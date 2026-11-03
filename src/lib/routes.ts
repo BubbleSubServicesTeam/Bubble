@@ -26,6 +26,7 @@ export const ROUTES = {
   oauthAuthorize: '/oauth/authorize',
   unlock: '/unlock',
   chat: (id: string) => `/chat/${encodeURIComponent(id)}`,
+  join: (token: string) => `/join/${encodeURIComponent(token)}`,
   settings: (tab: SettingsTab = 'profile', sub: SettingsSub | null = null) => {
     if (sub) return `/settings/${tab}/${sub}`;
     return `/settings/${tab}`;
@@ -43,6 +44,7 @@ export const AUTH_ROUTES: string[] = [ROUTES.home, ROUTES.login, ROUTES.signup, 
 export type AppRoute =
   | { kind: 'home' }
   | { kind: 'chat'; id: string }
+  | { kind: 'join'; token: string }
   | { kind: 'settings'; tab: SettingsTab; sub: SettingsSub | null }
   | { kind: 'newChat' }
   | { kind: 'gifs' }
@@ -60,6 +62,8 @@ export function parseAppRoute(path: string): AppRoute {
   switch (head) {
     case 'chat':
       return rest[0] ? { kind: 'chat', id: decodeURIComponent(rest[0]) } : { kind: 'home' };
+    case 'join':
+      return rest[0] ? { kind: 'join', token: decodeURIComponent(rest[0]) } : { kind: 'home' };
     case 'settings': {
       const tab = (SETTINGS_TABS as readonly string[]).includes(rest[0]) ? (rest[0] as SettingsTab) : 'profile';
       const sub = (SETTINGS_SUBS as readonly string[]).includes(rest[1]) ? (rest[1] as SettingsSub) : null;

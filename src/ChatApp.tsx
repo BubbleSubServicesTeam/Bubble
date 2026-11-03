@@ -422,6 +422,25 @@ export default function ChatApp() {
     }
   }, [route, conversations]);
 
+  const joinToken = route.kind === 'join' ? route.token : null;
+  useEffect(() => {
+    if (!user || !joinToken) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('redeem_conversation_invite', { p_token: joinToken });
+      if (cancelled) return;
+      if (error || typeof data !== 'string') {
+        window.alert('This invite link is invalid or has been revoked.');
+        go(ROUTES.home, true);
+        return;
+      }
+      await loadConversations();
+      go(ROUTES.chat(data), true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, joinToken]);
+
   // Update browser tab title with unread count when setting is enabled
   useEffect(() => {
     const totalUnread = conversations.reduce((sum, c) => (

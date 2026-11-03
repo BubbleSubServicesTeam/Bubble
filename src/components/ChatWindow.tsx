@@ -122,9 +122,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [linkError, setLinkError] = useState('');
 
-  function copyChatLink() {
-    navigator.clipboard.writeText(absoluteUrl(ROUTES.chat(conversation.id)));
+  async function copyChatLink() {
+    if (!conversation.is_group) return;
+    setLinkError('');
+    const { data, error } = await supabase.rpc('create_conversation_invite', { p_conversation_id: conversation.id });
+    if (error || typeof data !== 'string') {
+      setLinkError('Could not create an invite link. Try again.');
+      return;
+    }
+    await navigator.clipboard.writeText(absoluteUrl(ROUTES.join(data)));
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   }
@@ -1552,9 +1560,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             <>
               <div className="fixed inset-0 z-[90]" onPointerDown={() => setShowMenu(false)} />
               <div className="absolute right-0 top-11 z-[210] pointer-events-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl py-1.5 w-56 overflow-hidden max-h-[70vh] overflow-y-auto">
-                <MenuItem icon={<Link2 size={14} />} onClick={() => { setShowMenu(false); copyChatLink(); }}>
-                  {linkCopied ? 'Link copied' : 'Copy chat link'}
-                </MenuItem>
+                {conversation.is_group && (
+                  <>
+                    <MenuItem icon={<Link2 size={14} />} onClick={() => { setShowMenu(false); copyChatLink(); }}>
+                      {linkCopied ? 'Invite link copied' : 'Copy invite link'}
+                    </MenuItem>
+                    {linkError && <p className="px-4 pb-2 text-[11px] text-red-400">{linkError}</p>}
+                  </>
+                )}
                 {canEditInfo && (
                   <MenuItem icon={<Edit2 size={14} />} onClick={() => { setShowMenu(false); setShowEditInfo(true); }}>
                     {t('editChatInfo')}
