@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import KeyboardPassword from './KeyboardPassword';
+import { useMessageKeyboard } from '../lib/messageKeyboard';
 import { supabase, Conversation, Profile, Message, smartName, effectiveStatus } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
@@ -281,6 +283,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messageKeyboard = useMessageKeyboard();
+  const [bubbleKeyboardOpen, setBubbleKeyboardOpen] = useState(false);
+
+  function handleComposerChange(value: string) {
+    setText(value);
+    broadcastTyping();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      clearTyping();
+    }, 2500);
+  }
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialPositionKeyRef = useRef<string | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
@@ -2201,14 +2214,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             <textarea
               ref={inputRef}
               value={text}
-              onChange={e => {
-                setText(e.target.value);
-                broadcastTyping();
-                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                typingTimeoutRef.current = setTimeout(() => {
-                  clearTyping();
-                }, 2500);
-              }}
+              onChange={e => handleComposerChange(e.target.value)}
+              onFocus={() => { if (messageKeyboard === 'bubble') setBubbleKeyboardOpen(true); }}
+              inputMode={messageKeyboard === 'bubble' ? 'none' : undefined}
               onKeyDown={(e) => {
                 handleKeyDown(e);
               }}
@@ -2220,6 +2228,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               className="w-full min-h-[22px] bg-transparent text-[14px] leading-6 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none resize-none scrollbar-thin disabled:opacity-50"
               onInput={e => resizeComposer(e.currentTarget)}
             />
+            {messageKeyboard === 'bubble' && (
+              <KeyboardPassword
+                label="Message"
+                value={text}
+                onChange={handleComposerChange}
+                onSubmit={sendMessage}
+                active={bubbleKeyboardOpen}
+                onDismiss={() => setBubbleKeyboardOpen(false)}
+                cursorAtEnd
+              />
+            )}
           </div>
 
           {/* Right buttons */}

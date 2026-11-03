@@ -5,6 +5,7 @@ import ContactVisibilityPicker from './ContactVisibilityPicker';
 import { regionsByCountry, postalCodePatterns } from '../lib/regions';
 import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
+import { useMessageKeyboard, setMessageKeyboard } from '../lib/messageKeyboard';
 import { useAppLang } from '../lib/i18n';
 import { LANGUAGES, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
@@ -51,6 +52,7 @@ const statuses = [
 export default function SettingsModal({ onClose, initialTab, initialSub, onTabChange, onSubChange }: Props) {
   const { user, profile, updateProfile, deleteAccount, setupPin, removePin, changePassword, changeEmail, verifyPinForSensitiveAction, sendPasswordReset } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const messageKeyboard = useMessageKeyboard();
   const { t } = useAppLang();
   const [tab, setTab] = useState<Tab>(initialTab);
   const selectTab = (next: Tab) => { setTab(next); onTabChange(next); };
@@ -1236,6 +1238,26 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
 
           {tab === 'appearance' && (
             <div className="p-6 space-y-5">
+              <div>
+                <p className="text-slate-500 dark:text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">Message keyboard</p>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 mb-3">Choose the keyboard used when typing messages on this device. Sign-in and PIN screens always use the Bubble keyboard.</p>
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.04]">
+                  {([['system', 'Phone keyboard'], ['bubble', 'Bubble keyboard']] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      onClick={() => setMessageKeyboard(value)}
+                      className={`py-2 rounded-lg text-[13px] font-medium transition-all ${
+                        messageKeyboard === value
+                          ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <p className="text-slate-500 dark:text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">Theme</p>
                 <div className="grid grid-cols-3 gap-3">

@@ -13,6 +13,7 @@ type Props = {
   onActivate?: () => void;
   onDismiss?: () => void;
   onTab?: (shiftKey: boolean) => void;
+  cursorAtEnd?: boolean;
 };
 
 type KeyMode = 'letters' | 'numbers' | 'symbols';
@@ -62,7 +63,7 @@ const PRESSED_KEY_CLASS = 'bg-white dark:bg-white text-slate-900 scale-95 shadow
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
-export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab }: Props) {
+export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false }: Props) {
   const [show, setShow] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [shift, setShift] = useState(false);
@@ -88,8 +89,9 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   // When the field becomes active, place the cursor at the beginning
   useEffect(() => {
     if (active) {
-      setCursorPos(0);
-      cursorPosRef.current = 0;
+      const start = cursorAtEnd ? valueRef.current.length : 0;
+      setCursorPos(start);
+      cursorPosRef.current = start;
     }
   }, [active]);
 
@@ -299,6 +301,11 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
       const rect = e.currentTarget.getBoundingClientRect();
       active = { digit, x: rect.left + rect.width / 2, y: rect.top };
       swipeRef.current = active;
+    }
+    if (dy < SWIPE_THRESHOLD) {
+      swipeRef.current = null;
+      setSwipe(null);
+      return;
     }
     const progress = Math.min(Math.max(dy, 0), SWIPE_MAX) / SWIPE_MAX;
     setSwipe({ ...active, progress });
