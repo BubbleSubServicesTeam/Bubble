@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase, smartName, Profile } from '../lib/supabase';
+import { supabase, smartName, Profile, ContactVisibility } from '../lib/supabase';
+import ContactVisibilityPicker from './ContactVisibilityPicker';
 import { regionsByCountry, postalCodePatterns } from '../lib/regions';
 import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
@@ -59,6 +60,8 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   const [lastName, setLastName] = useState(profile?.last_name ?? '');
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number ?? '');
   const [address, setAddress] = useState(profile?.address ?? '');
+  const [phoneVisibility, setPhoneVisibility] = useState<ContactVisibility>(profile?.phone_visibility ?? 'everyone');
+  const [addressVisibility, setAddressVisibility] = useState<ContactVisibility>(profile?.address_visibility ?? 'close_friends');
   const [city, setCity] = useState(profile?.city ?? '');
   const [stateRegion, setStateRegion] = useState(profile?.state ?? '');
   const [postalCode, setPostalCode] = useState(profile?.postal_code ?? '');
@@ -285,7 +288,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
     setFirstName(normalizedFirstName);
     setLastName(normalizedLastName);
     setSaving(true);
-    await updateProfile({ first_name: normalizedFirstName, last_name: normalizedLastName, phone_number: phoneNumber.trim() || null, address: address.trim() || null, city: city.trim() || null, state: stateRegion.trim() || null, postal_code: postalCode.trim() || null, country: country.trim() || null, status_message: statusMsg, status: status as any });
+    await updateProfile({ first_name: normalizedFirstName, last_name: normalizedLastName, phone_number: phoneNumber.trim() || null, phone_visibility: phoneVisibility, address: address.trim() || null, address_visibility: addressVisibility, city: city.trim() || null, state: stateRegion.trim() || null, postal_code: postalCode.trim() || null, country: country.trim() || null, status_message: statusMsg, status: status as any });
     setSaved(true);
     setSaving(false);
     setTimeout(() => setSaved(false), 1500);
@@ -299,6 +302,8 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
     lastName !== (profile?.last_name ?? '') ||
     phoneNumber !== (profile?.phone_number ?? '') ||
     address !== (profile?.address ?? '') ||
+    phoneVisibility !== (profile?.phone_visibility ?? 'everyone') ||
+    addressVisibility !== (profile?.address_visibility ?? 'close_friends') ||
     city !== (profile?.city ?? '') ||
     stateRegion !== (profile?.state ?? '') ||
     postalCode !== (profile?.postal_code ?? '') ||
@@ -1192,6 +1197,10 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                   })}
                 </div>
                 <p className="text-[11px] text-slate-500">Only add details you want available on your Bubble profile.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <ContactVisibilityPicker label="Phone number" value={phoneVisibility} onChange={setPhoneVisibility} />
+                  <ContactVisibilityPicker label="Address" value={addressVisibility} onChange={setAddressVisibility} />
+                </div>
               </div>
 
               <div className="space-y-1.5">

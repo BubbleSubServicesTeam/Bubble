@@ -532,7 +532,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             </button>
             <button
               type="button"
-              onClick={handleSpace}
+              onClick={() => handleSpace()}
               className={`flex-1 ${isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]'} font-medium transition-all ${labelSize} ${
                 activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
               }`}

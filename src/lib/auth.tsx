@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
-import { supabase, Profile } from './supabase';
+import { supabase, Profile, PROFILE_COLUMNS } from './supabase';
 import { verifyFingerprint, verifyFingerprintWithPattern, type TouchPattern } from './fingerprint';
 import { registerDeviceSession, updateSessionActivity } from './deviceSessions';
 import type { User } from '@supabase/supabase-js';
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select(PROFILE_COLUMNS)
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -466,7 +466,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('profiles')
       .update({ pin_hash: hashed, pin_length: length, pin_voluntary: true })
       .eq('user_id', user.id)
-      .select()
+      .select(PROFILE_COLUMNS)
       .maybeSingle();
     if (data) {
       setProfile(data);
@@ -486,7 +486,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('profiles')
       .update({ pin_voluntary: false })
       .eq('user_id', user.id)
-      .select()
+      .select(PROFILE_COLUMNS)
       .maybeSingle();
     if (data) setProfile(data);
   }
@@ -631,7 +631,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       patch.last_name = ln;
       patch.display_name = [fn, ln].filter(Boolean).join(' ') || profile?.display_name;
     }
-    const { data } = await supabase.from('profiles').update(patch).eq('user_id', user.id).select().maybeSingle();
+    const { data } = await supabase.from('profiles').update(patch).eq('user_id', user.id).select(PROFILE_COLUMNS).maybeSingle();
     if (data) {
       const { data: ownContact } = await supabase.rpc('get_own_contact_info');
       const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;

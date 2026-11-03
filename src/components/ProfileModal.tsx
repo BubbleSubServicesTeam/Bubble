@@ -43,39 +43,14 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
 
   useEffect(() => {
     if (!profile.user_id) return;
-    if (isMe) {
-      // Own profile: phone_number is readable directly; restricted columns come from the RPC
-      supabase
-        .from('profiles')
-        .select('phone_number')
-        .eq('user_id', profile.user_id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setContactInfo(prev => ({ ...prev, phone_number: data.phone_number }));
-        });
-      supabase
-        .rpc('get_own_contact_info')
-        .then(({ data }) => {
-          const row = Array.isArray(data) ? data[0] : data;
-          if (row) setContactInfo(prev => ({ ...prev, ...row }));
-        });
-      return;
-    }
     supabase
-      .from('profiles')
-      .select('phone_number')
-      .eq('user_id', profile.user_id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setContactInfo(prev => ({ ...prev, phone_number: data.phone_number }));
-      });
-    supabase
-      .rpc('get_close_friend_location', { p_user_id: profile.user_id })
-      .then(({ data }) => {
+      .rpc('get_profile_contact_info', { p_user_id: profile.user_id })
+      .then(({ data, error }) => {
         const row = Array.isArray(data) ? data[0] : null;
-        if (row) setContactInfo(prev => ({ ...prev, address: row.address, city: row.city, state: row.state, postal_code: row.postal_code, country: row.country }));
+        if (error || !row) return;
+        setContactInfo({ phone_number: row.phone_number, address: row.address, city: row.city, state: row.state, postal_code: row.postal_code, country: row.country });
       });
-  }, [profile.user_id, isMe]);
+  }, [profile.user_id]);
 
   useEffect(() => {
     if (!user || !profile.user_id || isMe) return;

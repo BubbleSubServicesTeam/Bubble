@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, Profile, Conversation, smartName, effectiveStatus } from '../lib/supabase';
+import { supabase, Profile, Conversation, smartName, effectiveStatus, PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -46,7 +46,7 @@ export default function PeopleDrawer({ onClose, onSelectChat }: Props) {
         const peerUserIds = [...new Set(peerMembers.map((m: any) => m.user_id))];
         const { data } = await supabase
           .from('profiles')
-          .select('*')
+          .select(PROFILE_COLUMNS)
           .in('user_id', peerUserIds)
           .order('last_seen', { ascending: false, nullsFirst: false })
           .limit(50);
@@ -83,7 +83,7 @@ export default function PeopleDrawer({ onClose, onSelectChat }: Props) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select(PROFILE_COLUMNS)
           .neq('user_id', user.id)
           .or(`first_name.ilike.${search}%,last_name.ilike.${search}%,display_name.ilike.${search}%`)
           .order('last_seen', { ascending: false, nullsFirst: false })
