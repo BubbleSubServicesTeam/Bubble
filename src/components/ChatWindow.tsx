@@ -322,11 +322,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     };
   }, [text, user?.id, conversation.id]);
 
+  function resizeComposer(textarea: HTMLTextAreaElement) {
+    const maxHeight = Math.max(160, Math.floor(window.innerHeight * 0.6));
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }
+
   useEffect(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
+    resizeComposer(textarea);
   }, [text]);
 
   useEffect(() => {
@@ -2174,13 +2180,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               placeholder={isBlocked ? t('blockedPlaceholder') : t('messagePlaceholder')}
               disabled={isBlocked}
               rows={1}
-              className="flex-1 bg-transparent text-[14px] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none resize-none scrollbar-thin disabled:opacity-50"
+              className="w-full flex-1 min-h-[22px] bg-transparent text-[14px] leading-6 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none resize-none scrollbar-thin disabled:opacity-50"
               style={{ maxHeight: '60vh', height: 'auto', overflowY: 'hidden' }}
-              onInput={e => {
-                const t = e.currentTarget;
-                t.style.height = 'auto';
-                t.style.height = Math.min(t.scrollHeight, 300) + 'px';
-              }}
+              onInput={e => resizeComposer(e.currentTarget)}
             />
           </div>
 
