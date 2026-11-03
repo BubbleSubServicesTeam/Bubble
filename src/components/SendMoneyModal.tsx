@@ -28,13 +28,11 @@ export default function SendMoneyModal({ recipientId, recipientName, senderPayPa
 
   useEffect(() => {
     supabase
-      .from('paypal_connections')
-      .select('paypal_email, paypal_verified')
-      .eq('user_id', recipientId)
-      .maybeSingle()
+      .rpc('get_recipient_paypal', { p_user_id: recipientId })
       .then(({ data }) => {
-        setRecipientPaypal(data?.paypal_email ?? null);
-        setRecipientVerified(data?.paypal_verified ?? false);
+        const row = Array.isArray(data) ? data[0] : null;
+        setRecipientPaypal(row?.paypal_email ?? null);
+        setRecipientVerified(row?.paypal_verified ?? false);
         setLoading(false);
       });
     checkApiStatus();

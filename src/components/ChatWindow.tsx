@@ -361,11 +361,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   useEffect(() => {
     if (!otherProfile?.user_id) { setRecipientPayPalEmail(null); return; }
     supabase
-      .from('paypal_connections')
-      .select('paypal_email')
-      .eq('user_id', otherProfile.user_id)
-      .maybeSingle()
-      .then(({ data }) => setRecipientPayPalEmail(data?.paypal_email ?? null));
+      .rpc('get_recipient_paypal', { p_user_id: otherProfile.user_id })
+      .then(({ data }) => {
+        const row = Array.isArray(data) ? data[0] : null;
+        setRecipientPayPalEmail(row?.paypal_email ?? null);
+      });
   }, [otherProfile?.user_id]);
 
   // Check if this conversation is linked to a fantasy football league
