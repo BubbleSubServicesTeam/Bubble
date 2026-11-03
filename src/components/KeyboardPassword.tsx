@@ -21,6 +21,9 @@ const ROW1 = ['q','w','e','r','t','y','u','i','o','p'];
 const ROW2 = ['a','s','d','f','g','h','j','k','l'];
 const ROW3 = ['z','x','c','v','b','n','m'];
 
+const SWIPE_DIGITS: Record<string, string> = { q: '1', w: '2', e: '3', r: '4', t: '5', y: '6', u: '7', i: '8', o: '9', p: '0', a: '@', s: '#', d: '&', f: '*', g: '-', h: '+', j: '(', k: ')', l: '"' };
+const SWIPE_THRESHOLD = 18;
+const SWIPE_MAX = 140;
 const NUM_ROW = ['1','2','3','4','5','6','7','8','9','0'];
 const NUM_ROW2 = ['-','/',':',';','(',')','$','&','@','"'];
 const NUM_ROW3 = ['.',',','?','!',"'"];
@@ -67,6 +70,9 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   const [capsLock, setCapsLock] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [accentPopup, setAccentPopup] = useState<{ key: string; x: number; y: number } | null>(null);
+  const [swipe, setSwipe] = useState<{ digit: string; x: number; y: number; progress: number } | null>(null);
+  const swipeRef = useRef<{ digit: string; x: number; y: number } | null>(null);
+  const swipeStartRef = useRef<{ key: string; x: number; y: number } | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const pressedKeyRef = useRef<string | null>(null);
@@ -262,6 +268,14 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
   function handleKeyPointerUp(k: string) {
     cancelLongPress();
+    if (swipeRef.current) {
+      insertAtCursor(swipeRef.current.digit);
+      swipeRef.current = null;
+      swipeStartRef.current = null;
+      setSwipe(null);
+      pressedKeyRef.current = null;
+      return;
+    }
     if (accentPopup) {
       pressedKeyRef.current = null;
       return;
@@ -272,9 +286,28 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     pressedKeyRef.current = null;
   }
 
+  function handleKeyPointerMove(e: React.PointerEvent<HTMLButtonElement>, k: string) {
+    const start = swipeStartRef.current;
+    const digit = SWIPE_DIGITS[k];
+    if (!start || start.key !== k || !digit) return;
+    const dy = e.clientY - start.y;
+    let active = swipeRef.current;
+    if (!active) {
+      if (dy < SWIPE_THRESHOLD || dy < Math.abs(e.clientX - start.x)) return;
+      cancelLongPress();
+      pressedKeyRef.current = null;
+      const rect = e.currentTarget.getBoundingClientRect();
+      active = { digit, x: rect.left + rect.width / 2, y: rect.top };
+      swipeRef.current = active;
+    }
+    const progress = Math.min(Math.max(dy, 0), SWIPE_MAX) / SWIPE_MAX;
+    setSwipe({ ...active, progress });
+  }
+
   function handleKeyPointerLeave() {
     cancelLongPress();
     pressedKeyRef.current = null;
+    if (!swipeRef.current) swipeStartRef.current = null;
   }
 
   const displayValue = (isEmail || show) ? value : '•'.repeat(value.length);
@@ -296,11 +329,17 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         key={k}
         ref={ref}
         type="button"
-        onPointerDown={(e) => { e.preventDefault(); handleKeyPointerDown(lowerK, keyBtnRefs.current[lowerK]); }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.currentTarget.setPointerCapture(e.pointerId);
+          swipeStartRef.current = { key: lowerK, x: e.clientX, y: e.clientY };
+          handleKeyPointerDown(lowerK, keyBtnRefs.current[lowerK]);
+        }}
+        onPointerMove={(e) => handleKeyPointerMove(e, lowerK)}
         onPointerUp={() => handleKeyPointerUp(lowerK)}
         onPointerLeave={handleKeyPointerLeave}
         onPointerCancel={handleKeyPointerLeave}
-        className={`${h} ${r} ${fs} font-medium transition-all flex-1 min-w-0 touch-none select-none ${
+        className={`col-span-2 ${h} ${r} ${fs} font-medium transition-all min-w-0 touch-none select-none ${
           isHighlighted
             ? `${PRESSED_KEY_CLASS} text-slate-900`
             : 'bg-white/90 dark:bg-white/[0.08] text-slate-900 dark:text-white hover:bg-white dark:hover:bg-white/[0.14] active:scale-95 shadow-sm'
@@ -312,14 +351,15 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   }
 
   const gap = isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]';
-  const sideSize = isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[40px] rounded-[7px]';
+  const rowGrid = `grid grid-cols-[repeat(20,minmax(0,1fr))] ${gap}`;
+  const sideSize = isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]';
   const iconSize = isLargeKeyboard ? 20 : 16;
   const utilSize = isLargeKeyboard ? 'h-[48px] w-[44px] rounded-[9px]' : 'h-[34px] w-[32px] rounded-[7px]';
   const cursorSize = isLargeKeyboard ? 'h-[48px] w-[36px] rounded-[9px]' : 'h-[34px] w-[28px] rounded-[7px]';
   const labelSize = isLargeKeyboard ? 'text-[15px]' : 'text-[13px]';
   const shiftOn = shift || capsLock;
 
-  function backspaceKey() {
+  function backspaceKey(span: string) {
     return (
       <button
         type="button"
@@ -328,7 +368,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         onPointerLeave={stopBackspaceRepeat}
         onPointerCancel={stopBackspaceRepeat}
         title="Delete"
-        className={`flex-shrink-0 ${sideSize} flex items-center justify-center transition-all ${
+        className={`${span} ${sideSize} flex items-center justify-center transition-all ${
           activeKey === 'backspace' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
         }`}
       >
@@ -352,21 +392,21 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function renderLetterRows() {
     return (
       <>
-        <div className={`flex ${gap}`}>{letterRow1.map(k => keyBtn(k))}</div>
-        <div className={`flex ${gap} px-[5%]`}>{letterRow2.map(k => keyBtn(k))}</div>
-        <div className={`flex ${gap}`}>
+        <div className={rowGrid}>{letterRow1.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}><div aria-hidden className="col-span-1" />{letterRow2.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}>
           <button
             type="button"
             onClick={() => setShift(s => !s)}
             title="Shift"
-            className={`flex-shrink-0 ${sideSize} flex items-center justify-center transition-all ${
+            className={`col-span-3 ${sideSize} flex items-center justify-center transition-all ${
               shiftOn ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
             }`}
           >
             <ArrowUp size={iconSize} />
           </button>
           {letterRow3.map(k => keyBtn(k))}
-          {backspaceKey()}
+          {backspaceKey('col-span-3')}
         </div>
       </>
     );
@@ -375,12 +415,12 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function renderSymbolRows(row1: string[], row2: string[], leftKey: React.ReactNode, rowThree: string[]) {
     return (
       <>
-        <div className={`flex ${gap}`}>{row1.map(k => keyBtn(k))}</div>
-        <div className={`flex ${gap} px-[5%]`}>{row2.map(k => keyBtn(k))}</div>
-        <div className={`flex ${gap}`}>
+        <div className={rowGrid}>{row1.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}>{row2.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}>
           {leftKey}
           {rowThree.map(k => keyBtn(k))}
-          {backspaceKey()}
+          {backspaceKey('col-span-5')}
         </div>
       </>
     );
@@ -474,6 +514,16 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         document.body
       )}
 
+      {swipe && createPortal(
+        <div
+          className="fixed z-[10001] pointer-events-none flex items-center justify-center w-12 h-12 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-2xl font-semibold shadow-xl"
+          style={{ left: swipe.x, top: swipe.y - 64, transform: `translateX(-50%) scale(${1 + swipe.progress * 0.9})`, transformOrigin: 'bottom center' }}
+        >
+          {swipe.digit}
+        </div>,
+        document.body
+      )}
+
       {/* On-screen keyboard — docked to the bottom of the screen like a native keyboard */}
       {active && createPortal(
       <div
@@ -485,19 +535,19 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           {mode === 'letters' && renderLetterRows()}
           {mode === 'numbers' && (
             <>
-              <div className={`flex ${gap}`}>{NUM_ROW.map(k => keyBtn(k))}</div>
-              <div className={`flex ${gap} px-[5%]`}>{NUM_ROW2.map(k => keyBtn(k))}</div>
-              <div className={`flex ${gap}`}>
-                {pageSwitchKey('#+=', 'symbols', sideSize)}
+              <div className={rowGrid}>{NUM_ROW.map(k => keyBtn(k))}</div>
+              <div className={rowGrid}>{NUM_ROW2.map(k => keyBtn(k))}</div>
+              <div className={rowGrid}>
+                {pageSwitchKey('#+=', 'symbols', `col-span-5 ${sideSize}`)}
                 {NUM_ROW3.map(k => keyBtn(k))}
-                {backspaceKey()}
+                {backspaceKey('col-span-5')}
               </div>
             </>
           )}
           {mode === 'symbols' && renderSymbolRows(
             SYM_ROW1,
             SYM_ROW2,
-            pageSwitchKey('123', 'numbers', sideSize),
+            pageSwitchKey('123', 'numbers', `col-span-5 ${sideSize}`),
             NUM_ROW3,
           )}
 
