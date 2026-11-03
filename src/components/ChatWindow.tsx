@@ -144,6 +144,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [touchMsgId, setTouchMsgId] = useState<string | null>(null);
+  const touchStartedAtRef = useRef(0);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
@@ -1658,7 +1659,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                   onMouseEnter={() => setHoveredId(msg.id)}
                   onMouseLeave={() => setHoveredId(null)}
-                  onTouchStart={() => setTouchMsgId(msg.id)}
+                  onTouchStart={() => { touchStartedAtRef.current = Date.now(); }}
+                  onTouchEnd={() => { if (Date.now() - touchStartedAtRef.current < 350) setTouchMsgId(msg.id); }}
                 >
                   {/* Avatar */}
                   <div className="w-8 flex-shrink-0 self-end">
