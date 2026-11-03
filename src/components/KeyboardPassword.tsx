@@ -25,7 +25,6 @@ const ROW3 = ['z','x','c','v','b','n','m'];
 
 const SWIPE_DIGITS: Record<string, string> = { q: '1', w: '2', e: '3', r: '4', t: '5', y: '6', u: '7', i: '8', o: '9', p: '0', a: '@', s: '#', d: '&', f: '*', g: '-', h: '+', j: '(', k: ')', l: '"' };
 const SWIPE_THRESHOLD = 18;
-const SWIPE_MAX = 140;
 const NUM_ROW = ['1','2','3','4','5','6','7','8','9','0'];
 const NUM_ROW2 = ['-','/',':',';','(',')','$','&','@','"'];
 const NUM_ROW3 = ['.',',','?','!',"'"];
@@ -72,7 +71,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   const [capsLock, setCapsLock] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [accentPopup, setAccentPopup] = useState<{ key: string; x: number; y: number } | null>(null);
-  const [swipe, setSwipe] = useState<{ digit: string; x: number; y: number; progress: number } | null>(null);
+  const [swipe, setSwipe] = useState<{ digit: string; x: number; y: number } | null>(null);
   const swipeRef = useRef<{ digit: string; x: number; y: number } | null>(null);
   const swipeStartRef = useRef<{ key: string; x: number; y: number } | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -308,8 +307,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
       setSwipe(null);
       return;
     }
-    const progress = Math.min(Math.max(dy, 0), SWIPE_MAX) / SWIPE_MAX;
-    setSwipe({ ...active, progress });
+    setSwipe(active);
   }
 
   function handleKeyPointerLeave() {
@@ -359,7 +357,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   }
 
   const gap = isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]';
-  const rowGrid = `grid grid-cols-[repeat(20,minmax(0,1fr))] ${gap}`;
+  const rowGrid = `grid grid-cols-[repeat(21,minmax(0,1fr))] ${gap}`;
   const sideSize = isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]';
   const iconSize = isLargeKeyboard ? 20 : 16;
   const utilSize = isLargeKeyboard ? 'h-[48px] w-[44px] rounded-[9px]' : 'h-[34px] w-[32px] rounded-[7px]';
@@ -400,8 +398,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function renderLetterRows() {
     return (
       <>
-        <div className={rowGrid}>{letterRow1.map(k => keyBtn(k))}</div>
-        <div className={rowGrid}><div aria-hidden className="col-span-1" />{letterRow2.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}><div aria-hidden className="col-span-1" />{letterRow1.map(k => keyBtn(k))}</div>
         <div className={rowGrid}>
           <button
             type="button"
@@ -413,8 +410,12 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           >
             <ArrowUp size={iconSize} />
           </button>
+          {letterRow2.map(k => keyBtn(k))}
+        </div>
+        <div className={rowGrid}>
+          {pageSwitchKey('123', 'numbers', `col-span-3 ${sideSize}`)}
           {letterRow3.map(k => keyBtn(k))}
-          {backspaceKey('col-span-3')}
+          {backspaceKey('col-span-4')}
         </div>
       </>
     );
@@ -423,12 +424,12 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function renderSymbolRows(row1: string[], row2: string[], leftKey: React.ReactNode, rowThree: string[]) {
     return (
       <>
-        <div className={rowGrid}>{row1.map(k => keyBtn(k))}</div>
-        <div className={rowGrid}>{row2.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}><div aria-hidden className="col-span-1" />{row1.map(k => keyBtn(k))}</div>
+        <div className={rowGrid}><div aria-hidden className="col-span-1" />{row2.map(k => keyBtn(k))}</div>
         <div className={rowGrid}>
           {leftKey}
           {rowThree.map(k => keyBtn(k))}
-          {backspaceKey('col-span-5')}
+          {backspaceKey('col-span-6')}
         </div>
       </>
     );
@@ -526,8 +527,8 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
       {swipe && createPortal(
         <div
-          className="fixed z-[10001] pointer-events-none flex items-center justify-center w-12 h-12 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-2xl font-semibold shadow-xl"
-          style={{ left: swipe.x, top: swipe.y - 64, transform: `translateX(-50%) scale(${1 + swipe.progress * 0.9})`, transformOrigin: 'bottom center' }}
+          className="fixed z-[10001] pointer-events-none -translate-x-1/2 text-[11px] font-medium leading-none text-slate-400 dark:text-slate-500"
+          style={{ left: swipe.x, top: swipe.y - 14 }}
         >
           {swipe.digit}
         </div>,
@@ -545,12 +546,12 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           {mode === 'letters' && renderLetterRows()}
           {mode === 'numbers' && (
             <>
-              <div className={rowGrid}>{NUM_ROW.map(k => keyBtn(k))}</div>
-              <div className={rowGrid}>{NUM_ROW2.map(k => keyBtn(k))}</div>
+              <div className={rowGrid}><div aria-hidden className="col-span-1" />{NUM_ROW.map(k => keyBtn(k))}</div>
+              <div className={rowGrid}><div aria-hidden className="col-span-1" />{NUM_ROW2.map(k => keyBtn(k))}</div>
               <div className={rowGrid}>
                 {pageSwitchKey('#+=', 'symbols', `col-span-5 ${sideSize}`)}
                 {NUM_ROW3.map(k => keyBtn(k))}
-                {backspaceKey('col-span-5')}
+                {backspaceKey('col-span-6')}
               </div>
             </>
           )}
@@ -563,9 +564,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
           {/* Bottom row */}
           <div className={`flex ${gap}`}>
-            {mode === 'letters'
-              ? pageSwitchKey('123', 'numbers', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)
-              : pageSwitchKey('ABC', 'letters', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)}
+            {mode !== 'letters' && pageSwitchKey('ABC', 'letters', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)}
             <button
               type="button"
               onClick={pasteFromClipboard}
