@@ -326,6 +326,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function keyBtn(k: string) {
     const lowerK = k.toLowerCase();
     const isHighlighted = activeKey === k || activeKey === lowerK;
+    const hint = mode === 'letters' ? SWIPE_DIGITS[lowerK] : undefined;
     const ref = (el: HTMLButtonElement | null) => { keyBtnRefs.current[lowerK] = el; };
     const h = isLargeKeyboard ? 'h-[48px]' : 'h-[34px]';
     const fs = isLargeKeyboard ? 'text-[18px]' : 'text-[15px]';
@@ -345,12 +346,13 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         onPointerUp={() => handleKeyPointerUp(lowerK)}
         onPointerLeave={handleKeyPointerLeave}
         onPointerCancel={handleKeyPointerLeave}
-        className={`col-span-2 ${h} ${r} ${fs} font-medium transition-all min-w-0 touch-none select-none ${
+        className={`relative col-span-2 ${h} ${r} ${fs} font-medium transition-all min-w-0 touch-none select-none ${
           isHighlighted
             ? `${PRESSED_KEY_CLASS} text-slate-900`
             : 'bg-white/90 dark:bg-white/[0.08] text-slate-900 dark:text-white hover:bg-white dark:hover:bg-white/[0.14] active:scale-95 shadow-sm'
         }`}
       >
+        {hint && <span aria-hidden className="pointer-events-none absolute top-[3px] left-1/2 -translate-x-1/2 text-[9px] leading-none font-normal text-slate-400 dark:text-slate-500">{hint}</span>}
         {k}
       </button>
     );
@@ -404,18 +406,19 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             type="button"
             onClick={() => setShift(s => !s)}
             title="Shift"
-            className={`col-span-3 ${sideSize} flex items-center justify-center transition-all ${
+            className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${
               shiftOn ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
             }`}
           >
             <ArrowUp size={iconSize} />
           </button>
           {letterRow2.map(k => keyBtn(k))}
+          <div aria-hidden className="col-span-1" />
         </div>
         <div className={rowGrid}>
-          {pageSwitchKey('123', 'numbers', `col-span-3 ${sideSize}`)}
+          {pageSwitchKey('123', 'numbers', `col-span-2 ${sideSize}`)}
           {letterRow3.map(k => keyBtn(k))}
-          {backspaceKey('col-span-4')}
+          {backspaceKey('col-span-5')}
         </div>
       </>
     );
@@ -428,8 +431,10 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         <div className={rowGrid}><div aria-hidden className="col-span-1" />{row2.map(k => keyBtn(k))}</div>
         <div className={rowGrid}>
           {leftKey}
+          <div aria-hidden className="col-span-2" />
           {rowThree.map(k => keyBtn(k))}
-          {backspaceKey('col-span-6')}
+          <div aria-hidden className="col-span-2" />
+          {backspaceKey('col-span-4')}
         </div>
       </>
     );
@@ -542,28 +547,30 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         className="fixed inset-x-0 bottom-0 z-[10000] select-none"
         style={{ touchAction: 'none', animation: 'kbdSlideUp 0.25s ease-out' }}
       >
-        <div className={`w-full bg-slate-50 dark:bg-[#080c14] px-2 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] ${isLargeKeyboard ? 'space-y-[6px]' : 'space-y-[4px]'}`}>
+        <div className={`mx-auto w-full max-w-[560px] bg-slate-50 dark:bg-[#080c14] px-2 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] ${isLargeKeyboard ? 'space-y-[6px]' : 'space-y-[4px]'}`}>
           {mode === 'letters' && renderLetterRows()}
           {mode === 'numbers' && (
             <>
               <div className={rowGrid}><div aria-hidden className="col-span-1" />{NUM_ROW.map(k => keyBtn(k))}</div>
               <div className={rowGrid}><div aria-hidden className="col-span-1" />{NUM_ROW2.map(k => keyBtn(k))}</div>
               <div className={rowGrid}>
-                {pageSwitchKey('#+=', 'symbols', `col-span-5 ${sideSize}`)}
+                {pageSwitchKey('#+=', 'symbols', `col-span-3 ${sideSize}`)}
+                <div aria-hidden className="col-span-2" />
                 {NUM_ROW3.map(k => keyBtn(k))}
-                {backspaceKey('col-span-6')}
+                <div aria-hidden className="col-span-2" />
+                {backspaceKey('col-span-4')}
               </div>
             </>
           )}
           {mode === 'symbols' && renderSymbolRows(
             SYM_ROW1,
             SYM_ROW2,
-            pageSwitchKey('123', 'numbers', `col-span-5 ${sideSize}`),
+            pageSwitchKey('123', 'numbers', `col-span-3 ${sideSize}`),
             NUM_ROW3,
           )}
 
           {/* Bottom row */}
-          <div className={`flex ${gap}`}>
+          <div className={`flex justify-center ${gap}`}>
             {mode !== 'letters' && pageSwitchKey('ABC', 'letters', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)}
             <button
               type="button"
@@ -592,7 +599,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             <button
               type="button"
               onClick={() => handleSpace()}
-              className={`flex-1 ${isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]'} font-medium transition-all ${labelSize} ${
+              className={`flex-none w-[40%] max-w-[240px] ${isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]'} font-medium transition-all ${labelSize} ${
                 activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
               }`}
             >
