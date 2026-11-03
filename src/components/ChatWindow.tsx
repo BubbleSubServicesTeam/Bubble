@@ -111,6 +111,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const { t } = useAppLang();
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [replyExcerpt, setReplyExcerpt] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -261,7 +262,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   function confirmLensReply() {
     if (lensSelected.length === 0) return;
     const first = messages.find(m => m.id === lensSelected[0].id);
-    if (first) setReplyTo(first);
+    if (first) {
+      setReplyTo(first);
+      setReplyExcerpt(lensSelected.map(hit => hit.text).join('\n').slice(0, 1200));
+    }
     closeLens();
     inputRef.current?.focus();
   }
@@ -564,7 +568,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             }
             return [...prev, data as Message];
           });
-          requestAnimationFrame(() => scrollToBottom('auto'), 0);
+          requestAnimationFrame(() => scrollToBottom('auto'));
           // Mark as read when a new message arrives AND the chat is visible
           if (document.visibilityState === 'visible') markAsRead();
 
@@ -750,6 +754,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       message_type: type,
       content: messageContent,
       reply_to: replyTo?.id ?? null,
+      reply_excerpt: replyExcerpt || null,
       reactions: {},
       ...extra,
     };
@@ -772,6 +777,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     // Clear draft after sending
     localStorage.removeItem(`bubble-draft-${conversation.id}`);
     setReplyTo(null);
+    setReplyExcerpt('');
     requestAnimationFrame(() => scrollToBottom('auto', true));
     const { data, error } = await supabase.from('messages').insert(payload).select('id').single();
     if (error) {
@@ -800,6 +806,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       gif_url: url,
       content: null,
       reply_to: replyTo?.id ?? null,
+      reply_excerpt: replyExcerpt || null,
       reactions: {},
     };
     const optimisticMsg: Message = {
@@ -813,6 +820,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     };
     setMessages(prev => [...prev, optimisticMsg]);
     setReplyTo(null);
+    setReplyExcerpt('');
     requestAnimationFrame(() => scrollToBottom('auto', true));
     const { data, error } = await supabase.from('messages').insert(payload).select('id').single();
     if (error) {
@@ -888,6 +896,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         message_type: 'text',
         content: message,
         reply_to: replyTo?.id ?? null,
+        reply_excerpt: replyExcerpt || null,
         reactions: {},
       };
       setMessages(prev => [...prev, { ...textPayload, id: tempId, created_at: new Date().toISOString(), edited_at: null, deleted_at: null, duration_seconds: null, sender: profile ?? undefined }]);
@@ -1000,7 +1009,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     if (file.size > 50 * 1024 * 1024) { alert('File must be under 50 MB.'); return; }
     setUploadingFile(true);
     try {
-      const ext = file.name.split('.').pop() ?? 'bin';
       const path = `uploads/${user.id}/${Date.now()}-${file.name}`;
       const { error } = await supabase.storage.from('media').upload(path, file, { contentType: file.type, upsert: true });
       if (error) throw error;
@@ -1647,9 +1655,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                     )}
 
                     {replyTarget && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-t-xl mb-[-6px] max-w-full bg-slate-100 dark:bg-slate-800/80">
-                        <div className="w-0.5 h-full bg-sky-500 rounded-full flex-shrink-0" />
-                        <p className="text-[11px] text-slate-400 truncate">{getReplyPreview(replyTarget)}</p>
+                      <div className="flex items-start gap-2 px-3 py-1.5 rounded-t-xl mb-[-6px] max-w-full bg-slate-100 dark:bg-slate-800/80">
+                        <div className="w-0.5 self-stretch bg-sky-500 rounded-full flex-shrink-0" />
+                        <p className="text-[11px] text-slate-400 whitespace-pre-wrap line-clamp-3">{msg.reply_excerpt || getReplyPreview(replyTarget)}</p>
                       </div>
                     )}
 
@@ -1660,13 +1668,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
                       {msg.message_type === 'text' && (
                         editingId === msg.id ? (
-                          <div className="flex items-center gap-2 px-3 py-2">
-                            <input
+                          <div className="flex items-end gap-2 px-3 py-2 min-w-[220px] max-w-[min(70vw,560px)]">
+                            <textarea
                               autoFocus
+                              rows={Math.min(8, Math.max(2, editText.split('\n').length))}
                               value={editText}
                               onChange={e => setEditText(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                              className="bg-transparent text-current text-[14px] focus:outline-none min-w-[120px]"
+                              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEdit(); if (e.key === 'Escape') setEditingId(null); }}
+                              className="flex-1 min-h-[42px] max-h-48 resize-y bg-transparent text-current text-[14px] leading-relaxed focus:outline-none"
                             />
                             <button onClick={saveEdit} className="opacity-70 hover:opacity-100"><Check size={14} /></button>
                             <button onClick={() => setEditingId(null)} className="opacity-70 hover:opacity-100"><X size={14} /></button>
@@ -1927,8 +1936,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       <MsgAction onClick={() => toggleSaveMessage(msg)} title={savedMsgIds.has(msg.id) ? 'Unsave' : 'Save'}>
                         {savedMsgIds.has(msg.id) ? <BookmarkCheck size={13} className="text-sky-400" /> : <Bookmark size={13} />}
                       </MsgAction>
-                      {isMe && msg.message_type === 'text' && (
-                        <MsgAction onClick={() => { setEditingId(msg.id); setEditText(msg.content ?? ''); }} title="Edit">
+                      {isMe && ['text', 'code', 'iframe'].includes(msg.message_type) && (
+                        <MsgAction onClick={() => { setEditingId(msg.id); setEditText(msg.content ?? ''); }} title="Edit message">
                           <Edit2 size={13} />
                         </MsgAction>
                       )}
@@ -2116,10 +2125,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       {/* Input area */}
       <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         {replyMsg && (
-          <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
-            <Reply size={13} className="text-sky-400 flex-shrink-0" />
-            <p className="flex-1 text-[12px] text-slate-400 truncate">{getReplyPreview(replyMsg)}</p>
-            <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+          <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
+            <Reply size={13} className="text-sky-400 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-500">Replying to {replyMsg.sender_id === user?.id ? 'your message' : getSenderName(replyMsg)}</p>
+              <p className="text-[12px] text-slate-400 whitespace-pre-wrap line-clamp-3">{replyExcerpt || replyMsg.reply_excerpt || getReplyPreview(replyMsg)}</p>
+            </div>
+            <button onClick={() => { setReplyTo(null); setReplyExcerpt(''); }} className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
               <X size={13} />
             </button>
           </div>

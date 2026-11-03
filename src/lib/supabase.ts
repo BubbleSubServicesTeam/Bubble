@@ -96,6 +96,7 @@ export type Message = {
   code_language: string | null;
   reactions: Record<string, string[]>;
   reply_to: string | null;
+  reply_excerpt?: string | null;
   edited_at: string | null;
   deleted_at: string | null;
   created_at: string;
