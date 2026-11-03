@@ -440,7 +440,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
     await supabase.rpc('clear_password_failures');
+    await supabase.rpc('clear_pin_failures');
     setPasswordLockedUntil(null);
+    setPinLockedUntil(null);
     setPinLocked(false);
     return true;
   }
