@@ -20,6 +20,7 @@ import {
 import FingerprintScanner from './FingerprintScanner';
 import { getBiometricCapability, enrollFingerprintWithPattern, listFingerprints, deleteFingerprint, FingerprintRecord, type TouchPattern } from '../lib/fingerprint';
 import { listDeviceSessions, deleteDeviceSession, type DeviceSession } from '../lib/deviceSessions';
+import { getCustomDeviceName, setCustomDeviceName } from '../lib/location';
 import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
 import type { SettingsSub, SettingsTab } from '../lib/routes';
@@ -63,6 +64,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   const [postalCode, setPostalCode] = useState(profile?.postal_code ?? '');
   const [country, setCountry] = useState(profile?.country ?? '');
   const [statusMsg, setStatusMsg] = useState(profile?.status_message ?? '');
+  const [deviceName, setDeviceName] = useState(getCustomDeviceName);
   const [status, setStatus] = useState(profile?.status ?? 'auto');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1124,6 +1126,23 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                 {avatarError && <p className="text-red-500 dark:text-red-400 text-[12px]">{avatarError}</p>}
               </div>
 
+              <div>
+                <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400 mb-2">Availability</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {statuses.map(s => (
+                    <button key={s.value} onClick={() => setStatus(s.value)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] transition-all ${
+                        status === s.value
+                          ? 'border-sky-500/40 bg-sky-500/[0.08] text-slate-900 dark:text-white'
+                          : 'border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.03] text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.color}`} />
+                      <span className="truncate">{s.label}</span>
+                      {status === s.value && <Check size={11} className="ml-auto flex-shrink-0 text-sky-500 dark:text-sky-400" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400">First Name</label>
@@ -1176,27 +1195,20 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
               </div>
 
               <div className="space-y-1.5">
+                <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400">This device's name</label>
+                <input type="text" value={deviceName} maxLength={40}
+                  onChange={e => setDeviceName(e.target.value)}
+                  onBlur={() => setCustomDeviceName(deviceName)}
+                  placeholder="e.g. My Chromebook"
+                  className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-[14px] placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all" />
+                <p className="text-[11px] text-slate-500">Shown on your profile for location sharing. Saved on this browser.</p>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400">Status Message</label>
                 <input type="text" value={statusMsg} onChange={e => setStatusMsg(e.target.value)}
                   placeholder="What's on your mind?"
                   className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-[14px] placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all" />
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400 mb-2">Availability</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {statuses.map(s => (
-                    <button key={s.value} onClick={() => setStatus(s.value)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[13px] transition-all ${
-                        status === s.value
-                          ? 'border-sky-500/40 bg-sky-500/[0.08] text-slate-900 dark:text-white'
-                          : 'border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.03] text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.color}`} />
-                      <span className="truncate">{s.label}</span>
-                      {status === s.value && <Check size={11} className="ml-auto flex-shrink-0 text-sky-500 dark:text-sky-400" />}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <button onClick={handleSaveProfile} disabled={saving || !profileChanged}

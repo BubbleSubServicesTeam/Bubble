@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { AUTH_ROUTES, ROUTES, currentPath } from '../lib/routes';
-import { ArrowLeft, Mail, CheckCircle, Sparkles, Camera } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Camera } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 
@@ -342,7 +342,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                 <KeyboardPassword label="Confirm Password" value={suConfirm} onChange={setSuConfirm} active={activeField === 'suConfirm'} onActivate={() => setActiveField('suConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 {suError && <ErrorBox msg={suError} />}
                 <PrimaryButton type="submit" loading={suLoading || uploadingAvatar}>
-                  {uploadingAvatar ? <BubbleLoader size={22} /> : <Sparkles size={16} />}
+                  {uploadingAvatar && <BubbleLoader size={22} />}
                   Create Account
                 </PrimaryButton>
                 <p className="text-[12px] text-slate-500 dark:text-slate-600 text-center pt-1">

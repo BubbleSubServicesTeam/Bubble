@@ -21,7 +21,21 @@ export function getDeviceId(): string {
   return `${info.deviceType}-${info.browser}-${info.os}`;
 }
 
+const DEVICE_NAME_KEY = 'bubble-device-name';
+
+export function getCustomDeviceName(): string {
+  return localStorage.getItem(DEVICE_NAME_KEY)?.trim() ?? '';
+}
+
+export function setCustomDeviceName(name: string): void {
+  const trimmed = name.trim();
+  if (trimmed) localStorage.setItem(DEVICE_NAME_KEY, trimmed);
+  else localStorage.removeItem(DEVICE_NAME_KEY);
+}
+
 export function getDeviceLabel(): string {
+  const custom = getCustomDeviceName();
+  if (custom) return custom;
   const info = parseDeviceInfo();
   return `${info.deviceType} · ${info.browser}`;
 }

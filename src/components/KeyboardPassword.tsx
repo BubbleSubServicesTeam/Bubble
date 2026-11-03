@@ -15,15 +15,17 @@ type Props = {
   onTab?: (shiftKey: boolean) => void;
 };
 
+type KeyMode = 'letters' | 'numbers' | 'symbols';
+
 const ROW1 = ['q','w','e','r','t','y','u','i','o','p'];
 const ROW2 = ['a','s','d','f','g','h','j','k','l'];
 const ROW3 = ['z','x','c','v','b','n','m'];
 
 const NUM_ROW = ['1','2','3','4','5','6','7','8','9','0'];
+const NUM_ROW2 = ['-','/',':',';','(',')','$','&','@','"'];
+const NUM_ROW3 = ['.',',','?','!',"'"];
 const SYM_ROW1 = ['[',']','{','}','#','%','^','*','+','='];
 const SYM_ROW2 = ['_','\\','|','~','<','>','€','£','¥','•'];
-const SYM_ROW3 = ['.',',','?','!',"'",'"',';',':','@','&'];
-const SYM_ROW4 = ['/','§','¶','°','·','©','®','™','✓','π'];
 
 const ACCENTS: Record<string, string[]> = {
   a: ['à','á','â','ä','æ','ã','å','ā'],
@@ -37,7 +39,23 @@ const ACCENTS: Record<string, string[]> = {
   y: ['ÿ'],
   z: ['ž','ź','ż'],
   l: ['ł'],
+  '0': ['°'],
+  '-': ['–','—'],
+  '$': ['€','£','¥','¢'],
+  '"': ['“','”','„','«','»'],
+  "'": ['‘','’','‚'],
+  '.': ['…'],
+  '?': ['¿'],
+  '!': ['¡'],
+  '/': ['\\'],
+  '%': ['‰'],
+  '=': ['≠','≈','±'],
+  '<': ['≤'],
+  '>': ['≥'],
 };
+
+const FUNC_KEY_CLASS = 'bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95';
+const PRESSED_KEY_CLASS = 'bg-white dark:bg-white text-slate-900 scale-95 shadow-md';
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
@@ -45,7 +63,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   const [show, setShow] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [shift, setShift] = useState(false);
-  const [symMode, setSymMode] = useState(false);
+  const [mode, setMode] = useState<KeyMode>('letters');
   const [capsLock, setCapsLock] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [accentPopup, setAccentPopup] = useState<{ key: string; x: number; y: number } | null>(null);
@@ -261,9 +279,10 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
   const displayValue = (isEmail || show) ? value : '•'.repeat(value.length);
 
-  const row1 = (shift || capsLock) ? ROW1.map(k => k.toUpperCase()) : ROW1;
-  const row2 = (shift || capsLock) ? ROW2.map(k => k.toUpperCase()) : ROW2;
-  const row3 = (shift || capsLock) ? ROW3.map(k => k.toUpperCase()) : ROW3;
+  const upper = shift || capsLock;
+  const letterRow1 = upper ? ROW1.map(k => k.toUpperCase()) : ROW1;
+  const letterRow2 = upper ? ROW2.map(k => k.toUpperCase()) : ROW2;
+  const letterRow3 = upper ? ROW3.map(k => k.toUpperCase()) : ROW3;
 
   function keyBtn(k: string) {
     const lowerK = k.toLowerCase();
@@ -283,7 +302,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         onPointerCancel={handleKeyPointerLeave}
         className={`${h} ${r} ${fs} font-medium transition-all flex-1 min-w-0 touch-none select-none ${
           isHighlighted
-            ? 'bg-white dark:bg-white text-slate-900 scale-95 shadow-md'
+            ? `${PRESSED_KEY_CLASS} text-slate-900`
             : 'bg-white/90 dark:bg-white/[0.08] text-slate-900 dark:text-white hover:bg-white dark:hover:bg-white/[0.14] active:scale-95 shadow-sm'
         }`}
       >
@@ -292,7 +311,80 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     );
   }
 
-  const symRows = symMode ? [SYM_ROW1, SYM_ROW2, SYM_ROW3, SYM_ROW4] : null;
+  const gap = isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]';
+  const sideSize = isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[40px] rounded-[7px]';
+  const iconSize = isLargeKeyboard ? 20 : 16;
+  const utilSize = isLargeKeyboard ? 'h-[48px] w-[44px] rounded-[9px]' : 'h-[34px] w-[32px] rounded-[7px]';
+  const cursorSize = isLargeKeyboard ? 'h-[48px] w-[36px] rounded-[9px]' : 'h-[34px] w-[28px] rounded-[7px]';
+  const labelSize = isLargeKeyboard ? 'text-[15px]' : 'text-[13px]';
+  const shiftOn = shift || capsLock;
+
+  function backspaceKey() {
+    return (
+      <button
+        type="button"
+        onPointerDown={(e) => { e.preventDefault(); startBackspaceRepeat(); }}
+        onPointerUp={stopBackspaceRepeat}
+        onPointerLeave={stopBackspaceRepeat}
+        onPointerCancel={stopBackspaceRepeat}
+        title="Delete"
+        className={`flex-shrink-0 ${sideSize} flex items-center justify-center transition-all ${
+          activeKey === 'backspace' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
+        }`}
+      >
+        <Delete size={iconSize} />
+      </button>
+    );
+  }
+
+  function pageSwitchKey(label: string, target: KeyMode, extraClass: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMode(target)}
+        className={`flex-shrink-0 ${extraClass} font-medium transition-all ${labelSize} ${FUNC_KEY_CLASS}`}
+      >
+        {label}
+      </button>
+    );
+  }
+
+  function renderLetterRows() {
+    return (
+      <>
+        <div className={`flex ${gap}`}>{letterRow1.map(k => keyBtn(k))}</div>
+        <div className={`flex ${gap} px-[5%]`}>{letterRow2.map(k => keyBtn(k))}</div>
+        <div className={`flex ${gap}`}>
+          <button
+            type="button"
+            onClick={() => setShift(s => !s)}
+            title="Shift"
+            className={`flex-shrink-0 ${sideSize} flex items-center justify-center transition-all ${
+              shiftOn ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
+            }`}
+          >
+            <ArrowUp size={iconSize} />
+          </button>
+          {letterRow3.map(k => keyBtn(k))}
+          {backspaceKey()}
+        </div>
+      </>
+    );
+  }
+
+  function renderSymbolRows(row1: string[], row2: string[], leftKey: React.ReactNode, rowThree: string[]) {
+    return (
+      <>
+        <div className={`flex ${gap}`}>{row1.map(k => keyBtn(k))}</div>
+        <div className={`flex ${gap} px-[5%]`}>{row2.map(k => keyBtn(k))}</div>
+        <div className={`flex ${gap}`}>
+          {leftKey}
+          {rowThree.map(k => keyBtn(k))}
+          {backspaceKey()}
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="space-y-1.5" ref={containerRef}>
@@ -374,7 +466,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
                 onClick={() => selectAccent(a)}
                 className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-[16px] font-medium text-slate-900 dark:text-white transition-colors"
               >
-                {(shift || capsLock) ? a.toUpperCase() : a}
+                {shiftOn ? a.toUpperCase() : a}
               </button>
             ))}
           </div>
@@ -389,118 +481,82 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         className="fixed inset-x-0 bottom-0 z-[10000] select-none"
         style={{ touchAction: 'none', animation: 'kbdSlideUp 0.25s ease-out' }}
       >
-        <div className={`mx-auto w-full max-w-[860px] bg-slate-50 dark:bg-[#080c14] px-2 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] ${isLargeKeyboard ? 'space-y-[6px]' : 'space-y-[4px]'}`}>
-        {/* Number row */}
-        <div className={`flex ${isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]'}`}>
-          {NUM_ROW.map(k => keyBtn(k))}
-        </div>
+        <div className={`w-full bg-slate-50 dark:bg-[#080c14] px-2 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] ${isLargeKeyboard ? 'space-y-[6px]' : 'space-y-[4px]'}`}>
+          {mode === 'letters' && renderLetterRows()}
+          {mode === 'numbers' && (
+            <>
+              <div className={`flex ${gap}`}>{NUM_ROW.map(k => keyBtn(k))}</div>
+              <div className={`flex ${gap} px-[5%]`}>{NUM_ROW2.map(k => keyBtn(k))}</div>
+              <div className={`flex ${gap}`}>
+                {pageSwitchKey('#+=', 'symbols', sideSize)}
+                {NUM_ROW3.map(k => keyBtn(k))}
+                {backspaceKey()}
+              </div>
+            </>
+          )}
+          {mode === 'symbols' && renderSymbolRows(
+            SYM_ROW1,
+            SYM_ROW2,
+            pageSwitchKey('123', 'numbers', sideSize),
+            NUM_ROW3,
+          )}
 
-        {/* Symbol rows */}
-        {symRows?.map((row, ri) => (
-          <div key={ri} className={`flex ${isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]'}`}>
-            {row.map(k => keyBtn(k))}
+          {/* Bottom row */}
+          <div className={`flex ${gap}`}>
+            {mode === 'letters'
+              ? pageSwitchKey('123', 'numbers', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)
+              : pageSwitchKey('ABC', 'letters', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)}
+            <button
+              type="button"
+              onClick={pasteFromClipboard}
+              className={`flex-shrink-0 ${utilSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              title="Paste from clipboard"
+            >
+              <Clipboard size={isLargeKeyboard ? 18 : 14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveCursorTo(cursorPosRef.current - 1)}
+              className={`flex-shrink-0 ${cursorSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              title="Move cursor left"
+            >
+              <ArrowLeft size={isLargeKeyboard ? 18 : 14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveCursorTo(cursorPosRef.current + 1)}
+              className={`flex-shrink-0 ${cursorSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              title="Move cursor right"
+            >
+              <ArrowRight size={isLargeKeyboard ? 18 : 14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleSpace}
+              className={`flex-1 ${isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]'} font-medium transition-all ${labelSize} ${
+                activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
+              }`}
+            >
+              space
+            </button>
+            <button
+              type="button"
+              onClick={() => onDismiss?.()}
+              title="Hide keyboard"
+              className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[48px] rounded-[9px]' : 'h-[34px] w-[36px] rounded-[7px]'} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+            >
+              <ChevronDown size={isLargeKeyboard ? 22 : 18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onSubmit?.()}
+              className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[60px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'} flex items-center justify-center transition-all ${
+                activeKey === 'enter' ? PRESSED_KEY_CLASS : 'bg-sky-500 text-white hover:bg-sky-400 active:scale-95 shadow-sm'
+              }`}
+            >
+              <Return size={isLargeKeyboard ? 20 : 16} />
+            </button>
           </div>
-        ))}
-
-        {/* QWERTY rows */}
-        {!symMode && (
-          <>
-            <div className={`flex ${isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]'}`}>
-              {row1.map(k => keyBtn(k))}
-            </div>
-            <div className={`flex ${isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]'} justify-center px-[5%]`}>
-              {row2.map(k => keyBtn(k))}
-            </div>
-            <div className={`flex ${isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]'}`}>
-              <button
-                type="button"
-                onClick={() => setShift(s => !s)}
-                className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px] text-[18px]' : 'h-[34px] w-[40px] rounded-[7px] text-[16px]'} font-medium transition-all flex items-center justify-center ${
-                  shift ? 'bg-white dark:bg-white text-slate-900 shadow-md' : 'bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95'
-                }`}
-              >
-                <ArrowUp size={isLargeKeyboard ? 20 : 16} />
-              </button>
-              {row3.map(k => keyBtn(k))}
-              <button
-                type="button"
-                onPointerDown={(e) => { e.preventDefault(); startBackspaceRepeat(); }}
-                onPointerUp={stopBackspaceRepeat}
-                onPointerLeave={stopBackspaceRepeat}
-                onPointerCancel={stopBackspaceRepeat}
-                className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[40px] rounded-[7px]'} flex items-center justify-center transition-all ${
-                  activeKey === 'backspace' ? 'bg-white dark:bg-white text-slate-900 scale-95 shadow-md' : 'bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95'
-                }`}
-              >
-                <Delete size={isLargeKeyboard ? 20 : 16} />
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Bottom row */}
-        <div className={`flex ${isLargeKeyboard ? 'gap-[5px]' : 'gap-[3px]'}`}>
-          <button
-            type="button"
-            onClick={() => setSymMode(s => !s)}
-            className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px] text-[15px]' : 'h-[34px] w-[40px] rounded-[7px] text-[13px]'} font-medium transition-all ${
-              symMode ? 'bg-slate-300/80 dark:bg-white/[0.18] text-slate-900 dark:text-white' : 'bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95'
-            }`}
-          >
-            {symMode ? 'ABC' : '123'}
-          </button>
-          <button
-            type="button"
-            onClick={pasteFromClipboard}
-            className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[44px] rounded-[9px]' : 'h-[34px] w-[32px] rounded-[7px]'} flex items-center justify-center transition-all bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95`}
-            title="Paste from clipboard"
-          >
-            <Clipboard size={isLargeKeyboard ? 18 : 14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => moveCursorTo(cursorPosRef.current - 1)}
-            className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[36px] rounded-[9px]' : 'h-[34px] w-[28px] rounded-[7px]'} flex items-center justify-center transition-all bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95`}
-            title="Move cursor left"
-          >
-            <ArrowLeft size={isLargeKeyboard ? 18 : 14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => moveCursorTo(cursorPosRef.current + 1)}
-            className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[36px] rounded-[9px]' : 'h-[34px] w-[28px] rounded-[7px]'} flex items-center justify-center transition-all bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95`}
-            title="Move cursor right"
-          >
-            <ArrowRight size={isLargeKeyboard ? 18 : 14} />
-          </button>
-          <button
-            type="button"
-            onClick={handleSpace}
-            className={`flex-1 ${isLargeKeyboard ? 'h-[48px] rounded-[9px] text-[15px]' : 'h-[34px] rounded-[7px] text-[13px]'} font-medium transition-all ${
-              activeKey === 'space' ? 'bg-white dark:bg-white text-slate-900 scale-95 shadow-md' : 'bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95'
-            }`}
-          >
-            space
-          </button>
-          <button
-            type="button"
-            onClick={() => onDismiss?.()}
-            title="Hide keyboard"
-            className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[48px] rounded-[9px]' : 'h-[34px] w-[36px] rounded-[7px]'} flex items-center justify-center transition-all bg-slate-300/80 dark:bg-white/[0.12] text-slate-700 dark:text-slate-300 hover:bg-slate-400/80 dark:hover:bg-white/[0.18] active:scale-95`}
-          >
-            <ChevronDown size={isLargeKeyboard ? 22 : 18} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onSubmit?.()}
-            className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[60px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'} flex items-center justify-center transition-all ${
-              activeKey === 'enter' ? 'bg-white dark:bg-white text-slate-900 scale-95 shadow-md' : 'bg-sky-500 text-white hover:bg-sky-400 active:scale-95 shadow-sm'
-            }`}
-          >
-            <Return size={isLargeKeyboard ? 20 : 16} />
-          </button>
-        </div>
-
         </div>
       </div>,
       document.body

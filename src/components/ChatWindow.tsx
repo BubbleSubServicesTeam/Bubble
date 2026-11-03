@@ -922,17 +922,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   function detectLanguage(code: string): string {
     const trimmed = code.trim();
-    if (trimmed.startsWith('<iframe')) return 'iframe';
-    if (trimmed.startsWith('<') && trimmed.includes('>')) return 'html';
+    if (/^<iframe[\s>]/i.test(trimmed)) return 'iframe';
+    if (/^<(!doctype|html|div|section|body|head|script|style|span|p|a|ul|ol|table|form|header|footer|main|nav)\b[^>]*>/i.test(trimmed) && /<\/[a-z]+>|\/>/i.test(trimmed)) return 'html';
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try { JSON.parse(trimmed); return 'json'; } catch {}
     }
-    if (/function\s|const\s|let\s|var\s|=>|console\.log/.test(trimmed)) return 'javascript';
-    if (/def\s|print\s|import\s/.test(trimmed)) return 'python';
-    if (/#include|int\smain|std::/.test(trimmed)) return 'cpp';
-    if (/public\sclass|System\.out|import\sjava/.test(trimmed)) return 'java';
-    if (/SELECT\s|INSERT\s|UPDATE\s|DELETE\s|CREATE\s/i.test(trimmed)) return 'sql';
-    if (/^\s*\.[a-z]/m.test(trimmed) || /display\s*:|margin\s*:|padding\s*:/.test(trimmed)) return 'css';
+    if (/^\s*(import|export)\s.+\sfrom\s['"]|^\s*(const|let|var)\s+\w+\s*=|^\s*function\s+\w+\s*\(|=>\s*[{(]|console\.log\(/m.test(trimmed) && /[;{}()]/.test(trimmed)) return 'javascript';
+    if (/^\s*def\s+\w+\s*\(.*\)\s*:\s*$|^\s*(from\s+\w+\s+import|import\s+\w+\s*$)/m.test(trimmed)) return 'python';
+    if (/^\s*#include\s*[<"]|\bint\s+main\s*\(|\bstd::/m.test(trimmed)) return 'cpp';
+    if (/\bpublic\s+class\s+\w+|System\.out\.print/.test(trimmed)) return 'java';
+    if (/^\s*(SELECT\s.+\sFROM\s|INSERT\s+INTO\s|UPDATE\s+\w+\s+SET\s|DELETE\s+FROM\s|CREATE\s+TABLE\s)/im.test(trimmed)) return 'sql';
+    if (/^[^{}]*\{\s*[\w-]+\s*:\s*[^;{}]+;[\s\S]*\}\s*$/m.test(trimmed) && !/^\s*</.test(trimmed)) return 'css';
     return 'text';
   }
 
@@ -1659,7 +1659,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   onMouseEnter={() => setHoveredId(msg.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   onTouchStart={() => setTouchMsgId(msg.id)}
-                  onTouchEnd={() => setTimeout(() => setTouchMsgId(null), 2000)}
                 >
                   {/* Avatar */}
                   <div className="w-8 flex-shrink-0 self-end">
@@ -1941,8 +1940,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   ); })()}
 
                   {/* Actions */}
-                  {isHovered && (
-                    <div className={`flex items-center gap-0.5 flex-shrink-0 self-end mb-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`flex items-center gap-0.5 flex-shrink-0 self-end mb-1 transition-opacity duration-150 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                       <MsgAction onClick={startLensReply} title="Reply">
                         <Reply size={13} />
                       </MsgAction>
@@ -1972,8 +1970,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                           <Trash2 size={13} />
                         </MsgAction>
                       )}
-                    </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -2218,8 +2215,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               placeholder={isBlocked ? t('blockedPlaceholder') : t('messagePlaceholder')}
               disabled={isBlocked}
               rows={1}
-              className="w-full flex-1 min-h-[22px] bg-transparent text-[14px] leading-6 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none resize-none scrollbar-thin disabled:opacity-50"
-              style={{ maxHeight: '60vh', height: 'auto', overflowY: 'hidden' }}
+              className="w-full min-h-[22px] bg-transparent text-[14px] leading-6 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none resize-none scrollbar-thin disabled:opacity-50"
               onInput={e => resizeComposer(e.currentTarget)}
             />
           </div>
