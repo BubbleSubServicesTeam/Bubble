@@ -12,6 +12,7 @@ type Props = {
   active?: boolean;
   onActivate?: () => void;
   onDismiss?: () => void;
+  onTab?: (shiftKey: boolean) => void;
 };
 
 const ROW1 = ['q','w','e','r','t','y','u','i','o','p'];
@@ -40,7 +41,7 @@ const ACCENTS: Record<string, string[]> = {
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
-export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss }: Props) {
+export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab }: Props) {
   const [show, setShow] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [shift, setShift] = useState(false);
@@ -167,7 +168,8 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function handleKeyDown(e: KeyboardEvent) {
     if (!active) return;
     if (e.metaKey || e.ctrlKey) return;
-    if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(false); }
+    if (e.key === 'Tab') { e.preventDefault(); onTab?.(e.shiftKey); }
+    else if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(false); }
     else if (e.key === 'Enter') { e.preventDefault(); onSubmit?.(); }
     else if (e.key === ' ') { e.preventDefault(); handleSpace(false); }
     else if (e.key === 'Shift') { setShift(s => !s); }
@@ -302,6 +304,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
       `}</style>
       <label className="block text-[13px] font-medium text-slate-400">{label}</label>
       <div
+        tabIndex={0}
         className={`relative bg-slate-100 dark:bg-white/[0.04] border rounded-xl px-4 py-3 transition-all duration-200 cursor-text ${
           active
             ? 'border-sky-500/60 ring-2 ring-sky-500/20'
@@ -327,15 +330,15 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
                 >
                   {char}
                   {active && i === cursorPos - 1 && (
-                    <span className="inline-block w-[1.5px] h-[16px] bg-sky-500 align-middle" style={BLINK_STYLE} />
+                    <span className="inline-block w-[1.5px] h-[20px] bg-sky-500 align-middle" style={BLINK_STYLE} />
                   )}
                 </span>
               ))}
             </>
           ) : (
-            <span className="text-slate-400 dark:placeholder-slate-600">
+            <span className="inline-flex items-center text-slate-400 dark:placeholder-slate-600">
               {active && (
-                <span className="inline-block w-[1.5px] h-[16px] bg-sky-500 align-middle mr-0.5" style={BLINK_STYLE} />
+                <span className="inline-block w-[1.5px] h-[20px] bg-sky-500 align-middle mr-1" style={BLINK_STYLE} />
               )}
               {placeholder ?? (isEmail ? 'you@example.com' : 'Start typing...')}
             </span>

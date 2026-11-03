@@ -256,10 +256,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   function confirmLensReply() {
     if (lensSelected.length === 0) return;
-    const quoted = lensSelected.map(h => `> ${h.text}`).join('\n');
     const first = messages.find(m => m.id === lensSelected[0].id);
     if (first) setReplyTo(first);
-    setText(prev => prev + (prev ? '\n' : '') + quoted + '\n');
     closeLens();
     inputRef.current?.focus();
   }
@@ -292,6 +290,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       localStorage.removeItem(draftKey);
     }
   }, [text, conversation.id]);
+
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
+  }, [text]);
+
   useEffect(() => {
     if (!user) return;
     supabase
@@ -585,7 +591,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         const cachedMsgs = JSON.parse(cached) as Message[];
         setMessages(cachedMsgs);
         setLoadingMessages(false);
-        setTimeout(() => scrollToBottom('auto'), 0);
       }
     } catch { /* ignore */ }
 
@@ -618,7 +623,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       try { localStorage.setItem(cacheKey, JSON.stringify(msgs)); } catch { /* ignore */ }
     }
     setLoadingMessages(false);
-    setTimeout(() => scrollToBottom('auto', true), 50);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollToBottom('auto', true));
+    });
     setTimeout(() => inputRef.current?.focus(), 200);
   }
 
@@ -1877,7 +1884,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           onTouchStart={stopLensTouch}
           onTouchMove={stopLensTouch}
           onTouchEnd={stopLensTouch}
-          className="absolute pointer-events-none border-2 border-sky-500 bg-sky-500/15 rounded-md z-20"
+          className="absolute pointer-events-none border-2 border-sky-400 bg-sky-400/10 rounded-2xl z-20 shadow-[0_0_0_4px_rgba(14,165,233,0.12),0_12px_32px_rgba(2,132,199,0.18)] backdrop-blur-[1px]"
           style={{
             left: lensRect.left,
             top: lensRect.top,
@@ -1896,7 +1903,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               className={`absolute w-7 h-7 flex items-center justify-center pointer-events-auto touch-none ${h.pos}`}
               style={{ cursor: h.cursor }}
             >
-              <span className="w-3.5 h-3.5 rounded-full bg-sky-500 border-2 border-white shadow" />
+              <span className="w-4 h-4 rounded-full bg-white border-[3px] border-sky-500 shadow-[0_2px_10px_rgba(14,165,233,0.45)]" />
             </div>
           ))}
         </div>

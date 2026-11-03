@@ -185,7 +185,7 @@ export default function ChatApp() {
 
     // Periodic cleanup of stale online users (don't reload conversations after)
     const cleanupInterval = setInterval(() => {
-      supabase.rpc('cleanup_stale_online_users').catch(() => {});
+      supabase.rpc('cleanup_stale_online_users').then(() => {}).catch(() => {});
     }, 120000);
 
     return () => {

@@ -95,8 +95,6 @@ function AppInner() {
     </NotificationProvider>
   );
 
-  // Chat app stays mounted in the same tree position whether locked or not,
-  // so unlocking the PIN returns you to your exact spot — nothing remounts.
   const pinOverlay = pinLockActive ? (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
       <PinScreen
@@ -108,6 +106,8 @@ function AppInner() {
       />
     </div>
   ) : null;
+
+  if (pinLockActive) return pinOverlay;
 
   if (path === ROUTES.oauthAuthorize) {
     return (

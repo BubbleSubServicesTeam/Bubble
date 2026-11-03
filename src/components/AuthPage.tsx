@@ -113,6 +113,19 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
   // Track which keyboard field is active (only one keyboard visible at a time)
   const [activeField, setActiveField] = useState<string | null>('siEmail');
 
+  function moveAuthField(shiftKey: boolean) {
+    const fields: Record<string, string[]> = {
+      signin: ['siEmail', 'siPassword'],
+      signup: ['suEmail', 'suPassword', 'suConfirm'],
+      forgot: ['fpEmail'],
+      reset: ['rpPassword', 'rpConfirm'],
+    };
+    const order = fields[screen] ?? [];
+    const index = Math.max(0, order.indexOf(activeField ?? order[0]));
+    const next = (index + (shiftKey ? -1 : 1) + order.length) % order.length;
+    setActiveField(order[next] ?? null);
+  }
+
   function handleAvatarPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -273,8 +286,8 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                 </button>
               </div>
               <form onSubmit={handleSignIn} className="space-y-4">
-                <KeyboardPassword label="Email" value={siEmail} onChange={setSiEmail} placeholder="you@example.com" isEmail active={activeField === 'siEmail'} onActivate={() => setActiveField('siEmail')} onDismiss={() => setActiveField(null)} />
-                <KeyboardPassword label="Password" value={siPassword} onChange={setSiPassword} onSubmit={() => handleSignIn({ preventDefault: () => {} } as any)} active={activeField === 'siPassword'} onActivate={() => setActiveField('siPassword')} onDismiss={() => setActiveField(null)} />
+                <KeyboardPassword label="Email" value={siEmail} onChange={setSiEmail} placeholder="you@example.com" isEmail active={activeField === 'siEmail'} onActivate={() => setActiveField('siEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                <KeyboardPassword label="Password" value={siPassword} onChange={setSiPassword} onSubmit={() => handleSignIn({ preventDefault: () => {} } as any)} active={activeField === 'siPassword'} onActivate={() => setActiveField('siPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 {siError && <ErrorBox msg={siError} />}
                 <PrimaryButton type="submit" loading={siLoading}>Sign In</PrimaryButton>
                 <button type="button" onClick={() => { setScreen('forgot'); setFpEmail(siEmail); setFpError(''); }}
@@ -324,9 +337,9 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                   <InputField label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" />
                   <InputField label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" />
                 </div>
-                <KeyboardPassword label="Email" value={suEmail} onChange={setSuEmail} placeholder="you@example.com" isEmail active={activeField === 'suEmail'} onActivate={() => setActiveField('suEmail')} onDismiss={() => setActiveField(null)} />
-                <KeyboardPassword label="Password" value={suPassword} onChange={setSuPassword} placeholder="At least 6 characters" onSubmit={() => handleSignUp({ preventDefault: () => {} } as any)} active={activeField === 'suPassword'} onActivate={() => setActiveField('suPassword')} onDismiss={() => setActiveField(null)} />
-                <KeyboardPassword label="Confirm Password" value={suConfirm} onChange={setSuConfirm} active={activeField === 'suConfirm'} onActivate={() => setActiveField('suConfirm')} onDismiss={() => setActiveField(null)} />
+                <KeyboardPassword label="Email" value={suEmail} onChange={setSuEmail} placeholder="you@example.com" isEmail active={activeField === 'suEmail'} onActivate={() => setActiveField('suEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                <KeyboardPassword label="Password" value={suPassword} onChange={setSuPassword} placeholder="At least 6 characters" onSubmit={() => handleSignUp({ preventDefault: () => {} } as any)} active={activeField === 'suPassword'} onActivate={() => setActiveField('suPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                <KeyboardPassword label="Confirm Password" value={suConfirm} onChange={setSuConfirm} active={activeField === 'suConfirm'} onActivate={() => setActiveField('suConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 {suError && <ErrorBox msg={suError} />}
                 <PrimaryButton type="submit" loading={suLoading || uploadingAvatar}>
                   {uploadingAvatar ? <BubbleLoader size={22} /> : <Sparkles size={16} />}
@@ -397,7 +410,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
               <h2 className="text-slate-900 dark:text-white font-bold text-[18px] mb-1">Reset password</h2>
               <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your email and we'll send a reset link.</p>
               <form onSubmit={handleForgotPassword} className="space-y-4">
-                <KeyboardPassword label="Email" value={fpEmail} onChange={setFpEmail} placeholder="you@example.com" isEmail onSubmit={() => handleForgotPassword({ preventDefault: () => {} } as any)} active={activeField === 'fpEmail'} onActivate={() => setActiveField('fpEmail')} onDismiss={() => setActiveField(null)} />
+                <KeyboardPassword label="Email" value={fpEmail} onChange={setFpEmail} placeholder="you@example.com" isEmail onSubmit={() => handleForgotPassword({ preventDefault: () => {} } as any)} active={activeField === 'fpEmail'} onActivate={() => setActiveField('fpEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 {fpError && <ErrorBox msg={fpError} />}
                 <PrimaryButton type="submit" loading={fpLoading}>Send Reset Link</PrimaryButton>
               </form>
@@ -434,8 +447,8 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                   <h2 className="text-slate-900 dark:text-white font-bold text-[18px] mb-1">Set a new password</h2>
                   <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your new password below.</p>
                   <form onSubmit={handleResetPassword} className="space-y-4">
-                    <KeyboardPassword label="New Password" value={rpPassword} onChange={setRpPassword} placeholder="At least 6 characters" active={activeField === 'rpPassword'} onActivate={() => setActiveField('rpPassword')} onDismiss={() => setActiveField(null)} />
-                    <KeyboardPassword label="Confirm Password" value={rpConfirm} onChange={setRpConfirm} active={activeField === 'rpConfirm'} onActivate={() => setActiveField('rpConfirm')} onDismiss={() => setActiveField(null)} />
+                    <KeyboardPassword label="New Password" value={rpPassword} onChange={setRpPassword} placeholder="At least 6 characters" active={activeField === 'rpPassword'} onActivate={() => setActiveField('rpPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                    <KeyboardPassword label="Confirm Password" value={rpConfirm} onChange={setRpConfirm} active={activeField === 'rpConfirm'} onActivate={() => setActiveField('rpConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                     {rpError && <ErrorBox msg={rpError} />}
                     <PrimaryButton type="submit" loading={rpLoading}>Update Password</PrimaryButton>
                   </form>
