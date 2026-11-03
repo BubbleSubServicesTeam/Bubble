@@ -29,6 +29,14 @@ type DeleteStep = 'confirm' | 'password' | 'verify_email' | 'enter_code';
 type PinSetupStep = 'menu' | 'choose_length' | 'enter_new' | 'confirm_new' | 'done';
 type PasswordStep = 'pin_gate' | 'form' | 'forgot_pin' | 'forgot_password' | 'email_sent' | 'done';
 
+const countries = [
+  'United States', 'Canada', 'Mexico', 'United Kingdom', 'Ireland', 'France', 'Germany',
+  'Spain', 'Italy', 'Portugal', 'Netherlands', 'Belgium', 'Switzerland', 'Austria',
+  'Poland', 'Ukraine', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Greece', 'Turkey',
+  'India', 'China', 'Japan', 'South Korea', 'Australia', 'New Zealand', 'Brazil',
+  'Argentina', 'South Africa', 'Nigeria', 'Egypt', 'Israel', 'United Arab Emirates',
+] as const;
+
 const statuses = [
   { value: 'auto', label: 'Auto', color: 'bg-sky-400' },
   { value: 'online', label: 'Online', color: 'bg-green-400' },
@@ -1134,12 +1142,24 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                     ['State / region', stateRegion, setStateRegion],
                     ['Postal / ZIP', postalCode, setPostalCode],
                     ['Country', country, setCountry],
-                  ].map(([label, value, setter]) => (
-                    <div key={label as string} className="space-y-1.5">
-                      <label className="block text-[12px] font-medium text-slate-500 dark:text-slate-400">{label as string}</label>
-                      <input type="text" value={value as string} onChange={e => (setter as (value: string) => void)(e.target.value)} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
-                    </div>
-                  ))}
+                  ].map(([label, value, setter]) => {
+                    const fieldLabel = label as string;
+                    const inputId = `profile-${fieldLabel.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+                    const update = setter as (value: string) => void;
+                    return (
+                      <div key={fieldLabel} className="space-y-1.5">
+                        <label htmlFor={inputId} className="block text-[12px] font-medium text-slate-500 dark:text-slate-400">{fieldLabel}</label>
+                        {fieldLabel === 'Country' ? (
+                          <select id={inputId} value={value as string} onChange={e => update(e.target.value)} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20">
+                            <option value="">Select a country</option>
+                            {countries.map(option => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        ) : (
+                          <input id={inputId} type="text" value={value as string} onChange={e => update(e.target.value)} autoComplete={fieldLabel === 'City' ? 'address-level2' : fieldLabel === 'Postal / ZIP' ? 'postal-code' : 'street-address'} inputMode={fieldLabel === 'Postal / ZIP' ? 'numeric' : 'text'} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-[11px] text-slate-500">Only add details you want available on your Bubble profile.</p>
               </div>

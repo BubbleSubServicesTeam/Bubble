@@ -677,7 +677,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           (msg as any).read_by = readers;
         }
       }
-      setMessages(msgs);
+      setMessages(previous => {
+        const unchanged = previous.length === msgs.length && previous.every((message, index) => {
+          const next = msgs[index];
+          return message.id === next.id && message.content === next.content && message.edited_at === next.edited_at && message.deleted_at === next.deleted_at;
+        });
+        return unchanged ? previous : msgs;
+      });
       try { localStorage.setItem(cacheKey, JSON.stringify(msgs)); } catch { /* ignore */ }
     }
     setLoadingMessages(false);
@@ -1093,6 +1099,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   // Translation state: per-message translation results
   const [translations, setTranslations] = useState<Record<string, { translatedText: string; detectedLangName: string | null; targetLangName: string | null }>>({});
   const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
+  const [translationErrors, setTranslationErrors] = useState<Set<string>>(new Set());
   const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set());
   const nativeLang = profile?.native_language ?? null;
 
@@ -1108,6 +1115,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       translateText(msg.content, nativeLang).then(result => {
         setTranslatingIds(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
         if (result && result.translatedText && result.translatedText !== msg.content) {
+          setTranslationErrors(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
           setTranslations(prev => ({
             ...prev,
             [msg.id]: {
@@ -1116,6 +1124,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               targetLangName: result.targetLangName,
             },
           }));
+        } else if (!result) {
+          setTranslationErrors(prev => new Set(prev).add(msg.id));
         }
       });
     });
@@ -1706,6 +1716,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                             )}
                             {translatingIds.has(msg.id) && !translations[msg.id] && (
                               <p className="text-[10px] opacity-50 mt-1">Translating...</p>
+                            )}
+                            {translationErrors.has(msg.id) && !translations[msg.id] && (
+                              <p className="text-[10px] text-amber-500 mt-1">Translation unavailable</p>
                             )}
                           </div>
                         )

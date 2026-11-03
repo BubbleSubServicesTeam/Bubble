@@ -308,15 +308,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (recovered?.user) {
               setUser(recovered.user);
               setLoading(false);
-            } else {
+            } else if (!userRef.current) {
               signedInHandled.current = false;
               setUser(null);
               setProfile(null);
               setPinLocked(false);
               pinStateResolved.current = false;
               setLoading(false);
+            } else {
+              setLoading(false);
             }
           }).catch(() => {
+            if (userRef.current) {
+              setLoading(false);
+              return;
+            }
             signedInHandled.current = false;
             setUser(null);
             setProfile(null);

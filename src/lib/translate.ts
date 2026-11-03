@@ -72,13 +72,14 @@ export async function translateText(text: string, targetLang: string): Promise<T
       body: JSON.stringify({ text, targetLang }),
     });
     if (!resp.ok) return null;
-    const data = await resp.json();
-    if (data.error) return null;
+    const data: unknown = await resp.json();
+    if (!data || typeof data !== 'object' || !('translatedText' in data) || typeof data.translatedText !== 'string' || !data.translatedText.trim()) return null;
+    const response = data as Record<string, unknown>;
     const result: TranslationResult = {
-      translatedText: data.translatedText,
-      detectedLang: data.detectedLang,
-      detectedLangName: data.detectedLangName,
-      targetLangName: data.targetLangName,
+      translatedText: response.translatedText as string,
+      detectedLang: typeof response.detectedLang === 'string' ? response.detectedLang : null,
+      detectedLangName: typeof response.detectedLangName === 'string' ? response.detectedLangName : null,
+      targetLangName: typeof response.targetLangName === 'string' ? response.targetLangName : null,
     };
     cache.set(cacheKey, result);
     return result;
