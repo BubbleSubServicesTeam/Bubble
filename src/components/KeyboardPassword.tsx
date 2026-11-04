@@ -25,6 +25,8 @@ const ROW3 = ['z','x','c','v','b','n','m'];
 
 const SWIPE_DIGITS: Record<string, string> = { q: '1', w: '2', e: '3', r: '4', t: '5', y: '6', u: '7', i: '8', o: '9', p: '0', a: '@', s: '#', d: '&', f: '*', g: '-', h: '+', j: '(', k: ')', l: '"', z: '/', x: '!', c: ',', v: '.', b: ';', n: ':', m: '_' };
 const SWIPE_THRESHOLD = 18;
+const SWIPE_UP_RETURN = 14;
+const SWIPE_UP_CANCEL = 50;
 const NUM_ROW = ['1','2','3','4','5','6','7','8','9','0'];
 const NUM_ROW2 = ['-','/',':',';','(',')','$','&','@','"'];
 const NUM_ROW3 = ['.',',','?','!',"'"];
@@ -75,6 +77,8 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   const [pressedPreview, setPressedPreview] = useState<{ key: string; x: number; y: number } | null>(null);
   const swipeRef = useRef<{ digit: string; x: number; y: number } | null>(null);
   const swipeStartRef = useRef<{ key: string; x: number; y: number } | null>(null);
+  const swipeCancelledRef = useRef(false);
+  const swipeReturnedRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const pressedKeyRef = useRef<string | null>(null);
@@ -276,10 +280,20 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   function handleKeyPointerUp(k: string) {
     cancelLongPress();
     setPressedPreview(null);
+    if (swipeCancelledRef.current) {
+      swipeCancelledRef.current = false;
+      swipeRef.current = null;
+      swipeStartRef.current = null;
+      swipeReturnedRef.current = false;
+      setSwipe(null);
+      pressedKeyRef.current = null;
+      return;
+    }
     if (swipeRef.current) {
       insertAtCursor(swipeRef.current.digit);
       swipeRef.current = null;
       swipeStartRef.current = null;
+      swipeReturnedRef.current = false;
       setSwipe(null);
       pressedKeyRef.current = null;
       return;
@@ -299,16 +313,56 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     const digit = SWIPE_DIGITS[k];
     if (!start || start.key !== k || !digit) return;
     const dy = e.clientY - start.y;
+
+    // Big swipe up cancels — no input on release
+    if (dy < -SWIPE_UP_CANCEL) {
+      swipeCancelledRef.current = true;
+      swipeRef.current = null;
+      setSwipe(null);
+      setPressedPreview({ key: k, x: start.x, y: start.y - 0 });
+      return;
+    }
+
+    // If we previously cancelled but user swipes back down, un-cancel
+    if (swipeCancelledRef.current && dy > -SWIPE_UP_RETURN) {
+      swipeCancelledRef.current = false;
+    }
+
     let active = swipeRef.current;
+
+    // Swipe down past threshold: show alternate character
     if (!active) {
       if (dy < SWIPE_THRESHOLD || dy < Math.abs(e.clientX - start.x)) return;
+      if (swipeCancelledRef.current) return;
       cancelLongPress();
       pressedKeyRef.current = null;
+      swipeReturnedRef.current = false;
       const rect = e.currentTarget.getBoundingClientRect();
       active = { digit, x: rect.left + rect.width / 2, y: rect.top };
       swipeRef.current = active;
       setPressedPreview({ key: digit, x: active.x, y: active.y });
+      setSwipe(active);
+      return;
     }
+
+    // Slight swipe up after seeing alternate: return to the letter
+    if (dy < SWIPE_UP_RETURN && !swipeReturnedRef.current) {
+      swipeReturnedRef.current = true;
+      swipeRef.current = null;
+      setSwipe(null);
+      setPressedPreview({ key: k, x: active.x, y: active.y });
+      return;
+    }
+
+    // Swipe back down after returning to letter: show alternate again
+    if (dy >= SWIPE_THRESHOLD && swipeReturnedRef.current) {
+      swipeReturnedRef.current = false;
+      swipeRef.current = active;
+      setPressedPreview({ key: digit, x: active.x, y: active.y });
+      setSwipe(active);
+      return;
+    }
+
     if (dy < SWIPE_THRESHOLD) {
       swipeRef.current = null;
       setSwipe(null);
@@ -321,6 +375,8 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     cancelLongPress();
     setPressedPreview(null);
     pressedKeyRef.current = null;
+    swipeCancelledRef.current = false;
+    swipeReturnedRef.current = false;
     if (!swipeRef.current) swipeStartRef.current = null;
   }
 
@@ -354,14 +410,14 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         onPointerUp={() => handleKeyPointerUp(lowerK)}
         onPointerLeave={handleKeyPointerLeave}
         onPointerCancel={handleKeyPointerLeave}
-        className={`relative col-span-2 ${h} ${r} ${fs} font-medium transition-all min-w-0 touch-none select-none ${
+        className={`relative col-span-2 ${h} ${r} ${fs} font-medium transition-all min-w-0 touch-none select-none flex flex-col items-center justify-center ${
           isHighlighted
             ? `${PRESSED_KEY_CLASS} text-slate-900`
             : 'bg-white/90 dark:bg-white/[0.08] text-slate-900 dark:text-white hover:bg-white dark:hover:bg-white/[0.14] active:scale-95 shadow-sm'
         }`}
       >
-        {hint && <span aria-hidden className="pointer-events-none absolute top-[3px] left-1/2 -translate-x-1/2 text-[9px] leading-none font-normal text-slate-400 dark:text-slate-500">{hint}</span>}
-        {k}
+        {hint && <span aria-hidden className="pointer-events-none absolute top-[2px] left-1/2 -translate-x-1/2 text-[11px] leading-none font-normal text-slate-400 dark:text-slate-500">{hint}</span>}
+        <span className="mt-[6px]">{k}</span>
       </button>
     );
   }
