@@ -23,7 +23,7 @@ const ROW1 = ['q','w','e','r','t','y','u','i','o','p'];
 const ROW2 = ['a','s','d','f','g','h','j','k','l'];
 const ROW3 = ['z','x','c','v','b','n','m'];
 
-const SWIPE_DIGITS: Record<string, string> = { q: '1', w: '2', e: '3', r: '4', t: '5', y: '6', u: '7', i: '8', o: '9', p: '0', a: '@', s: '#', d: '&', f: '*', g: '-', h: '+', j: '(', k: ')', l: '"' };
+const SWIPE_DIGITS: Record<string, string> = { q: '1', w: '2', e: '3', r: '4', t: '5', y: '6', u: '7', i: '8', o: '9', p: '0', a: '@', s: '#', d: '&', f: '*', g: '-', h: '+', j: '(', k: ')', l: '"', z: '/', x: '!', c: ',', v: '.', b: ';', n: ':', m: '_' };
 const SWIPE_THRESHOLD = 18;
 const NUM_ROW = ['1','2','3','4','5','6','7','8','9','0'];
 const NUM_ROW2 = ['-','/',':',';','(',')','$','&','@','"'];
@@ -409,20 +409,33 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     return (
       <>
         <div className={rowGrid}>{letterRow1.map(k => keyBtn(k))}</div>
-        <div className={rowGrid}><div aria-hidden className="col-span-1" />{letterRow2.map(k => keyBtn(k))}</div>
         <div className={rowGrid}>
           <button
             type="button"
             onClick={() => setShift(s => !s)}
             title="Shift"
-            className={`col-span-3 ${sideSize} flex items-center justify-center transition-all ${
+            className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${
               shiftOn ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
             }`}
           >
             <ArrowUp size={iconSize} />
           </button>
+          {letterRow2.map(k => keyBtn(k))}
+        </div>
+        <div className={rowGrid}>
+          {pageSwitchKey('#+=', 'symbols', `col-span-2 ${sideSize}`)}
           {letterRow3.map(k => keyBtn(k))}
-          {backspaceKey('col-span-3')}
+          <button
+            type="button"
+            onClick={() => handleSpace()}
+            title="Space"
+            className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${
+              activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
+            }`}
+          >
+            <span className={isLargeKeyboard ? 'text-[11px]' : 'text-[9px]'}>space</span>
+          </button>
+          {pageSwitchKey('123', 'numbers', `col-span-2 ${sideSize}`)}
         </div>
       </>
     );
@@ -592,6 +605,19 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             </button>
             <button
               type="button"
+              onPointerDown={(e) => { e.preventDefault(); startBackspaceRepeat(); }}
+              onPointerUp={stopBackspaceRepeat}
+              onPointerLeave={stopBackspaceRepeat}
+              onPointerCancel={stopBackspaceRepeat}
+              title="Delete"
+              className={`flex-shrink-0 ${utilSize} flex items-center justify-center transition-all ${
+                activeKey === 'backspace' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
+              }`}
+            >
+              <Delete size={iconSize} />
+            </button>
+            <button
+              type="button"
               onClick={() => moveCursorTo(cursorPosRef.current - 1)}
               className={`flex-shrink-0 ${cursorSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor left"
@@ -605,15 +631,6 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
               title="Move cursor right"
             >
               <ArrowRight size={isLargeKeyboard ? 18 : 14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSpace()}
-              className={`flex-1 ${isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]'} font-medium transition-all ${labelSize} ${
-                activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
-              }`}
-            >
-              space
             </button>
             <button
               type="button"
