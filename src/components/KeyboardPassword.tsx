@@ -425,17 +425,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
         <div className={rowGrid}>
           {pageSwitchKey('#+=', 'symbols', `col-span-2 ${sideSize}`)}
           {letterRow3.map(k => keyBtn(k))}
-          <button
-            type="button"
-            onClick={() => handleSpace()}
-            title="Space"
-            className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${
-              activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
-            }`}
-          >
-            <span className={isLargeKeyboard ? 'text-[11px]' : 'text-[9px]'}>space</span>
-          </button>
-          {pageSwitchKey('123', 'numbers', `col-span-2 ${sideSize}`)}
+          {backspaceKey('col-span-4')}
         </div>
       </>
     );
@@ -592,62 +582,60 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             NUM_ROW3,
           )}
 
-          {/* Bottom row */}
-          <div className={`flex ${gap}`}>
-            {mode !== 'letters' && pageSwitchKey('ABC', 'letters', `${isLargeKeyboard ? 'h-[48px] w-[56px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'}`)}
+          {/* Bottom row — grid aligned with letter rows */}
+          <div className={rowGrid}>
+            {mode === 'letters'
+              ? pageSwitchKey('123', 'numbers', `col-span-2 ${sideSize}`)
+              : pageSwitchKey('ABC', 'letters', `col-span-2 ${sideSize}`)}
             <button
               type="button"
               onClick={pasteFromClipboard}
-              className={`flex-shrink-0 ${utilSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              className={`col-span-1 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Paste from clipboard"
             >
-              <Clipboard size={isLargeKeyboard ? 18 : 14} />
-            </button>
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startBackspaceRepeat(); }}
-              onPointerUp={stopBackspaceRepeat}
-              onPointerLeave={stopBackspaceRepeat}
-              onPointerCancel={stopBackspaceRepeat}
-              title="Delete"
-              className={`flex-shrink-0 ${utilSize} flex items-center justify-center transition-all ${
-                activeKey === 'backspace' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
-              }`}
-            >
-              <Delete size={iconSize} />
+              <Clipboard size={isLargeKeyboard ? 14 : 11} />
             </button>
             <button
               type="button"
               onClick={() => moveCursorTo(cursorPosRef.current - 1)}
-              className={`flex-shrink-0 ${cursorSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              className={`col-span-1 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor left"
             >
-              <ArrowLeft size={isLargeKeyboard ? 18 : 14} />
+              <ArrowLeft size={isLargeKeyboard ? 14 : 11} />
             </button>
             <button
               type="button"
               onClick={() => moveCursorTo(cursorPosRef.current + 1)}
-              className={`flex-shrink-0 ${cursorSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor right"
             >
-              <ArrowRight size={isLargeKeyboard ? 18 : 14} />
+              <ArrowRight size={isLargeKeyboard ? 16 : 13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSpace()}
+              className={`col-span-10 ${sideSize} flex items-center justify-center font-medium transition-all ${labelSize} ${
+                activeKey === 'space' ? PRESSED_KEY_CLASS : FUNC_KEY_CLASS
+              }`}
+            >
+              space
             </button>
             <button
               type="button"
               onClick={() => onDismiss?.()}
               title="Hide keyboard"
-              className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[48px] rounded-[9px]' : 'h-[34px] w-[36px] rounded-[7px]'} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
             >
-              <ChevronDown size={isLargeKeyboard ? 22 : 18} />
+              <ChevronDown size={iconSize} />
             </button>
             <button
               type="button"
               onClick={() => onSubmit?.()}
-              className={`flex-shrink-0 ${isLargeKeyboard ? 'h-[48px] w-[60px] rounded-[9px]' : 'h-[34px] w-[44px] rounded-[7px]'} flex items-center justify-center transition-all ${
+              className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${
                 activeKey === 'enter' ? PRESSED_KEY_CLASS : 'bg-sky-500 text-white hover:bg-sky-400 active:scale-95 shadow-sm'
               }`}
             >
-              <Return size={isLargeKeyboard ? 20 : 16} />
+              <Return size={iconSize} />
             </button>
           </div>
         </div>
