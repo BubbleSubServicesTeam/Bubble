@@ -307,6 +307,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
       const rect = e.currentTarget.getBoundingClientRect();
       active = { digit, x: rect.left + rect.width / 2, y: rect.top };
       swipeRef.current = active;
+      setPressedPreview({ key: digit, x: active.x, y: active.y });
     }
     if (dy < SWIPE_THRESHOLD) {
       swipeRef.current = null;
