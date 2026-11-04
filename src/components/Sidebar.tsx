@@ -4,15 +4,9 @@ import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
 import Avatar from './Avatar';
-import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Trophy, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Smile, Camera, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import { ContactPriorityMap, conversationPriority, priorityRank } from '../lib/contactPriority';
-
-type FFLeague = {
-  id: string; name: string; conversation_id: string | null;
-  sleeper_league_id: string | null; draft_status: string; season: number;
-  num_teams: number; [key: string]: any;
-};
 
 type Props = {
   conversations: Conversation[];
@@ -27,19 +21,17 @@ type Props = {
   onOpenPeopleDrawer?: () => void;
   showTrash?: boolean;
   onToggleTrash?: () => void;
-  onOpenFantasyLeagues?: () => void;
-  onCreateFantasyLeague?: () => void;
-  showFantasyLeagues?: boolean;
-  onToggleFantasyLeagues?: () => void;
+  onOpenFaceFilters?: () => void;
+  showFaceFilters?: boolean;
+  onToggleFaceFilters?: () => void;
 };
 
-export default function Sidebar({ conversations, contactPriorities, loading, selectedId, onSelect, onNewChat, onGifStudio, onOpenDiscover, onSettings, onOpenPeopleDrawer, showTrash, onToggleTrash, onOpenFantasyLeagues, onCreateFantasyLeague, showFantasyLeagues, onToggleFantasyLeagues }: Props) {
+export default function Sidebar({ conversations, contactPriorities, loading, selectedId, onSelect, onNewChat, onGifStudio, onOpenDiscover, onSettings, onOpenPeopleDrawer, showTrash, onToggleTrash, onOpenFaceFilters, showFaceFilters, onToggleFaceFilters }: Props) {
   const { profile, user, signOut } = useAuth();
   const { theme, resolvedTheme } = useTheme();
   const { t } = useAppLang();
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<Conversation | null>(null);
-  const [leagues, setLeagues] = useState<FFLeague[]>([]);
   const [sortMode, setSortMode] = useState<'recent' | 'active' | 'unread' | 'name'>(() => {
     try { return (localStorage.getItem('bubble-chat-sort') as 'recent' | 'active' | 'unread' | 'name') || 'recent'; } catch { return 'recent'; }
   });
@@ -71,12 +63,9 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   });
   const displayConversations = showTrash ? trashedConversations : activeConversations;
 
-  // Fantasy league conversation IDs — these are shown in their own section, not the main list
-  const ffConvIds = new Set(leagues.map(l => l.conversation_id).filter(Boolean) as string[]);
-
   const filtered = displayConversations.filter(conv => {
-    // In normal view: hide fantasy league convs from the main chat list (they have their own section)
-    if (!showTrash && ffConvIds.has(conv.id)) return false;
+    // In normal view: show all conversations
+    if (!showTrash) {
     if (!query) return true;
     if (conv.is_self_chat) return 'my notes'.includes(query);
     if (conv.is_group) return (conv.name || '').toLowerCase().includes(query);
@@ -145,7 +134,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   const myDisplayName = getDisplayName(profile, false);
   const myFullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.display_name || '';
 
-  // Load fantasy leagues
+  // Load message counts for sort by active
   useEffect(() => {
     if (!user || conversations.length === 0) return;
     const ids = conversations.map(conv => conv.id);
@@ -159,21 +148,6 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   useEffect(() => {
     try { localStorage.setItem('bubble-chat-sort', sortMode); } catch { /* ignore */ }
   }, [sortMode]);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('ff_leagues')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => { if (data) setLeagues(data as FFLeague[]); });
-  }, [user]);
-
-  function handleSelectLeague(league: FFLeague) {
-    if (!league.conversation_id) return;
-    const conv = conversations.find(c => c.id === league.conversation_id);
-    if (conv) onSelect(conv);
-  }
 
   function renderConv(conv: Conversation) {
     const isSelected = conv.id === selectedId;
@@ -242,8 +216,8 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
           <span className="text-slate-900 dark:text-white font-bold text-[19px] tracking-tight">Bubble</span>
         </div>
         <div className="flex items-center gap-0.5">
-          <IconBtn onClick={onOpenFantasyLeagues ?? (() => {})} title="Fantasy Leagues">
-            <Trophy size={15} />
+          <IconBtn onClick={onOpenFaceFilters ?? (() => {})} title="Face Filters">
+            <Smile size={15} />
           </IconBtn>
 
           <IconBtn onClick={onGifStudio} title="GIF Studio"><Sparkles size={15} /></IconBtn>
@@ -288,57 +262,33 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
 
       {/* Conversations list */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {showFantasyLeagues ? (
+        {showFaceFilters ? (
           <div>
             <div className="flex items-center gap-3 px-4 py-3 border-y border-slate-200 dark:border-white/[0.05]">
               <button
-                onClick={onToggleFantasyLeagues}
+                onClick={onToggleFaceFilters}
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white transition-all"
                 title="Back to chats"
               >
                 <ChevronDown size={16} className="rotate-90" />
               </button>
               <div>
-                <p className="text-slate-900 dark:text-white text-[14px] font-semibold">Fantasy Leagues</p>
-                <p className="text-slate-500 text-[11px]">Your leagues and league chats</p>
+                <p className="text-slate-900 dark:text-white text-[14px] font-semibold">Face Filters</p>
+                <p className="text-slate-500 text-[11px]">Snap, edit, and share your face</p>
               </div>
             </div>
-            <div className="p-3 space-y-2">
-              {leagues.filter(league => {
-                const conv = conversations.find(c => c.id === league.conversation_id);
-                const member = conv?.members?.find(m => m.user_id === myUserId);
-                return !member?.trashed_at;
-              }).map(league => {
-                const conv = conversations.find(c => c.id === league.conversation_id);
-                const isSelected = conv?.id === selectedId;
-                return (
-                  <button
-                    key={league.id}
-                    onClick={() => handleSelectLeague(league)}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all ${isSelected ? 'bg-sky-500/10 ring-1 ring-sky-500/30' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Trophy size={17} className="text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold text-slate-900 dark:text-white truncate">{league.name}</p>
-                      <p className="text-[12px] text-slate-500 truncate">{league.draft_status === 'drafting' ? 'Drafting live' : league.draft_status === 'completed' ? 'Season active' : 'Draft pending'}{league.num_teams ? ` · ${league.num_teams} teams` : ''}</p>
-                    </div>
-                    <ChevronRight size={15} className="text-slate-400 flex-shrink-0" />
-                  </button>
-                );
-              })}
-              {leagues.length === 0 && (
-                <div className="py-10 text-center">
-                  <Trophy size={28} className="mx-auto mb-3 text-slate-400 dark:text-slate-600" />
-                  <p className="text-slate-500 text-[13px]">No fantasy leagues yet</p>
-                </div>
-              )}
+            <div className="p-4 flex flex-col items-center gap-4 py-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center shadow-lg">
+                <Smile size={28} className="text-white" />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[13px] text-center max-w-[240px] leading-relaxed">
+                Take photos with fun face filters like unicorn, dog, cat, crown, and more. Save your favorites and send them in chats.
+              </p>
               <button
-                onClick={onCreateFantasyLeague}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-sky-500/10 text-sky-500 hover:bg-sky-500/20 text-[13px] font-medium transition-all"
+                onClick={onOpenFaceFilters}
+                className="flex items-center gap-2 px-6 py-3 bg-sky-500 hover:bg-sky-400 text-white font-semibold text-[14px] rounded-2xl transition-all shadow-lg shadow-sky-500/25"
               >
-                <Plus size={15} /> Create or join a league
+                <Camera size={16} /> Open Face Filters
               </button>
             </div>
           </div>
@@ -379,19 +329,16 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
             </div>
             <div className="space-y-1">
             {ordered.map(conv => {
-              const ffLeague = leagues.find(l => l.conversation_id === conv.id);
               return (
                 <div key={conv.id} className="flex items-center gap-1 group">
                   <button onClick={() => onSelect(conv)} className={`flex-1 flex items-center gap-3 px-4 py-3 transition-all relative ${conv.id === selectedId ? 'bg-slate-100 dark:bg-white/[0.06]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.03]'}`}>
                     {conv.id === selectedId && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-8 bg-sky-500 rounded-full" />}
                     <div className="flex-shrink-0">
-                      {ffLeague ? (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md"><Trophy size={16} className="text-white" /></div>
-                      ) : conv.is_group ? (
+                      {conv.is_group ? (
                         conv.avatar_url ? <img src={conv.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover shadow-md" /> : <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-md"><span className="text-white font-bold text-sm">{(getConvName(conv) || 'G').charAt(0).toUpperCase()}</span></div>
                       ) : <Avatar profile={getConvAvatar(conv)} size="md" showStatus={!conv.is_self_chat} />}
                     </div>
-                    <div className="flex-1 min-w-0 text-left"><p className="text-[14px] font-semibold truncate text-slate-900 dark:text-white">{ffLeague ? ffLeague.name : getConvName(conv)}</p><p className="text-[12px] truncate text-slate-500">{ffLeague ? `Fantasy League · ${getLastMsg(conv)}` : getLastMsg(conv)}</p></div>
+                    <div className="flex-1 min-w-0 text-left"><p className="text-[14px] font-semibold truncate text-slate-900 dark:text-white">{getConvName(conv)}</p><p className="text-[12px] truncate text-slate-500">{getLastMsg(conv)}</p></div>
                   </button>
                   <button onClick={() => restoreConv(conv)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-sky-500 hover:bg-sky-500/10 transition-all flex-shrink-0 opacity-0 group-hover:opacity-100" title={t('restore')}><Plus size={14} className="rotate-45" /></button>
                   <button onClick={() => setDeleteConfirm(conv)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0 opacity-0 group-hover:opacity-100" title={t('deleteForever')}><Trash2 size={14} /></button>

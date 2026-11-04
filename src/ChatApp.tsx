@@ -11,7 +11,7 @@ import GifStudio from './components/GifStudio';
 import NewChatModal from './components/NewChatModal';
 import SettingsModal from './components/SettingsModal';
 import PeopleDrawer from './components/PeopleDrawer';
-import FantasyFootballModal from './components/FantasyFootballModal';
+import FaceFilterModal from './components/FaceFilterModal';
 import { ROUTES, parseAppRoute, currentPath } from './lib/routes';
 import { MessageCircle, StickyNote, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
@@ -58,8 +58,7 @@ export default function ChatApp() {
   const showNewChat = route.kind === 'newChat';
   const showGifStudio = route.kind === 'gifs';
   const showPeopleDrawer = route.kind === 'people';
-  const showFantasyLeagues = route.kind === 'fantasy' || route.kind === 'fantasyNew';
-  const showFantasyManager = route.kind === 'fantasyNew';
+  const showFaceFilters = route.kind === 'faceFilter';
   const showTrash = route.kind === 'trash';
   const isPanelRoute = route.kind !== 'home' && route.kind !== 'chat';
   const [selfChatId, setSelfChatId] = useState<string | null>(null);
@@ -487,10 +486,9 @@ export default function ChatApp() {
           onGifStudio={() => go(ROUTES.gifs)}
           onSettings={() => go(ROUTES.settings())}
           onOpenPeopleDrawer={() => go(ROUTES.people)}
-          onOpenFantasyLeagues={() => go(ROUTES.fantasy)}
-          onCreateFantasyLeague={() => go(ROUTES.fantasyNew)}
-          showFantasyLeagues={showFantasyLeagues}
-          onToggleFantasyLeagues={goHome}
+          onOpenFaceFilters={() => go(ROUTES.faceFilter)}
+          showFaceFilters={showFaceFilters}
+          onToggleFaceFilters={() => (showFaceFilters ? closeOverlay() : go(ROUTES.faceFilter))}
           showTrash={showTrash}
           onToggleTrash={() => (showTrash ? closeOverlay() : go(ROUTES.trash))}
         />
@@ -572,11 +570,8 @@ export default function ChatApp() {
           onSelectChat={handleSelectConv}
         />
       )}
-      {showFantasyManager && (
-        <FantasyFootballModal
-          onClose={closeOverlay}
-          onCreated={handleNewChatCreated}
-        />
+      {showFaceFilters && (
+        <FaceFilterModal onClose={closeOverlay} />
       )}
     </div>
   );

@@ -34,8 +34,7 @@ export const ROUTES = {
   newChat: '/new-chat',
   gifs: '/gifs',
   people: '/people',
-  fantasy: '/fantasy',
-  fantasyNew: '/fantasy/new',
+  faceFilter: '/face-filters',
   trash: '/trash',
 } as const;
 
@@ -49,8 +48,7 @@ export type AppRoute =
   | { kind: 'newChat' }
   | { kind: 'gifs' }
   | { kind: 'people' }
-  | { kind: 'fantasy' }
-  | { kind: 'fantasyNew' }
+  | { kind: 'faceFilter' }
   | { kind: 'trash' };
 
 export function currentPath(): string {
@@ -75,8 +73,8 @@ export function parseAppRoute(path: string): AppRoute {
       return { kind: 'gifs' };
     case 'people':
       return { kind: 'people' };
-    case 'fantasy':
-      return rest[0] === 'new' ? { kind: 'fantasyNew' } : { kind: 'fantasy' };
+    case 'face-filters':
+      return { kind: 'faceFilter' };
     case 'trash':
       return { kind: 'trash' };
     default:

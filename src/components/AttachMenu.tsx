@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Mic, Image, Link, BarChart2, Camera, DollarSign, X, FileText, Paperclip, Sparkles, MapPin } from 'lucide-react';
+import { Mic, Image, Link, BarChart2, Camera, DollarSign, X, FileText, Paperclip, Sparkles, MapPin, Smile } from 'lucide-react';
 
 export type AttachOption =
   | 'file'
@@ -8,6 +8,7 @@ export type AttachOption =
   | 'iframe'
   | 'poll'
   | 'selfie'
+  | 'faceFilter'
   | 'money'
   | 'form'
   | 'gif'
@@ -27,6 +28,7 @@ const OPTIONS: { key: AttachOption; icon: React.ReactNode; label: string; color:
   { key: 'poll',      icon: <BarChart2 size={20} />,  label: 'Poll',          color: 'bg-orange-500' },
   { key: 'form',      icon: <FileText size={20} />,   label: 'Survey Form',   color: 'bg-teal-500' },
   { key: 'selfie',    icon: <Camera size={20} />,     label: 'Take Selfie',   color: 'bg-green-500' },
+  { key: 'faceFilter', icon: <Smile size={20} />,      label: 'Face Filter',   color: 'bg-pink-500' },
   { key: 'money',     icon: <DollarSign size={20} />, label: 'Send Money',    color: 'bg-emerald-500' },
   { key: 'gif',       icon: <Sparkles size={20} />,   label: 'GIF',          color: 'bg-sky-500' },
   { key: 'location',  icon: <MapPin size={20} />,     label: 'Location',     color: 'bg-rose-500' },
