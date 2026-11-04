@@ -177,7 +177,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [showChatViewSettings, setShowChatViewSettings] = useState(false);
-  const [openPosition, setOpenPosition] = useState<'last_read' | 'bottom'>('bottom');
+  const [openPosition, setOpenPosition] = useState<'last_read' | 'bottom'>('last_read');
   const [openPositionLoaded, setOpenPositionLoaded] = useState(false);
   const [wallpaper, setWallpaper] = useState('none');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -430,7 +430,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       .eq('conversation_id', conversation.id)
       .maybeSingle()
       .then(({ data }) => {
-        setOpenPosition(data?.open_position === 'last_read' ? 'last_read' : 'bottom');
+        setOpenPosition(data?.open_position === 'bottom' ? 'bottom' : 'last_read');
         setOpenPositionLoaded(true);
       });
   }, [user?.id, conversation.id]);
@@ -718,6 +718,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     if (!el) return;
     initialPositionKeyRef.current = conversation.id;
     requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
       if (openPosition === 'last_read' && lastReadAt) {
         const firstUnread = messages.find(message => new Date(message.created_at).getTime() > new Date(lastReadAt).getTime());
         const target = firstUnread ? el.querySelector<HTMLElement>(`[data-message-id="${firstUnread.id}"]`) : null;
@@ -727,6 +728,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         }
       }
       el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+      });
     });
   }, [openPositionLoaded, loadingMessages, messages.length, openPosition, lastReadAt, conversation.id]);
 

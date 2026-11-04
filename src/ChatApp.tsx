@@ -293,8 +293,8 @@ export default function ChatApp() {
   }
 
   function handleSelectConv(conv: Conversation) {
-    go(ROUTES.chat(conv.id), isPanelRoute);
     setSelected(conv);
+    go(ROUTES.chat(conv.id), isPanelRoute);
     // NOTE: last_read_at is now updated inside ChatWindow when messages are actually visible,
     // not here on selection — so read receipts only fire when the user truly sees the messages.
     setConversations(prev =>
@@ -340,8 +340,8 @@ export default function ChatApp() {
       if (prev.some(c => c.id === conv.id)) return prev;
       return [conv, ...prev];
     });
-    go(ROUTES.chat(conv.id), isPanelRoute);
     setSelected(conv);
+    go(ROUTES.chat(conv.id), isPanelRoute);
     // Force a reload in the background to get fresh data — reset the guard
     loadInProgress.current = false;
     loadConversations();
@@ -416,7 +416,8 @@ export default function ChatApp() {
 
   useEffect(() => {
     if (route.kind === 'chat') {
-      setSelected(conversations.find(c => c.id === route.id) ?? null);
+      const next = conversations.find(c => c.id === route.id);
+      setSelected(previous => next ?? (previous?.id === route.id ? previous : null));
     } else if (route.kind === 'home' || route.kind === 'fantasy') {
       setSelected(null);
     }
