@@ -340,8 +340,8 @@ export default function ChatApp() {
       if (prev.some(c => c.id === conv.id)) return prev;
       return [conv, ...prev];
     });
-    go(ROUTES.chat(conv.id), isPanelRoute);
     setSelected(conv);
+    go(ROUTES.chat(conv.id), isPanelRoute);
     // Force a reload in the background to get fresh data — reset the guard
     loadInProgress.current = false;
     loadConversations();
