@@ -18,6 +18,7 @@ import FormCreator, { FormData as FormCreatorData } from './FormCreator';
 import IframeModal from './IframeModal';
 import CodePreviewModal from './CodePreviewModal';
 import SelfieModal from './SelfieModal';
+import FaceFilterModal from './FaceFilterModal';
 import SendMoneyModal from './SendMoneyModal';
 import VoiceRecorder from './VoiceRecorder';
 import PollMessage from './PollMessage';
@@ -153,6 +154,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showFormCreator, setShowFormCreator] = useState(false);
   const [showIframeModal, setShowIframeModal] = useState(false);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
+  const [showFaceFilterModal, setShowFaceFilterModal] = useState(false);
   const [showSendMoney, setShowSendMoney] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
@@ -1001,6 +1003,25 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
       await sendMessage('image', { media_url: urlData.publicUrl, file_name: 'selfie.jpg', file_mime: 'image/jpeg' });
+    } catch (err: any) {
+      alert(err.message ?? 'Upload failed');
+    } finally {
+      setUploadingFile(false);
+    }
+  }
+
+  async function handleFaceFilterCapture(dataUrl: string) {
+    if (!user) return;
+    setShowFaceFilterModal(false);
+    setUploadingFile(true);
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const path = `uploads/${user.id}/face-filter-${Date.now()}.jpg`;
+      const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
+      await sendMessage('image', { media_url: urlData.publicUrl, file_name: 'face-filter.jpg', file_mime: 'image/jpeg' });
     } catch (err: any) {
       alert(err.message ?? 'Upload failed');
     } finally {
@@ -2401,6 +2422,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             else if (opt === 'poll') setShowPollCreator(true);
             else if (opt === 'form') setShowFormCreator(true);
             else if (opt === 'selfie') setShowSelfieModal(true);
+            else if (opt === 'faceFilter') setShowFaceFilterModal(true);
             else if (opt === 'money') setShowSendMoney(true);
             else if (opt === 'gif') setShowGifPicker(true);
             else if (opt === 'location') setShowLocationPicker(true);
@@ -2505,6 +2527,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         <SelfieModal
           onCapture={handleSelfieCapture}
           onClose={() => setShowSelfieModal(false)}
+        />
+      )}
+
+      {showFaceFilterModal && (
+        <FaceFilterModal
+          onSend={handleFaceFilterCapture}
+          onClose={() => setShowFaceFilterModal(false)}
         />
       )}
 

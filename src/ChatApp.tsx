@@ -417,7 +417,7 @@ export default function ChatApp() {
     if (route.kind === 'chat') {
       const next = conversations.find(c => c.id === route.id);
       setSelected(previous => next ?? (previous?.id === route.id ? previous : null));
-    } else if (route.kind === 'home' || route.kind === 'fantasy') {
+    } else if (route.kind === 'home' || route.kind === 'faceFilter') {
       setSelected(null);
     }
   }, [route, conversations]);

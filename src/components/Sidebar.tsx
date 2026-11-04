@@ -64,8 +64,6 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   const displayConversations = showTrash ? trashedConversations : activeConversations;
 
   const filtered = displayConversations.filter(conv => {
-    // In normal view: show all conversations
-    if (!showTrash) {
     if (!query) return true;
     if (conv.is_self_chat) return 'my notes'.includes(query);
     if (conv.is_group) return (conv.name || '').toLowerCase().includes(query);
