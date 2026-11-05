@@ -18,7 +18,6 @@ import FormCreator, { FormData as FormCreatorData } from './FormCreator';
 import IframeModal from './IframeModal';
 import CodePreviewModal from './CodePreviewModal';
 import SelfieModal from './SelfieModal';
-import FaceFilterModal from './FaceFilterModal';
 import SendMoneyModal from './SendMoneyModal';
 import VoiceRecorder from './VoiceRecorder';
 import PollMessage from './PollMessage';
@@ -154,7 +153,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showFormCreator, setShowFormCreator] = useState(false);
   const [showIframeModal, setShowIframeModal] = useState(false);
   const [showSelfieModal, setShowSelfieModal] = useState(false);
-  const [showFaceFilterModal, setShowFaceFilterModal] = useState(false);
   const [showSendMoney, setShowSendMoney] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [showCodePreview, setShowCodePreview] = useState(false);
@@ -300,7 +298,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const initialPositionKeyRef = useRef<string | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const docInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const otherProfile = !conversation.is_group && !conversation.is_self_chat
@@ -661,6 +658,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [markAsRead]);
 
+  const [messageLoadError, setMessageLoadError] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(() => {
     try { return !localStorage.getItem(`bubble-msgs-${conversation.id}`); } catch { return true; }
   });
@@ -690,6 +688,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         .eq('conversation_id', conversation.id),
     ]);
 
+    if (msgResult.error) {
+      console.error('Failed to load messages:', msgResult.error);
+      setMessageLoadError(true);
+      setLoadingMessages(false);
+      return;
+    }
+    setMessageLoadError(false);
     if (msgResult.data) {
       const msgs = msgResult.data as Message[];
       if (membersResult.data) {
@@ -1003,25 +1008,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
       await sendMessage('image', { media_url: urlData.publicUrl, file_name: 'selfie.jpg', file_mime: 'image/jpeg' });
-    } catch (err: any) {
-      alert(err.message ?? 'Upload failed');
-    } finally {
-      setUploadingFile(false);
-    }
-  }
-
-  async function handleFaceFilterCapture(dataUrl: string) {
-    if (!user) return;
-    setShowFaceFilterModal(false);
-    setUploadingFile(true);
-    try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const path = `uploads/${user.id}/face-filter-${Date.now()}.jpg`;
-      const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
-      await sendMessage('image', { media_url: urlData.publicUrl, file_name: 'face-filter.jpg', file_mime: 'image/jpeg' });
     } catch (err: any) {
       alert(err.message ?? 'Upload failed');
     } finally {
@@ -2015,7 +2001,15 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           </div>
         ))}
 
-        {messages.length === 0 && !loadingMessages && (
+        {messages.length === 0 && !loadingMessages && messageLoadError && (
+          <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
+            <p className="text-slate-900 dark:text-white font-semibold">Messages couldn't load</p>
+            <p className="text-slate-500 text-sm">Check your connection and try again.</p>
+            <button onClick={() => { setLoadingMessages(true); loadMessages(); }} className="px-4 py-2 rounded-full bg-sky-500 text-white text-sm font-medium hover:bg-sky-600 transition-colors">Try again</button>
+          </div>
+        )}
+
+        {messages.length === 0 && !loadingMessages && !messageLoadError && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
             <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
               {conversation.is_group
@@ -2213,7 +2207,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             )}
           </button>
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
-          <input ref={docInputRef} type="file" className="hidden" onChange={handleFileUpload} />
 
           {/* Text area */}
           <div className="flex-1 relative flex flex-col bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.07] hover:border-white/[0.12] focus-within:border-sky-500/50 rounded-2xl px-3 py-2 transition-all">
@@ -2416,13 +2409,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           onSelect={(opt) => {
             setShowAttachMenu(false);
             if (opt === 'file') fileInputRef.current?.click();
-            else if (opt === 'document') docInputRef.current?.click();
             else if (opt === 'voice') setShowVoiceRecorder(true);
             else if (opt === 'iframe') setShowIframeModal(true);
             else if (opt === 'poll') setShowPollCreator(true);
             else if (opt === 'form') setShowFormCreator(true);
             else if (opt === 'selfie') setShowSelfieModal(true);
-            else if (opt === 'faceFilter') setShowFaceFilterModal(true);
             else if (opt === 'money') setShowSendMoney(true);
             else if (opt === 'gif') setShowGifPicker(true);
             else if (opt === 'location') setShowLocationPicker(true);
@@ -2530,12 +2521,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         />
       )}
 
-      {showFaceFilterModal && (
-        <FaceFilterModal
-          onSend={handleFaceFilterCapture}
-          onClose={() => setShowFaceFilterModal(false)}
-        />
-      )}
 
       {showSendMoney && otherProfile && user && (
         <SendMoneyModal
