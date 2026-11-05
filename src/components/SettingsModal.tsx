@@ -1317,8 +1317,8 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                   >
                     <div className="w-12 h-12 rounded-2xl overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 shadow-md flex items-center justify-center">
                       <div className="flex w-full h-full">
-                        <div className="w-1/2 h-full bg-slate-100 flex items-center justify-center"><Sun size={12} className="text-amber-500" /></div>
-                        <div className="w-1/2 h-full bg-slate-800 flex items-center justify-center"><Moon size={12} className="text-indigo-400" /></div>
+                        <div className="w-1/2 h-full overflow-hidden relative"><img src={getLogoUrl('light')} alt="" className="absolute left-0 top-0 w-12 h-12 max-w-none object-cover" /></div>
+                        <div className="w-1/2 h-full overflow-hidden relative"><img src={getLogoUrl('dark')} alt="" className="absolute -left-6 top-0 w-12 h-12 max-w-none object-cover" /></div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

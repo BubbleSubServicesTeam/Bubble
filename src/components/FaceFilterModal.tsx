@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { X, Camera, RefreshCw, Send, Download, Trash2, Sparkles } from 'lucide-react';
+import { X, Camera, RefreshCw, Send, Download, Trash2, ScanFace } from 'lucide-react';
 
 const MEDIAPIPE_BUNDLE_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 const MEDIAPIPE_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
@@ -489,7 +489,7 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 bg-gradient-to-b from-black/70 to-transparent">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-white" />
+            <ScanFace size={16} className="text-white" />
             <div>
               <span className="text-white font-semibold text-[14px] block">Creator lenses</span>
               <span className="text-white/50 text-[10px]">Made for Bubble by independent creators</span>
