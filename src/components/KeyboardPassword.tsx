@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Delete, Eye, EyeOff, ArrowUp, ArrowLeft, ArrowRight, CornerDownLeft as Return, Clipboard, ChevronDown, Sparkles, Eraser, X } from 'lucide-react';
+import { Delete, Eye, EyeOff, ArrowUp, ArrowLeft, ArrowRight, CornerDownLeft as Return, Clipboard, ChevronDown, CaseSensitive, Eraser, X } from 'lucide-react';
 import TextEffectText from './TextEffectText';
-import { TEXT_EFFECTS, type TextEffect } from '../lib/textEffects';
+import { TEXT_EFFECTS, type TextEffect, type TextRange } from '../lib/textEffects';
 import { getWordSuggestions } from '../lib/wordSuggestions';
 
 type Props = {
@@ -20,7 +20,8 @@ type Props = {
   showField?: boolean;
   composer?: boolean;
   textEffect?: TextEffect | null;
-  onTextEffectChange?: (effect: TextEffect | null) => void;
+  onTextEffectChange?: (effect: TextEffect | null, range: TextRange | null) => void;
+  selection?: TextRange | null;
 };
 
 type KeyMode = 'letters' | 'numbers' | 'symbols';
@@ -71,9 +72,10 @@ const PRESSED_KEY_CLASS = 'bg-white dark:bg-white text-slate-900 scale-95 shadow
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
-export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true, composer = false, textEffect = null, onTextEffectChange }: Props) {
+export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true, composer = false, textEffect = null, onTextEffectChange, selection = null }: Props) {
   const [show, setShow] = useState(false);
   const [effectsOpen, setEffectsOpen] = useState(false);
+  const [previewEffect, setPreviewEffect] = useState<TextEffect | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [shift, setShift] = useState(false);
   const [mode, setMode] = useState<KeyMode>('letters');
@@ -219,7 +221,10 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   }
 
   const partialWord = /[A-Za-z']*$/.exec(value.slice(0, cursorPos))?.[0] ?? '';
-  const suggestions = composer ? getWordSuggestions(partialWord) : [];
+  const precedingText = value.slice(0, cursorPos - partialWord.length);
+  const suggestions = composer ? getWordSuggestions(precedingText, partialWord) : [];
+  const hasSelection = !!selection && selection.end > selection.start;
+  const previewText = hasSelection ? value.slice(selection.start, selection.end) : value;
 
   function applySuggestion(word: string) {
     const pos = cursorPosRef.current;
@@ -473,6 +478,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
   const rowGrid = `grid grid-cols-[repeat(20,minmax(0,1fr))] ${gap}`;
   const sideSize = isLargeKeyboard ? 'h-[48px] rounded-[9px]' : 'h-[34px] rounded-[7px]';
   const iconSize = isLargeKeyboard ? 20 : 16;
+  const arrowSize = isLargeKeyboard ? 15 : 12;
   const utilSize = isLargeKeyboard ? 'h-[48px] w-[44px] rounded-[9px]' : 'h-[34px] w-[32px] rounded-[7px]';
   const cursorSize = isLargeKeyboard ? 'h-[48px] w-[36px] rounded-[9px]' : 'h-[34px] w-[28px] rounded-[7px]';
   const labelSize = isLargeKeyboard ? 'text-[15px]' : 'text-[13px]';
@@ -566,35 +572,22 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
   function renderComposerBar() {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5" onPointerDown={e => e.preventDefault()}>
         {effectsOpen && (
           <div className="h-[34px] flex items-center px-2 overflow-hidden">
-            <TextEffectText key={textEffect ?? 'none'} text={value || 'Your message'} effect={textEffect} autoplay className="text-[15px] text-slate-900 dark:text-white truncate" />
+            <TextEffectText key={previewEffect ?? 'none'} text={previewText || 'Your message'} effect={previewEffect} autoplay className="text-[15px] text-slate-900 dark:text-white truncate" />
           </div>
         )}
         <div className="flex items-center gap-1.5 h-[36px]">
-          <button
-            type="button"
-            onClick={() => setEffectsOpen(o => !o)}
-            title="Text effects"
-            aria-label="Text effects"
-            className={`flex-shrink-0 w-[32px] h-[32px] rounded-full flex items-center justify-center shadow-sm transition-all ${
-              effectsOpen || textEffect
-                ? 'bg-sky-500 text-white'
-                : 'bg-white dark:bg-white/[0.08] text-sky-500 dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/[0.14]'
-            }`}
-          >
-            {effectsOpen ? <X size={15} /> : <Sparkles size={15} />}
-          </button>
           {effectsOpen ? (
             <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[{ id: null, label: 'None' }, ...TEXT_EFFECTS].map(e => {
-                const selected = (textEffect ?? null) === e.id;
+                const selected = previewEffect === e.id;
                 return (
                   <button
                     key={e.label}
                     type="button"
-                    onClick={() => onTextEffectChange?.(e.id)}
+                    onClick={() => { setPreviewEffect(e.id); onTextEffectChange?.(e.id, hasSelection ? selection : null); }}
                     className={`flex-shrink-0 h-[28px] px-3 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${
                       selected
                         ? 'bg-sky-500 text-white shadow-sm'
@@ -620,6 +613,19 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
               ))}
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setEffectsOpen(o => !o)}
+            title="Text effects"
+            aria-label="Text effects"
+            className={`flex-shrink-0 w-[32px] h-[32px] rounded-full flex items-center justify-center shadow-sm transition-all ${
+              effectsOpen || textEffect
+                ? 'bg-sky-500 text-white'
+                : 'bg-white dark:bg-white/[0.08] text-sky-500 dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/[0.14]'
+            }`}
+          >
+            {effectsOpen ? <X size={15} /> : <CaseSensitive size={17} />}
+          </button>
         </div>
       </div>
     );
@@ -782,7 +788,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
               className={`col-span-1 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor left"
             >
-              <ArrowLeft size={isLargeKeyboard ? 15 : 12} />
+              <ArrowLeft size={arrowSize} />
             </button>
             <button
               type="button"
@@ -790,7 +796,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
               className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor right"
             >
-              <ArrowRight size={isLargeKeyboard ? 15 : 12} />
+              <ArrowRight size={arrowSize} />
             </button>
             <button
               type="button"

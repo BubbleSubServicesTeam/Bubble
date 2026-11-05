@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { TextEffect } from './textEffects';
+import type { TextEffect, TextEffectSpan } from './textEffects';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -108,6 +108,7 @@ export type Message = {
   reply_to: string | null;
   reply_excerpt?: string | null;
   text_effect?: TextEffect | null;
+  text_effect_spans?: TextEffectSpan[] | null;
   edited_at: string | null;
   deleted_at: string | null;
   created_at: string;

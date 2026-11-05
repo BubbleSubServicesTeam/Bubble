@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import KeyboardPassword from './KeyboardPassword';
 import { useMessageKeyboard } from '../lib/messageKeyboard';
 import TextEffectText from './TextEffectText';
-import type { TextEffect } from '../lib/textEffects';
+import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEffectSpan, type TextRange } from '../lib/textEffects';
 import { supabase, Conversation, Profile, Message, smartName, effectiveStatus } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
@@ -288,8 +288,17 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const messageKeyboard = useMessageKeyboard();
   const [bubbleKeyboardOpen, setBubbleKeyboardOpen] = useState(false);
   const [textEffect, setTextEffect] = useState<TextEffect | null>(null);
+  const [textEffectSpans, setTextEffectSpans] = useState<TextEffectSpan[]>([]);
+  const [selection, setSelection] = useState<TextRange | null>(null);
+
+  function applyComposerEffect(effect: TextEffect | null, range: TextRange | null) {
+    if (range) setTextEffectSpans(prev => applyTextEffectSpan(prev, range.start, range.end, effect));
+    else setTextEffect(effect);
+  }
 
   function handleComposerChange(value: string) {
+    setTextEffectSpans(prev => remapTextEffectSpans(prev, text, value));
+    setSelection(null);
     setText(value);
     broadcastTyping();
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -797,6 +806,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       reply_excerpt: replyExcerpt || null,
       reactions: {},
       text_effect: type === 'text' ? textEffect : null,
+      text_effect_spans: type === 'text' && textEffectSpans.length > 0 ? textEffectSpans : null,
       ...extra,
     };
     // Optimistic insert — show immediately
@@ -812,6 +822,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setMessages(prev => [...prev, optimisticMsg]);
     setText('');
     setTextEffect(null);
+    setTextEffectSpans([]);
     // Reset textarea height after clearing text
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
@@ -1734,7 +1745,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         ) : (
                           <div className="px-3.5 py-2" data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
                             <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
-                              {msg.text_effect && (showOriginalIds.has(msg.id) || !translations[msg.id]?.translatedText) ? <TextEffectText text={msg.content ?? ''} effect={msg.text_effect} /> : renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
+                              {(msg.text_effect || msg.text_effect_spans?.length) && (showOriginalIds.has(msg.id) || !translations[msg.id]?.translatedText) ? <TextEffectText text={msg.content ?? ''} effect={msg.text_effect ?? null} spans={msg.text_effect_spans} /> : renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
                               {msg.edited_at && <span className="text-[10px] opacity-60 ml-1.5">(edited)</span>}
                             </p>
                             {translations[msg.id] && !showOriginalIds.has(msg.id) && (
@@ -2237,6 +2248,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               value={text}
               onChange={e => handleComposerChange(e.target.value)}
               onFocus={() => { if (messageKeyboard === 'bubble') setBubbleKeyboardOpen(true); }}
+              onSelect={e => {
+                const { selectionStart, selectionEnd } = e.currentTarget;
+                setSelection(selectionStart !== selectionEnd ? { start: selectionStart, end: selectionEnd } : null);
+              }}
               inputMode={messageKeyboard === 'bubble' ? 'none' : undefined}
               onKeyDown={(e) => {
                 handleKeyDown(e);
@@ -2258,7 +2273,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 active={bubbleKeyboardOpen}
                 composer
                 textEffect={textEffect}
-                onTextEffectChange={setTextEffect}
+                selection={selection}
+                onTextEffectChange={applyComposerEffect}
                 onDismiss={() => setBubbleKeyboardOpen(false)}
                 cursorAtEnd
                 showField={false}
