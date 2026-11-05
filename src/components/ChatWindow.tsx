@@ -446,7 +446,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       .eq('user_id', user.id)
       .eq('conversation_id', conversation.id)
       .maybeSingle()
-      .then(({ data }) => { if (data) setWallpaper(data.wallpaper); else setWallpaper('none'); });
+      .then(({ data }) => { if (data) setWallpaper(data.wallpaper); else setWallpaper('doodles'); });
   }, [user, conversation.id]);
 
   async function toggleSaveMessage(msg: Message) {
