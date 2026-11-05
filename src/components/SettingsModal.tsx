@@ -11,7 +11,6 @@ import { LANGUAGES, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
 import PayPalTab from './PayPalTab';
 import AdminPanel from './AdminPanel';
-import { Shield } from 'lucide-react';
 import ApiKeysTab from './ApiKeysTab';
 import ClientIdsTab from './ClientIdsTab';
 import LocationPrivacySettings from './LocationPrivacySettings';
