@@ -78,10 +78,7 @@ export default function LocationShareControl({ viewerId, viewerName }: Props) {
     const next = selected.includes(deviceId)
       ? selected.filter(id => id !== deviceId)
       : [...selected, deviceId];
-    if (next.length === 0) {
-      setError('Choose at least one device, or turn sharing off.');
-      return;
-    }
+    if (next.length === 0) return;
     const stored = next.length === deviceIds.length ? [] : next;
     await run(async () => {
       await setViewerAllowedDevices(user.id, viewerId, stored);
@@ -120,6 +117,9 @@ export default function LocationShareControl({ viewerId, viewerName }: Props) {
       {enabled && (
         <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-white/[0.06]">
           <p className="text-[12px] font-medium text-slate-600 dark:text-slate-300">Devices they can see</p>
+          {devices.length > 1 && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">At least one device stays on while sharing is on.</p>
+          )}
           {devices.length === 0 ? (
             <p className="text-[12px] text-slate-500 dark:text-slate-400">
               Your devices appear here after one of them shares its location.
@@ -127,6 +127,7 @@ export default function LocationShareControl({ viewerId, viewerName }: Props) {
           ) : (
             devices.map(device => {
               const on = selected.includes(device.device_id);
+              const lockedOn = on && selected.length === 1;
               return (
                 <button
                   key={device.device_id}
@@ -134,7 +135,7 @@ export default function LocationShareControl({ viewerId, viewerName }: Props) {
                   role="checkbox"
                   aria-checked={on}
                   onClick={() => toggleDevice(device.device_id)}
-                  disabled={busy}
+                  disabled={busy || lockedOn}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                 >
                   <span className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${

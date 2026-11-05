@@ -41,28 +41,33 @@ async function translateWithDeepL(text: string, targetLang: string, apiKey: stri
 }
 
 async function translateWithFreeEndpoints(text: string, targetLang: string) {
-  const backends = [
-    `https://lingva.ml/api/v1/auto/${targetLang}/${encodeURIComponent(text)}`,
-    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`,
-  ];
-  for (const url of backends) {
-    try {
-      const resp = await fetch(url, { headers: { "Accept": "application/json" } });
-      if (!resp.ok) continue;
+  try {
+    const body = new URLSearchParams({ client: "gtx", sl: "auto", tl: targetLang, dt: "t", q: text });
+    const resp = await fetch("https://translate.googleapis.com/translate_a/single", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+      body,
+    });
+    if (resp.ok) {
       const data = await resp.json();
-      if (url.includes("lingva.ml")) {
-        const translatedText: string = data.translation ?? "";
-        if (translatedText) {
-          const detected: string | undefined = data.info?.detectedSourceLang ?? data.info?.sourceLang;
-          return { translatedText, detectedLang: detected ?? null };
-        }
-      } else {
-        const translatedText: string = (data[0] as any[]).map((s: any) => s[0]).join("");
-        if (translatedText) return { translatedText, detectedLang: typeof data[2] === "string" ? data[2] : null };
-      }
-    } catch {
-      continue;
+      const translatedText: string = (data[0] as any[]).map((s: any) => s[0]).join("");
+      if (translatedText) return { translatedText, detectedLang: typeof data[2] === "string" ? data[2] : null };
     }
+  } catch {
+    // fall through to the secondary service
+  }
+  try {
+    const resp = await fetch(`https://lingva.ml/api/v1/auto/${targetLang}/${encodeURIComponent(text)}`, { headers: { "Accept": "application/json" } });
+    if (resp.ok) {
+      const data = await resp.json();
+      const translatedText: string = data.translation ?? "";
+      if (translatedText) {
+        const detected: string | undefined = data.info?.detectedSourceLang ?? data.info?.sourceLang;
+        return { translatedText, detectedLang: detected ?? null };
+      }
+    }
+  } catch {
+    return null;
   }
   return null;
 }

@@ -13,6 +13,7 @@ import PayPalTab from './PayPalTab';
 import ApiKeysTab from './ApiKeysTab';
 import ClientIdsTab from './ClientIdsTab';
 import LocationPrivacySettings from './LocationPrivacySettings';
+import TrustedPeopleSettings from './TrustedPeopleSettings';
 import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
   X, Check, Camera, AlertTriangle,
@@ -285,6 +286,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
 
   async function handleSaveProfile() {
     if (postalError) return;
+    setCustomDeviceName(deviceName);
     const normalizedFirstName = capitalizeName(firstName);
     const normalizedLastName = capitalizeName(lastName);
     setFirstName(normalizedFirstName);
@@ -300,7 +302,8 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   const postalError = postalRule && postalCode.trim() && !postalRule.pattern.test(postalCode.trim()) ? postalRule.hint : '';
 
   // Track whether profile fields differ from saved values
-  const profileChanged = (firstName !== (profile?.first_name ?? '') ||
+  const profileChanged = (deviceName.trim() !== getCustomDeviceName() ||
+    firstName !== (profile?.first_name ?? '') ||
     lastName !== (profile?.last_name ?? '') ||
     phoneNumber !== (profile?.phone_number ?? '') ||
     address !== (profile?.address ?? '') ||
@@ -960,7 +963,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                 <Shield size={24} className="text-red-400" />
               </div>
               <h2 className="text-slate-900 dark:text-white font-bold text-[18px] mb-1">Confirm your password</h2>
-              <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your password — then we'll email you a verification code.</p>
+              <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your password to continue.</p>
               <form onSubmit={handlePasswordConfirm} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400">Password</label>
@@ -1209,7 +1212,6 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                 <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400">This device's name</label>
                 <input type="text" value={deviceName} maxLength={40}
                   onChange={e => setDeviceName(e.target.value)}
-                  onBlur={() => setCustomDeviceName(deviceName)}
                   placeholder="e.g. My Chromebook"
                   className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-[14px] placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all" />
                 <p className="text-[11px] text-slate-500">Shown on your profile for location sharing. Saved on this browser.</p>
@@ -1639,6 +1641,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
               </div>
 
               <LocationPrivacySettings />
+              <TrustedPeopleSettings />
               <NotificationPrivacySettings />
             </div>
           )}

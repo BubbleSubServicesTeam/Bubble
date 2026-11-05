@@ -33,11 +33,19 @@ export function setCustomDeviceName(name: string): void {
   else localStorage.removeItem(DEVICE_NAME_KEY);
 }
 
+function machineName(ua: string, deviceType: string): string {
+  if (/CrOS/.test(ua)) return 'Chromebook';
+  if (/Macintosh|Mac OS X/.test(ua) && deviceType === 'Desktop') return 'MacBook';
+  if (/Windows/.test(ua)) return 'Windows PC';
+  if (/Linux/.test(ua) && deviceType === 'Desktop') return 'Linux PC';
+  return deviceType;
+}
+
 export function getDeviceLabel(): string {
   const custom = getCustomDeviceName();
   if (custom) return custom;
   const info = parseDeviceInfo();
-  return `${info.deviceType} · ${info.browser}`;
+  return `${machineName(navigator.userAgent, info.deviceType)} ${info.browser}`;
 }
 
 export function saveCurrentLocation(userId: string): Promise<boolean> {

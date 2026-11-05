@@ -1,6 +1,10 @@
 {
   "projectId": "68254368",
   "functions": {
+    "account-recovery": {
+      "hasChanged": false,
+      "hash": "60d97e4fc1427a298450c022403e9dfb9476b9c0f7835d7050b69bbcd756d0e3"
+    },
     "bubble-api": {
       "hasChanged": false,
       "hash": "a33a2b5a1a5dd4cc98495577ff7a5aeb32e8e69898e37f2f771591f6c1a07f5f"
@@ -31,11 +35,7 @@
     },
     "translate-message": {
       "hasChanged": false,
-      "hash": "c279c162eb9ec9e1424762dd46d7a121b1578e8ca220499122939eeb9c638b83"
-    },
-    "account-recovery": {
-      "hasChanged": false,
-      "hash": "60d97e4fc1427a298450c022403e9dfb9476b9c0f7835d7050b69bbcd756d0e3"
+      "hash": "f5515ee649d269cef6ccedf4e72e7c8489971d10dc5ffda0ee2e28dd33ab31aa"
     }
   }
 }
