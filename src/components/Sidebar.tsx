@@ -215,7 +215,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
         </div>
         <div className="flex items-center gap-0.5">
           <IconBtn onClick={onOpenFaceFilters ?? (() => {})} title="Face Filters">
-            <Smile size={15} />
+            <FaceFeatureIcon size={15} />
           </IconBtn>
 
           <IconBtn onClick={onGifStudio} title="GIF Studio"><Sparkles size={15} /></IconBtn>
@@ -397,6 +397,18 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
         </button>
       </div>
     </div>
+  );
+}
+
+function FaceFeatureIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8V6a3 3 0 0 1 3-3h2M16 3h2a3 3 0 0 1 3 3v2M21 16v2a3 3 0 0 1-3 3h-2M8 21H6a3 3 0 0 1-3-3v-2" />
+      <circle cx="9" cy="10" r=".6" fill="currentColor" />
+      <circle cx="15" cy="10" r=".6" fill="currentColor" />
+      <path d="M9 15c1.5 1.4 4.5 1.4 6 0" />
+      <path d="M19.5 11.5l.4 1 1 .4-1 .4-.4 1-.4-1-1-.4 1-.4z" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
 

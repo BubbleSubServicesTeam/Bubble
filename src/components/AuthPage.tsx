@@ -6,6 +6,7 @@ import { ArrowLeft, Mail, CheckCircle, Camera } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 import TrustedRecoveryPanel from './TrustedRecoveryPanel';
+import { LANGUAGES } from '../lib/translate';
 
 type Screen = 'signin' | 'signup' | 'verify' | 'forgot' | 'forgot_sent' | 'reset';
 
@@ -80,6 +81,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
   // Sign up
   const [suFirstName, setSuFirstName] = useState('');
   const [suLastName, setSuLastName] = useState('');
+  const [suLanguage, setSuLanguage] = useState('');
   const [suEmail, setSuEmail] = useState('');
   const [suPassword, setSuPassword] = useState('');
   const [suConfirm, setSuConfirm] = useState('');
@@ -180,8 +182,9 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
     if (!normalizedLastName) { setSuError('Last name is required.'); return; }
     if (suPassword.length < 6) { setSuError('Password must be at least 6 characters.'); return; }
     if (suPassword !== suConfirm) { setSuError('Passwords do not match.'); return; }
+    if (!suLanguage) { setSuError('Please choose your language.'); return; }
     setSuLoading(true);
-    const { error, needsVerification, userId } = await signUp(suEmail, suPassword, normalizedFirstName, normalizedLastName);
+    const { error, needsVerification, userId } = await signUp(suEmail, suPassword, normalizedFirstName, normalizedLastName, suLanguage);
     if (error) {
       setSuError(error);
     } else {
@@ -338,6 +341,21 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                 <div className="grid grid-cols-2 gap-3">
                   <InputField label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" />
                   <InputField label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="su-language" className="block text-[13px] font-medium text-slate-400">Your language</label>
+                  <select
+                    id="su-language"
+                    value={suLanguage}
+                    onChange={e => setSuLanguage(e.target.value)}
+                    className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-4 py-3 text-slate-900 dark:text-white text-[15px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                  >
+                    <option value="" disabled>Choose a language</option>
+                    {LANGUAGES.map(lang => (
+                      <option key={lang.code} value={lang.code}>{lang.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-600">Messages from others will be translated into this language.</p>
                 </div>
                 <KeyboardPassword label="Email" value={suEmail} onChange={setSuEmail} placeholder="you@example.com" isEmail active={activeField === 'suEmail'} onActivate={() => setActiveField('suEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 <KeyboardPassword label="Password" value={suPassword} onChange={setSuPassword} placeholder="At least 6 characters" onSubmit={() => handleSignUp({ preventDefault: () => {} } as any)} active={activeField === 'suPassword'} onActivate={() => setActiveField('suPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />

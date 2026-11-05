@@ -33,7 +33,7 @@ type AuthCtx = {
   bypassPin: () => void;
   lockApp: () => void;
   signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: string | null; needsVerification: boolean; userId: string | null }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, nativeLanguage: string) => Promise<{ error: string | null; needsVerification: boolean; userId: string | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   deleteAccount: (password: string) => Promise<string | null>;
@@ -572,7 +572,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  async function signUp(email: string, password: string, firstName: string, lastName: string) {
+  async function signUp(email: string, password: string, firstName: string, lastName: string, nativeLanguage: string) {
     const displayName = [firstName, lastName].filter(Boolean).join(' ');
     const { data, error } = await supabase.auth.signUp({
       email, password,
@@ -585,7 +585,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userId = data.user?.id ?? null;
     if (data.user) {
       const { error: profileError } = await supabase.from('profiles').insert({
-        user_id: data.user.id, display_name: displayName, first_name: firstName, last_name: lastName, status: 'auto',
+        user_id: data.user.id, display_name: displayName, first_name: firstName, last_name: lastName, status: 'auto', native_language: nativeLanguage,
       });
       if (profileError && !profileError.message.includes('duplicate')) {
         return { error: profileError.message, needsVerification: false, userId };
