@@ -773,7 +773,23 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           return;
         }
       }
-      el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+        let userScrolled = false;
+        const stopPinning = () => { userScrolled = true; };
+        el.addEventListener('wheel', stopPinning, { passive: true });
+        el.addEventListener('touchstart', stopPinning, { passive: true });
+        el.addEventListener('pointerdown', stopPinning, { passive: true });
+        const pinUntil = performance.now() + 800;
+        const pinToBottom = () => {
+          if (userScrolled || performance.now() > pinUntil) {
+            el.removeEventListener('wheel', stopPinning);
+            el.removeEventListener('touchstart', stopPinning);
+            el.removeEventListener('pointerdown', stopPinning);
+            return;
+          }
+          el.scrollTop = el.scrollHeight;
+          requestAnimationFrame(pinToBottom);
+        };
+        pinToBottom();
       });
     });
   }, [openPositionLoaded, loadingMessages, messages.length, openPosition, lastReadAt, conversation.id]);
