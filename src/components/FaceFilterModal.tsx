@@ -8,6 +8,8 @@ type FilterDef = {
   id: string;
   name: string;
   emoji: string;
+  creator?: string;
+  description?: string;
   draw: (ctx: CanvasRenderingContext2D, landmarks: number[][], w: number, h: number) => void;
 };
 
@@ -19,17 +21,78 @@ type SavedFace = {
 
 const SAVED_KEY = 'bubble-face-filters-saved';
 
+function drawFunnyFace(ctx: CanvasRenderingContext2D, lm: number[][], w: number, h: number) {
+  const leftEye = lm[33];
+  const rightEye = lm[263];
+  const nose = lm[1];
+  const mouthLeft = lm[61];
+  const mouthRight = lm[291];
+  const eyeRadius = Math.max(h * 0.055, Math.abs(rightEye[0] - leftEye[0]) * w * 0.18);
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.35)';
+  ctx.shadowBlur = h * 0.012;
+  for (const eye of [leftEye, rightEye]) {
+    const x = eye[0] * w;
+    const y = eye[1] * h;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(x, y, eyeRadius * 1.35, eyeRadius * 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#263238';
+    ctx.beginPath();
+    ctx.arc(x, y, eyeRadius * 0.58, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x - eyeRadius * 0.18, y - eyeRadius * 0.2, eyeRadius * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#f2a07b';
+  ctx.beginPath();
+  ctx.ellipse(nose[0] * w, nose[1] * h + eyeRadius * 0.45, eyeRadius * 0.72, eyeRadius * 0.52, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#7e3f38';
+  ctx.beginPath();
+  ctx.ellipse((mouthLeft[0] + mouthRight[0]) * w / 2, (mouthLeft[1] + mouthRight[1]) * h / 2 + eyeRadius * 0.4, eyeRadius * 1.45, eyeRadius * 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 const FILTERS: FilterDef[] = [
   {
-    id: 'none',
-    name: 'None',
-    emoji: '🚫',
-    draw: () => {},
+    id: 'none', name: 'Clean camera', emoji: '—', creator: 'Bubble Studio', description: 'No lens', draw: () => {},
+  },
+  {
+    id: 'funny-face', name: 'Funny Face', emoji: 'POP', creator: 'Milo & Co.', description: 'Big eyes, bigger energy', draw: drawFunnyFace,
+  },
+  {
+    id: 'comic', name: 'Comic Pop', emoji: 'INK', creator: 'Kite Studio', description: 'Graphic shadows and sparkle', draw: (ctx, lm, w, h) => {
+      const leftEye = lm[33];
+      const rightEye = lm[263];
+      const forehead = lm[10];
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = h * 0.012;
+      for (const eye of [leftEye, rightEye]) {
+        const x = eye[0] * w; const y = eye[1] * h;
+        ctx.beginPath();
+        ctx.arc(x, y, h * 0.07, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#111827';
+      ctx.font = `900 ${h * 0.045}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('WOW', forehead[0] * w, forehead[1] * h - h * 0.08);
+      ctx.restore();
+    },
   },
   {
     id: 'unicorn',
-    name: 'Unicorn',
-    emoji: '🦄',
+    name: 'Dream Horn',
+    emoji: 'UNICORN',
+    creator: 'Moonroom',
+    description: 'Soft fantasy glow',
     draw: (ctx, lm, w, h) => {
       const forehead = lm[10];
       const fx = forehead[0] * w;
@@ -44,8 +107,10 @@ const FILTERS: FilterDef[] = [
   },
   {
     id: 'dog',
-    name: 'Dog',
-    emoji: '🐶',
+    name: 'Pup Mode',
+    emoji: 'PUP',
+    creator: 'Good Dog Club',
+    description: 'Playful ears and nose',
     draw: (ctx, lm, w, h) => {
       const nose = lm[1];
       const leftEar = lm[234];
@@ -62,8 +127,10 @@ const FILTERS: FilterDef[] = [
   },
   {
     id: 'cat',
-    name: 'Cat',
-    emoji: '🐱',
+    name: 'Catwalk',
+    emoji: 'CAT',
+    creator: 'Studio Whisker',
+    description: 'Sharp, glossy and cute',
     draw: (ctx, lm, w, h) => {
       const leftEar = lm[234];
       const rightEar = lm[454];
@@ -423,7 +490,10 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
         <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 bg-gradient-to-b from-black/70 to-transparent">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-white" />
-            <span className="text-white font-semibold text-[14px]">Face Filters</span>
+            <div>
+              <span className="text-white font-semibold text-[14px] block">Creator lenses</span>
+              <span className="text-white/50 text-[10px]">Made for Bubble by independent creators</span>
+            </div>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
             <X size={18} />
@@ -460,20 +530,30 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
 
         {/* Filter selector strip */}
         {!captured && !showSaved && (
-          <div className="bg-black p-2 overflow-x-auto scrollbar-none">
-            <div className="flex gap-2 pb-1">
+          <div className="bg-[#08090c] px-3 pt-3 pb-2">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-white text-[12px] font-semibold">Choose a lens</p>
+                <p className="text-white/40 text-[10px]">{activeFilter.description ?? 'Live face effects'}</p>
+              </div>
+              <span className="text-[10px] text-white/40">{activeFilter.creator}</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
               {FILTERS.map(f => (
                 <button
                   key={f.id}
                   onClick={() => setActiveFilter(f)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all ${
+                  className={`flex-shrink-0 w-[76px] rounded-2xl p-1.5 text-left transition-all ${
                     activeFilter.id === f.id
-                      ? 'bg-sky-500/30 ring-2 ring-sky-500'
-                      : 'bg-white/5 hover:bg-white/10'
+                      ? 'bg-white text-slate-950 ring-2 ring-sky-400 scale-[1.03]'
+                      : 'bg-white/[0.07] text-white hover:bg-white/[0.14]'
                   }`}
                 >
-                  <span className="text-2xl">{f.emoji}</span>
-                  <span className="text-[10px] text-white font-medium">{f.name}</span>
+                  <div className={`h-12 rounded-xl flex items-center justify-center text-[9px] font-black tracking-wide ${activeFilter.id === f.id ? 'bg-sky-100 text-sky-700' : 'bg-white/[0.08] text-white/70'}`}>
+                    {f.emoji}
+                  </div>
+                  <span className="block text-[10px] font-semibold truncate mt-1.5">{f.name}</span>
+                  <span className={`block text-[9px] truncate ${activeFilter.id === f.id ? 'text-slate-500' : 'text-white/40'}`}>{f.creator}</span>
                 </button>
               ))}
             </div>
