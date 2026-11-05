@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import KeyboardPassword from './KeyboardPassword';
 import { useMessageKeyboard } from '../lib/messageKeyboard';
+import TextEffectText from './TextEffectText';
+import type { TextEffect } from '../lib/textEffects';
 import { supabase, Conversation, Profile, Message, smartName, effectiveStatus } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
@@ -285,6 +287,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messageKeyboard = useMessageKeyboard();
   const [bubbleKeyboardOpen, setBubbleKeyboardOpen] = useState(false);
+  const [textEffect, setTextEffect] = useState<TextEffect | null>(null);
 
   function handleComposerChange(value: string) {
     setText(value);
@@ -793,6 +796,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       reply_to: replyTo?.id ?? null,
       reply_excerpt: replyExcerpt || null,
       reactions: {},
+      text_effect: type === 'text' ? textEffect : null,
       ...extra,
     };
     // Optimistic insert — show immediately
@@ -807,6 +811,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     };
     setMessages(prev => [...prev, optimisticMsg]);
     setText('');
+    setTextEffect(null);
     // Reset textarea height after clearing text
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
@@ -1729,7 +1734,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         ) : (
                           <div className="px-3.5 py-2" data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
                             <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
-                              {renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
+                              {msg.text_effect && (showOriginalIds.has(msg.id) || !translations[msg.id]?.translatedText) ? <TextEffectText text={msg.content ?? ''} effect={msg.text_effect} /> : renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
                               {msg.edited_at && <span className="text-[10px] opacity-60 ml-1.5">(edited)</span>}
                             </p>
                             {translations[msg.id] && !showOriginalIds.has(msg.id) && (
@@ -2251,6 +2256,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 onChange={handleComposerChange}
                 onSubmit={sendMessage}
                 active={bubbleKeyboardOpen}
+                composer
+                textEffect={textEffect}
+                onTextEffectChange={setTextEffect}
                 onDismiss={() => setBubbleKeyboardOpen(false)}
                 cursorAtEnd
                 showField={false}
