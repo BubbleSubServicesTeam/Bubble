@@ -61,6 +61,9 @@ export type Profile = {
 // Contact fields (phone, address) are read only through RPCs, so profile reads must list columns explicitly.
 export const PROFILE_COLUMNS = 'id, user_id, display_name, first_name, last_name, avatar_url, status, status_message, last_seen, created_at, native_language, push_show_preview, push_show_sender, pin_hash, pin_length, pin_voluntary, fingerprint_enabled, unlock_preference, deletion_scheduled_at, deletion_cancelled_at, unread_badge_enabled, face_id_enabled, phone_visibility, address_visibility, auth_failed_attempts, auth_locked_until, pin_failed_attempts, pin_locked_until, password_failed_attempts, password_locked_until, is_admin, is_suspended';
 
+// Embedded profiles (message senders, member lists) use this list; `profiles(*)` fails for the signed-in role.
+export const SENDER_PROFILE_COLUMNS = 'id, user_id, display_name, first_name, last_name, avatar_url, status, status_message, last_seen, created_at, native_language, phone_visibility, address_visibility, is_admin, is_suspended';
+
 export function getDisplayName(profile: Profile | null | undefined, showFull = false): string {
   if (!profile) return '';
   if (showFull) {

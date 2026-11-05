@@ -3,7 +3,7 @@ import KeyboardPassword from './KeyboardPassword';
 import { useMessageKeyboard } from '../lib/messageKeyboard';
 import TextEffectText from './TextEffectText';
 import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEffectSpan, type TextRange } from '../lib/textEffects';
-import { supabase, Conversation, Profile, Message, smartName, effectiveStatus } from '../lib/supabase';
+import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { translateText } from '../lib/translate';
@@ -574,7 +574,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       }, async (payload) => {
         const { data } = await supabase
           .from('messages')
-          .select('*, sender:profiles!messages_profile_sender_id_fkey(*)')
+          .select(`*, sender:profiles!messages_profile_sender_id_fkey(${SENDER_PROFILE_COLUMNS})`)
           .eq('id', payload.new.id)
           .maybeSingle();
         if (data) {
@@ -690,7 +690,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     const [msgResult, membersResult] = await Promise.all([
       supabase
         .from('messages')
-        .select('*, sender:profiles!messages_profile_sender_id_fkey(*)')
+        .select(`*, sender:profiles!messages_profile_sender_id_fkey(${SENDER_PROFILE_COLUMNS})`)
         .eq('conversation_id', conversation.id)
         .is('deleted_at', null)
         .order('created_at', { ascending: true }),
