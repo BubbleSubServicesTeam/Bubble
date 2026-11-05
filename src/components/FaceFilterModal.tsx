@@ -1,6 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { X, Camera, RefreshCw, Send, Download, Trash2, Sparkles } from 'lucide-react';
 
+const MEDIAPIPE_BUNDLE_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
+const MEDIAPIPE_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
+
 type FilterDef = {
   id: string;
   name: string;
@@ -268,10 +271,9 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
   async function loadFaceLandmarker() {
     if (faceLandmarkerRef.current) return;
     try {
-      const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
-      const fileset = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-      );
+      const vision = await import(/* @vite-ignore */ MEDIAPIPE_BUNDLE_URL);
+      const { FaceLandmarker, FilesetResolver } = vision;
+      const fileset = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL);
       faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(fileset, {
         baseOptions: {
           modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',

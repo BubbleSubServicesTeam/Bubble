@@ -5,6 +5,7 @@ import { AUTH_ROUTES, ROUTES, currentPath } from '../lib/routes';
 import { ArrowLeft, Mail, CheckCircle, Camera } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
+import TrustedRecoveryPanel from './TrustedRecoveryPanel';
 
 type Screen = 'signin' | 'signup' | 'verify' | 'forgot' | 'forgot_sent' | 'reset';
 
@@ -100,6 +101,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
 
   // Forgot password
   const [fpEmail, setFpEmail] = useState('');
+  const [recoveryMethod, setRecoveryMethod] = useState<'email' | 'trusted'>('email');
   const [fpError, setFpError] = useState('');
   const [fpLoading, setFpLoading] = useState(false);
 
@@ -408,12 +410,36 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                 <ArrowLeft size={14} /> Back to sign in
               </button>
               <h2 className="text-slate-900 dark:text-white font-bold text-[18px] mb-1">Reset password</h2>
-              <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your email and we'll send a reset link.</p>
-              <form onSubmit={handleForgotPassword} className="space-y-4">
+              <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your account email, then choose how to get the reset link.</p>
+              <div className="space-y-4">
                 <KeyboardPassword label="Email" value={fpEmail} onChange={setFpEmail} placeholder="you@example.com" isEmail onSubmit={() => handleForgotPassword({ preventDefault: () => {} } as any)} active={activeField === 'fpEmail'} onActivate={() => setActiveField('fpEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                {fpError && <ErrorBox msg={fpError} />}
-                <PrimaryButton type="submit" loading={fpLoading}>Send Reset Link</PrimaryButton>
-              </form>
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 dark:bg-white/[0.04] p-1">
+                  {([['email', 'Email me the link'], ['trusted', 'Trusted person']] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setRecoveryMethod(key)}
+                      className={`rounded-lg py-2 text-[13px] font-medium transition-all ${
+                        recoveryMethod === key
+                          ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {recoveryMethod === 'email' ? (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    {fpError && <ErrorBox msg={fpError} />}
+                    <PrimaryButton type="submit" loading={fpLoading}>Send Reset Link</PrimaryButton>
+                  </form>
+                ) : fpEmail.includes('@') ? (
+                  <TrustedRecoveryPanel email={fpEmail.trim()} />
+                ) : (
+                  <p className="text-slate-500 text-[13px] text-center py-2">Enter your account email to see your trusted people.</p>
+                )}
+              </div>
             </div>
           )}
 

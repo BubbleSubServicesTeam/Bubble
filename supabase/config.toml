@@ -19,5 +19,8 @@ verify_jwt = true
 [functions.summarize-conversation]
 verify_jwt = true
 
+[functions.account-recovery]
+verify_jwt = false
+
 [functions.oauth-provider]
 verify_jwt = false

@@ -32,6 +32,10 @@
     "translate-message": {
       "hasChanged": false,
       "hash": "c279c162eb9ec9e1424762dd46d7a121b1578e8ca220499122939eeb9c638b83"
+    },
+    "account-recovery": {
+      "hasChanged": false,
+      "hash": "60d97e4fc1427a298450c022403e9dfb9476b9c0f7835d7050b69bbcd756d0e3"
     }
   }
 }
