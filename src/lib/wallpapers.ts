@@ -7,6 +7,7 @@ export type WallpaperDef = {
 
 export const WALLPAPERS: WallpaperDef[] = [
   { id: 'none', name: 'None', css: '', thumb: '#f1f5f9' },
+  { id: 'classic', name: 'Classic', css: 'var(--chat-classic-bg)', thumb: 'var(--chat-classic-bg)' },
   {
     id: 'doodles',
     name: 'Doodles',

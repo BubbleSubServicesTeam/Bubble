@@ -181,7 +181,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showChatViewSettings, setShowChatViewSettings] = useState(false);
   const [openPosition, setOpenPosition] = useState<'last_read' | 'bottom'>('last_read');
   const [openPositionLoaded, setOpenPositionLoaded] = useState(false);
-  const [wallpaper, setWallpaper] = useState('none');
+  const [wallpaper, setWallpaper] = useState('classic');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [autofillSuggestion, setAutofillSuggestion] = useState<{
     senderId: string;
@@ -446,7 +446,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       .eq('user_id', user.id)
       .eq('conversation_id', conversation.id)
       .maybeSingle()
-      .then(({ data }) => { if (data) setWallpaper(data.wallpaper); else setWallpaper('doodles'); });
+      .then(({ data }) => { if (data) setWallpaper(data.wallpaper); else setWallpaper('classic'); });
   }, [user, conversation.id]);
 
   async function toggleSaveMessage(msg: Message) {

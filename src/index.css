@@ -23,6 +23,14 @@
     @apply bg-slate-950 text-white;
   }
 
+  :root {
+    --chat-classic-bg: #ffffff;
+  }
+
+  html.dark {
+    --chat-classic-bg: #0b1f3a;
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
