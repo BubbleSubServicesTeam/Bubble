@@ -39,6 +39,11 @@ export function getLanguageName(code: string | null | undefined): string {
   return lang?.name ?? code;
 }
 
+export function getBrowserTranslationLang(): string {
+  const code = (typeof navigator !== 'undefined' ? navigator.language : 'en').split('-')[0].toLowerCase();
+  return LANGUAGES.some(l => l.code === code) ? code : 'en';
+}
+
 export function flagUrl(flagCode: string): string {
   return `https://flagcdn.com/w40/${flagCode}.png`;
 }

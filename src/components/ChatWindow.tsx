@@ -6,7 +6,7 @@ import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEf
 import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
-import { translateText } from '../lib/translate';
+import { getBrowserTranslationLang, translateText } from '../lib/translate';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -1193,7 +1193,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [translatingIds, setTranslatingIds] = useState<Set<string>>(new Set());
   const [translationErrors, setTranslationErrors] = useState<Set<string>>(new Set());
   const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set());
-  const nativeLang = profile?.native_language ?? null;
+  const nativeLang = profile?.native_language ?? getBrowserTranslationLang();
 
   // Auto-translate friends' text messages into the viewer's language
   useEffect(() => {
