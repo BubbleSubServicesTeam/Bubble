@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase, Profile, Conversation, smartName } from '../lib/supabase';
+import { supabase, Profile, Conversation, smartName, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import {
   X, Trophy, Users, Clock, Settings, ChevronRight, Check, Search,
@@ -339,7 +339,7 @@ export default function FantasyFootballModal({ onClose, onCreated }: Props) {
       if (convId) {
         const { data: fullConv } = await supabase
           .from('conversations')
-          .select('*, members:profiles!conversation_members(*)')
+          .select(`*, members:profiles!conversation_members(${SENDER_PROFILE_COLUMNS})`)
           .eq('id', convId)
           .single();
         if (fullConv) onCreated(fullConv as any);

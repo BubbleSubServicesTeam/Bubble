@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Conversation, Profile, effectiveStatus } from '../lib/supabase';
+import { supabase, Conversation, Profile, effectiveStatus, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import Avatar from './Avatar';
 import { X, Search, UserPlus, UserMinus, Crown, Users, Check } from 'lucide-react';
@@ -29,7 +29,7 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
     setLoading(true);
     const { data } = await supabase
       .from('conversation_members')
-      .select('profiles:profiles!conversation_members_profile_user_id_fkey(*)')
+      .select(`profiles:profiles!conversation_members_profile_user_id_fkey(${SENDER_PROFILE_COLUMNS})`)
       .eq('conversation_id', conversation.id);
     const profiles = (data ?? []).map((d: any) => d.profiles).filter(Boolean) as Profile[];
     setMembers(profiles);
