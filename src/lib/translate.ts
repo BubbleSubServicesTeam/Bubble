@@ -50,10 +50,15 @@ export type TranslationResult = {
   targetLangName: string | null;
 };
 
-const cache = new Map<string, TranslationResult>();
+export type TranslationOutcome =
+  | { status: 'translated'; result: TranslationResult }
+  | { status: 'same-language' }
+  | { status: 'error' };
 
-export async function translateText(text: string, targetLang: string): Promise<TranslationResult | null> {
-  if (!text || !targetLang) return null;
+const cache = new Map<string, TranslationOutcome>();
+
+export async function translateText(text: string, targetLang: string): Promise<TranslationOutcome> {
+  if (!text || !targetLang) return { status: 'error' };
   const cacheKey = `${targetLang}:${text}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
@@ -71,20 +76,24 @@ export async function translateText(text: string, targetLang: string): Promise<T
       },
       body: JSON.stringify({ text, targetLang }),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) return { status: 'error' };
     const data: unknown = await resp.json();
-    if (!data || typeof data !== 'object' || !('translatedText' in data) || typeof data.translatedText !== 'string' || !data.translatedText.trim()) return null;
+    if (!data || typeof data !== 'object' || !('translatedText' in data) || typeof data.translatedText !== 'string' || !data.translatedText.trim()) return { status: 'error' };
     const response = data as Record<string, unknown>;
-    if (response.sameLanguage === true) return null;
-    const result: TranslationResult = {
-      translatedText: response.translatedText as string,
-      detectedLang: typeof response.detectedLang === 'string' ? response.detectedLang : null,
-      detectedLangName: typeof response.detectedLangName === 'string' ? response.detectedLangName : null,
-      targetLangName: typeof response.targetLangName === 'string' ? response.targetLangName : null,
-    };
-    cache.set(cacheKey, result);
-    return result;
+    const outcome: TranslationOutcome = response.sameLanguage === true
+      ? { status: 'same-language' }
+      : {
+          status: 'translated',
+          result: {
+            translatedText: response.translatedText as string,
+            detectedLang: typeof response.detectedLang === 'string' ? response.detectedLang : null,
+            detectedLangName: typeof response.detectedLangName === 'string' ? response.detectedLangName : null,
+            targetLangName: typeof response.targetLangName === 'string' ? response.targetLangName : null,
+          },
+        };
+    cache.set(cacheKey, outcome);
+    return outcome;
   } catch {
-    return null;
+    return { status: 'error' };
   }
 }

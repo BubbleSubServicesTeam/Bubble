@@ -1150,19 +1150,20 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set());
   const nativeLang = profile?.native_language ?? null;
 
-  // Auto-translate all text messages when native language is set
+  // Auto-translate friends' text messages into the viewer's language
   useEffect(() => {
     if (!nativeLang) return;
     messages.forEach(msg => {
       if (msg.message_type !== 'text' || !msg.content) return;
-      if (translations[msg.id]) return;
+      if (msg.sender_id === user?.id) return;
+      if (translations[msg.id] || translationErrors.has(msg.id)) return;
       if (translatingIds.has(msg.id)) return;
 
       setTranslatingIds(prev => new Set(prev).add(msg.id));
-      translateText(msg.content, nativeLang).then(result => {
+      translateText(msg.content, nativeLang).then(outcome => {
         setTranslatingIds(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
-        if (result && result.translatedText && result.translatedText !== msg.content) {
-          setTranslationErrors(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
+        if (outcome.status === 'translated' && outcome.result.translatedText !== msg.content) {
+          const { result } = outcome;
           setTranslations(prev => ({
             ...prev,
             [msg.id]: {
@@ -1171,7 +1172,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               targetLangName: result.targetLangName,
             },
           }));
-        } else if (!result) {
+        } else if (outcome.status === 'error') {
           setTranslationErrors(prev => new Set(prev).add(msg.id));
         }
       });
