@@ -55,7 +55,24 @@ export type TranslationOutcome =
   | { status: 'same-language' }
   | { status: 'error' };
 
+type TranslatorItem = { translatedText: string; sameLanguage: boolean };
+
 const cache = new Map<string, TranslationOutcome>();
+
+async function postToTranslator(body: Record<string, unknown>): Promise<Response> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token ?? '';
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-message`;
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+}
 
 export async function translateText(text: string, targetLang: string): Promise<TranslationOutcome> {
   if (!text || !targetLang) return { status: 'error' };
@@ -64,18 +81,7 @@ export async function translateText(text: string, targetLang: string): Promise<T
   if (cached) return cached;
 
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData?.session?.access_token ?? '';
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-message`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ text, targetLang }),
-    });
+    const resp = await postToTranslator({ text, targetLang });
     if (!resp.ok) return { status: 'error' };
     const data: unknown = await resp.json();
     if (!data || typeof data !== 'object' || !('translatedText' in data) || typeof data.translatedText !== 'string' || !data.translatedText.trim()) return { status: 'error' };
@@ -95,5 +101,24 @@ export async function translateText(text: string, targetLang: string): Promise<T
     return outcome;
   } catch {
     return { status: 'error' };
+  }
+}
+
+// Returns one entry per input text: the translation, or null when the text should stay as-is
+// (already in the target language) or could not be translated.
+export async function translateBatch(texts: string[], targetLang: string): Promise<(string | null)[]> {
+  const none = texts.map(() => null);
+  if (texts.length === 0 || !targetLang) return none;
+  try {
+    const resp = await postToTranslator({ texts, targetLang });
+    if (!resp.ok) return none;
+    const data: unknown = await resp.json();
+    const items = (data as { translations?: unknown })?.translations;
+    if (!Array.isArray(items) || items.length !== texts.length) return none;
+    return items.map((item: TranslatorItem | null) =>
+      item && !item.sameLanguage && typeof item.translatedText === 'string' && item.translatedText.trim() ? item.translatedText : null
+    );
+  } catch {
+    return none;
   }
 }

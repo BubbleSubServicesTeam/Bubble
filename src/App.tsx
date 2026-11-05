@@ -4,6 +4,7 @@ import { CallProvider } from './lib/calls';
 import { ThemeProvider, useTheme, getLogoUrl } from './lib/theme';
 import { AppLanguageProvider, useAppLang } from './lib/i18n';
 import { NotificationProvider } from './lib/notifications';
+import UiTranslator from './components/UiTranslator';
 import AuthPage from './components/AuthPage';
 import ChatApp from './ChatApp';
 import CallModal from './components/CallModal';
@@ -168,6 +169,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <AppLanguageProvider>
+          <UiTranslator />
           <AppInner />
         </AppLanguageProvider>
       </AuthProvider>

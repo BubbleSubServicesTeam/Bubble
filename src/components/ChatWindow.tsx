@@ -1744,7 +1744,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                             <button onClick={() => setEditingId(null)} className="opacity-70 hover:opacity-100"><X size={14} /></button>
                           </div>
                         ) : (
-                          <div className="px-3.5 py-2" data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
+                          <div className="px-3.5 py-2" data-no-translate data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
                             <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
                               {(msg.text_effect || msg.text_effect_spans?.length) && (showOriginalIds.has(msg.id) || !translations[msg.id]?.translatedText) ? <TextEffectText text={msg.content ?? ''} effect={msg.text_effect ?? null} spans={msg.text_effect_spans} /> : renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
                               {msg.edited_at && <span className="text-[10px] opacity-60 ml-1.5">(edited)</span>}

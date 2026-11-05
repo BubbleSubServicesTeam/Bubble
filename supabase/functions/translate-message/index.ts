@@ -72,30 +72,62 @@ async function translateWithFreeEndpoints(text: string, targetLang: string) {
   return null;
 }
 
+const MAX_BATCH = 100;
+const BATCH_CONCURRENCY = 8;
+
+async function translateOne(text: string, targetLang: string) {
+  const deeplKey = Deno.env.get("DEEPL_API_KEY");
+  const result = deeplKey
+    ? await translateWithDeepL(text, targetLang, deeplKey)
+    : await translateWithFreeEndpoints(text, targetLang);
+  if (!result) return null;
+  const sameLanguage = !!result.detectedLang && result.detectedLang.split("-")[0] === targetLang;
+  return {
+    translatedText: result.translatedText,
+    sameLanguage,
+    detectedLang: result.detectedLang,
+    detectedLangName: result.detectedLang ? (LANG_NAMES[result.detectedLang.split("-")[0]] ?? result.detectedLang) : null,
+    targetLangName: LANG_NAMES[targetLang] ?? targetLang,
+  };
+}
+
+async function translateMany(texts: string[], targetLang: string) {
+  const results: (Awaited<ReturnType<typeof translateOne>>)[] = new Array(texts.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < texts.length) {
+      const index = next++;
+      results[index] = await translateOne(texts[index], targetLang);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, texts.length) }, worker));
+  return results;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const { text, targetLang } = await req.json();
-    if (!text || !targetLang) return json({ error: "text and targetLang required" }, 400);
+    const body = await req.json();
+    const { targetLang } = body;
+    if (!targetLang) return json({ error: "targetLang required" }, 400);
 
-    const deeplKey = Deno.env.get("DEEPL_API_KEY");
-    const result = deeplKey
-      ? await translateWithDeepL(text, targetLang, deeplKey)
-      : await translateWithFreeEndpoints(text, targetLang);
+    if (Array.isArray(body.texts)) {
+      const texts = body.texts.filter((t: unknown): t is string => typeof t === "string" && t.trim().length > 0);
+      if (texts.length === 0) return json({ translations: [] });
+      if (texts.length > MAX_BATCH) return json({ error: "Too many texts in one request" }, 400);
+      const results = await translateMany(texts, targetLang);
+      return json({ translations: results.map(r => r ? { translatedText: r.translatedText, sameLanguage: r.sameLanguage } : null) });
+    }
 
+    const { text } = body;
+    if (!text) return json({ error: "text and targetLang required" }, 400);
+
+    const result = await translateOne(text, targetLang);
     if (!result) return json({ error: "Translation service unavailable" }, 502);
-
-    const sameLanguage = !!result.detectedLang && result.detectedLang.split("-")[0] === targetLang;
-    return json({
-      translatedText: result.translatedText,
-      sameLanguage,
-      detectedLang: result.detectedLang,
-      detectedLangName: result.detectedLang ? (LANG_NAMES[result.detectedLang.split("-")[0]] ?? result.detectedLang) : null,
-      targetLangName: LANG_NAMES[targetLang] ?? targetLang,
-    });
+    return json(result);
   } catch (err: any) {
     return json({ error: err.message ?? "Internal error" }, 500);
   }
