@@ -70,14 +70,14 @@ export default function GifStudio({ onClose, conversations, onShareGif }: Props)
     setUploading(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() ?? 'gif';
-      const fileName = `gifs/${user.id}/${Date.now()}.${ext}`;
+      const fileName = `${user.id}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from('media')
+        .from('gifs')
         .upload(fileName, file, { contentType: file.type, upsert: false });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from('gifs').getPublicUrl(fileName);
       const url = urlData.publicUrl;
 
       const { error: gifError } = await supabase.from('gifs').insert({
@@ -142,14 +142,14 @@ export default function GifStudio({ onClose, conversations, onShareGif }: Props)
       const trimmedName = `trim_${startSec}s_${trimDuration}s.${ext}`;
       const trimmedFile = new File([pendingVideo.file], trimmedName, { type: pendingVideo.file.type });
 
-      const fileName = `gifs/${user?.id}/${Date.now()}.${ext}`;
+      const fileName = `${user?.id}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
-        .from('media')
+        .from('gifs')
         .upload(fileName, trimmedFile, { contentType: pendingVideo.file.type, upsert: false });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from('gifs').getPublicUrl(fileName);
       const url = urlData.publicUrl;
 
       const { error: gifError } = await supabase.from('gifs').insert({

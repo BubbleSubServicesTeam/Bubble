@@ -7,13 +7,6 @@ export type WallpaperDef = {
 
 export const WALLPAPERS: WallpaperDef[] = [
   { id: 'none', name: 'None', css: '', thumb: '#f1f5f9' },
-  { id: 'classic', name: 'Classic', css: 'var(--chat-classic-bg)', thumb: 'var(--chat-classic-bg)' },
-  {
-    id: 'doodles',
-    name: 'Doodles',
-    css: '#f0f9ff url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'%3E%3Cg fill=\'none\' stroke=\'%230ea5e9\' stroke-opacity=\'0.12\' stroke-width=\'1.5\'%3E%3Ccircle cx=\'24\' cy=\'28\' r=\'9\'/%3E%3Ccircle cx=\'118\' cy=\'22\' r=\'5\'/%3E%3Cpath d=\'M70 120c6-10 18-10 22 0s-6 16-12 10\'/%3E%3Cpath d=\'M120 96l6 12 12 2-9 8 3 12-12-6-12 6 3-12-9-8 12-2z\'/%3E%3Ccircle cx=\'40\' cy=\'128\' r=\'4\'/%3E%3C/g%3E%3C/svg%3E") repeat',
-    thumb: '#f0f9ff',
-  },
   {
     id: 'bubbles',
     name: 'Bubbles',
