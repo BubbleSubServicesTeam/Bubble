@@ -116,8 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try { localStorage.setItem(`bubble-has-pin-${p.user_id}`, '1'); } catch { /* ignore */ }
     } else if (p?.fingerprint_enabled && (p?.unlock_preference === 'fingerprint' || p?.unlock_preference === 'both')) {
       setPinLocked(true);
-    } else {
-      try { localStorage.removeItem(`bubble-has-pin-${p?.user_id ?? ''}`); } catch { /* ignore */ }
+    } else if (p) {
+      try { localStorage.removeItem(`bubble-has-pin-${p.user_id}`); } catch { /* ignore */ }
     }
   }
 
