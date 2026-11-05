@@ -8,6 +8,7 @@ export const SETTINGS_TABS = [
   'blocked',
   'apikeys',
   'clientids',
+  'admin',
 ] as const;
 
 export type SettingsTab = (typeof SETTINGS_TABS)[number];

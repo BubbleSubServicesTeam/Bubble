@@ -10,6 +10,8 @@ import { useAppLang } from '../lib/i18n';
 import { LANGUAGES, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
 import PayPalTab from './PayPalTab';
+import AdminPanel from './AdminPanel';
+import { Shield } from 'lucide-react';
 import ApiKeysTab from './ApiKeysTab';
 import ClientIdsTab from './ClientIdsTab';
 import LocationPrivacySettings from './LocationPrivacySettings';
@@ -1104,6 +1106,13 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
               tab === 'clientids' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Globe size={15} /> Client IDs
           </button>
+          {profile?.is_admin && (
+            <button onClick={() => selectTab('admin')}
+              className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
+                tab === 'admin' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
+              <Shield size={15} /> Admin
+            </button>
+          )}
         </div>
 
         <div className="overflow-y-auto flex-1 scrollbar-thin">
@@ -1694,6 +1703,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
           {tab === 'apikeys' && user && <ApiKeysTab userId={user.id} />}
 
           {tab === 'clientids' && user && <ClientIdsTab userId={user.id} />}
+          {tab === 'admin' && profile?.is_admin && user && <AdminPanel currentUserId={user.id} />}
 
           {tab === 'language' && (
             <div className="p-6 space-y-5">

@@ -11,6 +11,8 @@ import InstallPrompt from './components/InstallPrompt';
 import BubbleLoader from './components/BubbleLoader';
 import PinScreen from './components/PinScreen';
 import OAuthAuthorizePage from './components/OAuthAuthorizePage';
+import MaintenanceScreen from './components/MaintenanceScreen';
+import { useMaintenanceStatus } from './lib/maintenance';
 import { ROUTES, UNLOCK_RETURN_KEY, currentPath } from './lib/routes';
 
 function isRunningAsPWA(): boolean {
@@ -37,6 +39,8 @@ function initialAuthScreen(path: string): 'signin' | 'signup' | 'forgot' {
 function AppInner() {
   const { user, loading, profile, pinLocked, unlockWithPin, unlockWithPassword, lockApp } = useAuth();
   const { t } = useAppLang();
+  const maintenance = useMaintenanceStatus();
+  const [adminSignIn, setAdminSignIn] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
   const path = currentPath();
 
@@ -75,6 +79,16 @@ function AppInner() {
       window.dispatchEvent(new PopStateEvent('popstate'));
     }
   }, [pinLockActive]);
+
+  if (!maintenance.loaded) return <LoadingScreen />;
+  const isAdminSession = Boolean(user && profile?.is_admin);
+  if (maintenance.enabled && !isAdminSession) {
+    if (!user && !adminSignIn) {
+      return <MaintenanceScreen message={maintenance.message} onAdminSignIn={() => setAdminSignIn(true)} />;
+    }
+    if (user && !profile) return <LoadingScreen />;
+    if (user) return <MaintenanceScreen message={maintenance.message} />;
+  }
 
   // Install prompt only for users who aren't logged in yet
   if (!user && !loading && isMobileBrowser() && !isRunningAsPWA() && !installDismissed) {
@@ -120,9 +134,18 @@ function AppInner() {
 
   return (
     <>
+      {profile?.is_suspended && <SuspendedNotice />}
       {chatApp}
       {pinOverlay}
     </>
+  );
+}
+
+function SuspendedNotice() {
+  return (
+    <div role="status" className="fixed top-0 inset-x-0 z-[9998] px-4 py-2 bg-amber-500 text-white text-center text-[12px] font-medium shadow-lg">
+      Your account is suspended. You can view your chats and update your account info and security settings, but you cannot send messages.
+    </div>
   );
 }
 
