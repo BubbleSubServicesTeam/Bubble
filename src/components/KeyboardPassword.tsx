@@ -127,6 +127,21 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     };
   }, []);
 
+  useEffect(() => {
+    if (!active) return;
+    const root = document.getElementById('root');
+    const el = kbdRef.current;
+    if (!root || !el) return;
+    const fit = () => { root.style.height = `calc(100dvh - ${el.offsetHeight}px)`; };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.height = '';
+    };
+  }, [active]);
+
   const backspaceRepeatRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backspaceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -678,20 +693,20 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             </button>
             <button
               type="button"
-              onClick={() => onDismiss?.()}
-              title="Hide keyboard"
-              className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
-            >
-              <ChevronDown size={iconSize} />
-            </button>
-            <button
-              type="button"
               onClick={() => onSubmit?.()}
               className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${
                 activeKey === 'enter' ? PRESSED_KEY_CLASS : 'bg-sky-500 text-white hover:bg-sky-400 active:scale-95 shadow-sm'
               }`}
             >
               <Return size={iconSize} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDismiss?.()}
+              title="Hide keyboard"
+              className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+            >
+              <ChevronDown size={iconSize} />
             </button>
           </div>
         </div>

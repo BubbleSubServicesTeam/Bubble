@@ -268,21 +268,20 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
   async function loadFaceLandmarker() {
     if (faceLandmarkerRef.current) return;
     try {
-      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/face_landmarker@0.0.3/face_landmarker.js');
-      const { FaceLandmarker, FilesetResolver } = vision;
+      const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
       const fileset = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
       );
       faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(fileset, {
         baseOptions: {
-          modelAssetPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_landmarker@0.0.3/face_landmarker.task',
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
           delegate: 'GPU',
         },
         runningMode: 'VIDEO',
         numFaces: 1,
       });
     } catch {
-      setError('Face tracking library failed to load. You can still capture photos without filters.');
+      setError('Face tracking could not start. You can still capture photos without filters.');
     }
   }
 
