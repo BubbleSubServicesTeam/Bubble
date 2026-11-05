@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
 import Avatar from './Avatar';
-import { Plus, Search, Settings, LogOut, Sparkles, MessageCircle, Trash2, Smile, Camera, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Settings, LogOut, MessageCircle, Trash2, Smile, Camera, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import { ContactPriorityMap, conversationPriority, priorityRank } from '../lib/contactPriority';
 
@@ -218,7 +218,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
             <FaceFeatureIcon size={15} />
           </IconBtn>
 
-          <IconBtn onClick={onGifStudio} title="GIF Studio"><Sparkles size={15} /></IconBtn>
+          <IconBtn onClick={onGifStudio} title="GIF Studio"><Smile size={15} /></IconBtn>
           <IconBtn onClick={onToggleTrash} title="Trash"><Trash2 size={15} danger={showTrash} /></IconBtn>
           <button
             onClick={onNewChat}

@@ -17,30 +17,36 @@ const LANG_NAMES: Record<string, string> = {
 
 const DEEPL_TARGETS: Record<string, string> = { en: "EN-US", pt: "PT-BR", zh: "ZH" };
 
+type TranslationHit = { translatedText: string; detectedLang: string | null };
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-async function translateWithDeepL(text: string, targetLang: string, apiKey: string) {
-  const host = apiKey.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
-  const resp = await fetch(`${host}/v2/translate`, {
-    method: "POST",
-    headers: { "Authorization": `DeepL-Auth-Key ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ text: [text], target_lang: DEEPL_TARGETS[targetLang] ?? targetLang.toUpperCase() }),
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const item = data?.translations?.[0];
-  if (!item?.text) return null;
-  return {
-    translatedText: item.text as string,
-    detectedLang: typeof item.detected_source_language === "string" ? item.detected_source_language.toLowerCase() : null,
-  };
+async function translateWithDeepL(text: string, targetLang: string, apiKey: string): Promise<TranslationHit | null> {
+  try {
+    const host = apiKey.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
+    const resp = await fetch(`${host}/v2/translate`, {
+      method: "POST",
+      headers: { "Authorization": `DeepL-Auth-Key ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ text: [text], target_lang: DEEPL_TARGETS[targetLang] ?? targetLang.toUpperCase() }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const item = data?.translations?.[0];
+    if (!item?.text) return null;
+    return {
+      translatedText: item.text as string,
+      detectedLang: typeof item.detected_source_language === "string" ? item.detected_source_language.toLowerCase() : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
-async function translateWithFreeEndpoints(text: string, targetLang: string) {
+async function translateWithGoogle(text: string, targetLang: string): Promise<TranslationHit | null> {
   try {
     const body = new URLSearchParams({ client: "gtx", sl: "auto", tl: targetLang, dt: "t", q: text });
     const resp = await fetch("https://translate.googleapis.com/translate_a/single", {
@@ -48,28 +54,44 @@ async function translateWithFreeEndpoints(text: string, targetLang: string) {
       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
       body,
     });
-    if (resp.ok) {
-      const data = await resp.json();
-      const translatedText: string = (data[0] as any[]).map((s: any) => s[0]).join("");
-      if (translatedText) return { translatedText, detectedLang: typeof data[2] === "string" ? data[2] : null };
-    }
-  } catch {
-    // fall through to the secondary service
-  }
-  try {
-    const resp = await fetch(`https://lingva.ml/api/v1/auto/${targetLang}/${encodeURIComponent(text)}`, { headers: { "Accept": "application/json" } });
-    if (resp.ok) {
-      const data = await resp.json();
-      const translatedText: string = data.translation ?? "";
-      if (translatedText) {
-        const detected: string | undefined = data.info?.detectedSourceLang ?? data.info?.sourceLang;
-        return { translatedText, detectedLang: detected ?? null };
-      }
-    }
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const translatedText: string = (data[0] as any[]).map((s: any) => s[0]).join("");
+    if (!translatedText) return null;
+    return { translatedText, detectedLang: typeof data[2] === "string" ? data[2] : null };
   } catch {
     return null;
   }
-  return null;
+}
+
+function decodeHtmlEntities(text: string) {
+  return text
+    .replace(/&#10;/g, "\n")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+async function translateWithMyMemory(text: string, targetLang: string): Promise<TranslationHit | null> {
+  try {
+    const langpair = encodeURIComponent(`Autodetect|${targetLang}`);
+    const resp = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (String(data?.responseStatus) !== "200" || data?.quotaFinished) return null;
+    const raw = data?.responseData?.translatedText;
+    if (typeof raw !== "string" || !raw.trim()) return null;
+    const detected = typeof data?.responseData?.detectedLanguage === "string" ? data.responseData.detectedLanguage : null;
+    return { translatedText: decodeHtmlEntities(raw), detectedLang: detected };
+  } catch {
+    return null;
+  }
+}
+
+async function translateWithFreeEndpoints(text: string, targetLang: string) {
+  return (await translateWithGoogle(text, targetLang)) ?? (await translateWithMyMemory(text, targetLang));
 }
 
 const MAX_BATCH = 100;
@@ -77,16 +99,15 @@ const BATCH_CONCURRENCY = 8;
 
 async function translateOne(text: string, targetLang: string) {
   const deeplKey = Deno.env.get("DEEPL_API_KEY");
-  const result = deeplKey
-    ? await translateWithDeepL(text, targetLang, deeplKey)
-    : await translateWithFreeEndpoints(text, targetLang);
+  const deeplResult = deeplKey ? await translateWithDeepL(text, targetLang, deeplKey) : null;
+  const result = deeplResult ?? await translateWithFreeEndpoints(text, targetLang);
   if (!result) return null;
-  const sameLanguage = !!result.detectedLang && result.detectedLang.split("-")[0] === targetLang;
+  const sameLanguage = !!result.detectedLang && result.detectedLang.split("-")[0].toLowerCase() === targetLang;
   return {
     translatedText: result.translatedText,
     sameLanguage,
     detectedLang: result.detectedLang,
-    detectedLangName: result.detectedLang ? (LANG_NAMES[result.detectedLang.split("-")[0]] ?? result.detectedLang) : null,
+    detectedLangName: result.detectedLang ? (LANG_NAMES[result.detectedLang.split("-")[0].toLowerCase()] ?? result.detectedLang) : null,
     targetLangName: LANG_NAMES[targetLang] ?? targetLang,
   };
 }
