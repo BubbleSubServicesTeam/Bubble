@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildTextRuns, type TextEffect, type TextEffectSpan } from '../lib/textEffects';
+import './TextEffectText.css';
 
 type Props = {
   text: string;
@@ -9,8 +10,8 @@ type Props = {
   className?: string;
 };
 
-const PER_CHARACTER_EFFECTS: TextEffect[] = ['bump', 'wave'];
-const CHARACTER_STEP_MS: Partial<Record<TextEffect, number>> = { bump: 70, wave: 90 };
+const PER_CHARACTER_EFFECTS: TextEffect[] = ['bump', 'wave', 'jiggle'];
+const CHARACTER_STEP_MS: Partial<Record<TextEffect, number>> = { bump: 70, wave: 90, jiggle: 60 };
 
 export default function TextEffectText({ text, effect, spans, autoplay = false, className = '' }: Props) {
   const runs = useMemo(() => buildTextRuns(text, spans ?? [], effect), [text, spans, effect]);

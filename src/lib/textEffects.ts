@@ -5,6 +5,9 @@ export const TEXT_EFFECTS = [
   { id: 'shake', label: 'Shake' },
   { id: 'wave', label: 'Wave' },
   { id: 'glow', label: 'Glow' },
+  { id: 'rainbow', label: 'Rainbow' },
+  { id: 'neon', label: 'Neon' },
+  { id: 'jiggle', label: 'Jiggle' },
 ] as const;
 
 export type TextEffect = (typeof TEXT_EFFECTS)[number]['id'];

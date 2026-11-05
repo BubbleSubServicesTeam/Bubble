@@ -56,6 +56,10 @@ type Props = {
   onMembersChanged?: () => void;
 };
 
+const TYPING_IDLE_MS = 1000;
+const TYPING_REFRESH_MS = 1500;
+const TYPING_STALE_MS = 3000;
+
 const EMOJI_LIST = [
   '❤️','👍','👎','🔥','💧','🙏','🧻','✔','❌','🤣',
   '😭','🙄','😬','🤫','🤔','👿','😈','😂','☠','😮',
@@ -162,6 +166,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [undoEdit, setUndoEdit] = useState<{ messageId: string; previousContent: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   const [typingUsers, setTypingUsers] = useState<Profile[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingBroadcastAtRef = useRef(0);
   const draftSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pastedCode, setPastedCode] = useState('');
   const [pastedLang, setPastedLang] = useState('');
@@ -300,11 +305,15 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setTextEffectSpans(prev => remapTextEffectSpans(prev, text, value));
     setSelection(null);
     setText(value);
-    broadcastTyping();
+    const nowMs = Date.now();
+    if (nowMs - typingBroadcastAtRef.current > TYPING_REFRESH_MS) {
+      typingBroadcastAtRef.current = nowMs;
+      broadcastTyping();
+    }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       clearTyping();
-    }, 2500);
+    }, TYPING_IDLE_MS);
   }
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialPositionKeyRef = useRef<string | null>(null);
@@ -518,33 +527,50 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   // Subscribe to typing indicators from other members
   useEffect(() => {
+    let rows: { user_id: string; updated_at: string }[] = [];
+    const profileCache = new Map<string, Profile>();
+    const requestedProfiles = new Set<string>();
+
+    const publish = async () => {
+      const cutoff = Date.now() - TYPING_STALE_MS;
+      const active = rows.filter(t => new Date(t.updated_at).getTime() >= cutoff);
+      const missing = active.map(t => t.user_id).filter(id => !requestedProfiles.has(id));
+      if (missing.length > 0) {
+        missing.forEach(id => requestedProfiles.add(id));
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, user_id, display_name, first_name, last_name, avatar_url')
+          .in('user_id', missing);
+        (profilesData ?? []).forEach(p => profileCache.set(p.user_id, p as Profile));
+      }
+      setTypingUsers(
+        active.map(t => profileCache.get(t.user_id)).filter((p): p is Profile => Boolean(p)),
+      );
+    };
+
+    const load = async () => {
+      const { data: typingData } = await supabase
+        .from('typing_indicators')
+        .select('user_id, updated_at')
+        .eq('conversation_id', conversation.id)
+        .neq('user_id', user?.id ?? '');
+      if (!typingData) return;
+      rows = typingData;
+      await publish();
+    };
+
     const typingChannel = supabase
       .channel(`typing_${conversation.id}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'typing_indicators',
         filter: `conversation_id=eq.${conversation.id}`,
-      }, async () => {
-        const { data: typingData } = await supabase
-          .from('typing_indicators')
-          .select('user_id, updated_at')
-          .eq('conversation_id', conversation.id)
-          .neq('user_id', user?.id ?? '');
-        if (!typingData) return;
-        const now = Date.now();
-        const activeTyping = typingData.filter(t => now - new Date(t.updated_at).getTime() < 4000);
-        if (activeTyping.length === 0) {
-          setTypingUsers([]);
-          return;
-        }
-        const activeUserIds = activeTyping.map(t => t.user_id);
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, user_id, display_name, first_name, last_name, avatar_url')
-          .in('user_id', activeUserIds);
-        if (profilesData) setTypingUsers(profilesData as Profile[]);
-      })
+      }, load)
       .subscribe();
-    return () => { supabase.removeChannel(typingChannel); };
+    const ticker = setInterval(publish, 1000);
+    return () => {
+      clearInterval(ticker);
+      supabase.removeChannel(typingChannel);
+    };
   }, [conversation.id, user?.id]);
 
   async function broadcastTyping() {
@@ -556,6 +582,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   }
 
   async function clearTyping() {
+    typingBroadcastAtRef.current = 0;
     if (!user) return;
     await supabase
       .from('typing_indicators')
@@ -822,6 +849,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setMessages(prev => [...prev, optimisticMsg]);
     setText('');
     setTextEffect(null);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    clearTyping();
     setTextEffectSpans([]);
     // Reset textarea height after clearing text
     if (inputRef.current) {
