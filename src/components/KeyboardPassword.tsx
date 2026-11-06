@@ -141,13 +141,16 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     const root = document.getElementById('root');
     const el = kbdRef.current;
     if (!root || !el) return;
-    const fit = () => { root.style.paddingBottom = `${el.offsetHeight}px`; };
+    const fit = () => {
+      const h = el.offsetHeight;
+      document.documentElement.style.setProperty('--kbd-h', `${h}px`);
+    };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(el);
     return () => {
       observer.disconnect();
-      root.style.paddingBottom = '';
+      document.documentElement.style.setProperty('--kbd-h', '0px');
     };
   }, [active]);
 
