@@ -25,17 +25,14 @@ export default function NewChatModal({ onClose, onCreated, preloadedProfiles }: 
   const [createError, setCreateError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use preloaded profiles if available — shows instantly
+  // Always load profiles if preloaded list is empty
   useEffect(() => {
+    if (!user) return;
     if (preloadedProfiles && preloadedProfiles.length > 0) {
       setSuggestions(preloadedProfiles);
       setLoading(false);
+      return;
     }
-  }, [preloadedProfiles]);
-
-  // Fallback: load all profiles if not preloaded
-  useEffect(() => {
-    if (!user || preloadedProfiles?.length) return;
     let cancelled = false;
     (async () => {
       try {
@@ -55,7 +52,7 @@ export default function NewChatModal({ onClose, onCreated, preloadedProfiles }: 
       }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, preloadedProfiles]);
 
   // Search with debounce — filter contacts locally, fall back to server search
   useEffect(() => {
@@ -64,13 +61,27 @@ export default function NewChatModal({ onClose, onCreated, preloadedProfiles }: 
     const q = search.toLowerCase();
     const sourceList = preloadedProfiles?.length ? preloadedProfiles : suggestions;
     const localMatches = sourceList.filter(p =>
-      p.first_name?.toLowerCase().startsWith(q) ||
-      p.last_name?.toLowerCase().startsWith(q) ||
-      p.display_name?.toLowerCase().startsWith(q)
+      p.first_name?.toLowerCase().includes(q) ||
+      p.last_name?.toLowerCase().includes(q) ||
+      p.display_name?.toLowerCase().includes(q)
     ).slice(0, 20);
 
     setUsers(localMatches);
     setLoading(false);
+
+    // If local search found nothing, try server-side ilike search
+    if (localMatches.length === 0 && user) {
+      const timer = setTimeout(async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, user_id, display_name, first_name, last_name, avatar_url, status, status_message, last_seen, created_at')
+          .neq('user_id', user.id)
+          .or(`display_name.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`)
+          .limit(20);
+        if (data) setUsers(data as Profile[]);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
   }, [search, user, preloadedProfiles, suggestions]);
 
   function toggleSelect(p: Profile) {

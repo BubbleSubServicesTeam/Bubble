@@ -92,13 +92,14 @@ export default function ChatApp() {
     } catch { /* ignore */ }
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('id, user_id, display_name, first_name, last_name, avatar_url, status, status_message, last_seen, created_at')
         .neq('user_id', user.id)
         .order('last_seen', { ascending: false, nullsFirst: false })
         .limit(100);
 
+      if (error) throw error;
       if (data) {
         const profiles = data as Profile[];
         setAllProfiles(profiles);
@@ -456,7 +457,7 @@ export default function ChatApp() {
   return (
     <div
       className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-[height] duration-200 ease-out"
-      style={{ height: 'calc(100dvh - var(--kbd-h, 0px))' }}
+      style={{ height: `calc(100dvh - ${kbdHeight}px)` }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
