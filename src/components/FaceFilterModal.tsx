@@ -304,7 +304,6 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
 
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterDef>(FILTERS[0]);
   const [captured, setCaptured] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedFace[]>([]);
@@ -334,14 +333,12 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
 
   useEffect(() => {
     async function init() {
-      setLoading(true);
       try {
         await startCamera();
         await loadFaceLandmarker();
       } catch (err) {
         setError('Could not initialize face filters. Camera access is required.');
       }
-      setLoading(false);
     }
     init();
     return () => { stopCamera(); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
@@ -501,81 +498,90 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-black rounded-3xl overflow-hidden w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-200"
+        className="bg-slate-950 rounded-[28px] overflow-hidden w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-200 ring-1 ring-white/10"
         onClick={e => e.stopPropagation()}
         style={{ maxHeight: '100dvh' }}
       >
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-3 bg-gradient-to-b from-black/70 to-transparent">
-          <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-white" />
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-sky-400 flex items-center justify-center shadow-lg shadow-sky-500/30">
+              <Sparkles size={16} className="text-slate-950" />
+            </div>
             <div>
-              <span className="text-white font-semibold text-[14px] block">Creator lenses</span>
-              <span className="text-white/50 text-[10px]">Made for Bubble by independent creators</span>
+              <span className="text-white font-semibold text-[15px] block leading-tight">Bubble Lens</span>
+              <span className="text-white/50 text-[11px]">Live face effects</span>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
             <X size={18} />
           </button>
         </div>
 
         {/* Camera / Preview area */}
-        <div className="relative aspect-[3/4] bg-slate-900">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <p className="text-slate-400 text-sm">Loading filters...</p>
+        <div className="relative mx-3 mt-16 aspect-[3/4] overflow-hidden rounded-[32px] bg-slate-900 ring-1 ring-sky-400/30">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 w-full h-full object-cover ${mirror ? 'scale-x-[-1]' : ''} ${captured ? 'invisible' : ''}`}
+          />
+          <canvas ref={overlayRef} className={`absolute inset-0 w-full h-full object-cover ${mirror ? 'scale-x-[-1]' : ''} ${captured ? 'invisible' : ''}`} />
+          {captured && <img src={captured} alt="Captured" className="absolute inset-0 w-full h-full object-cover" />}
+          {ready && !captured && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-black/50 backdrop-blur-sm px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+              <span className="text-[10px] font-semibold tracking-[0.2em] text-white">LIVE</span>
             </div>
-          ) : error && !ready ? (
-            <div className="flex items-center justify-center h-full p-6 text-center">
+          )}
+          {!ready && !error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-sky-400 rounded-full animate-spin" />
+              <p className="text-slate-400 text-sm">Starting camera...</p>
+            </div>
+          )}
+          {!ready && error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950 p-6 text-center">
               <p className="text-slate-400 text-sm">{error}</p>
             </div>
-          ) : captured ? (
-            <img src={captured} alt="Captured" className="w-full h-full object-cover" />
-          ) : (
-            <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${mirror ? 'scale-x-[-1]' : ''}`}
-              />
-              <canvas ref={overlayRef} className={`absolute inset-0 w-full h-full object-cover ${mirror ? 'scale-x-[-1]' : ''}`} />
-            </>
           )}
           <canvas ref={canvasRef} className="hidden" />
         </div>
 
         {/* Filter selector strip */}
         {!captured && !showSaved && (
-          <div className="bg-[#08090c] px-3 pt-3 pb-2">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-white text-[12px] font-semibold">Choose a lens</p>
-                <p className="text-white/40 text-[10px]">{activeFilter.description ?? 'Live face effects'}</p>
+          <div className="px-4 pt-4 pb-2 bg-slate-950">
+            <div className="flex items-end justify-between mb-3">
+              <div className="min-w-0">
+                <p className="text-white text-[13px] font-semibold truncate">{activeFilter.name}</p>
+                <p className="text-white/45 text-[11px] truncate">{activeFilter.description ?? 'Live face effects'}</p>
               </div>
-              <span className="text-[10px] text-white/40">{activeFilter.creator}</span>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-sky-300/70 flex-shrink-0 ml-3">{activeFilter.creator ?? 'Bubble'}</span>
             </div>
             {catalogError && (
-              <p className="text-white/40 text-[10px] mb-2">Extra lenses are unavailable right now.</p>
+              <p className="text-white/40 text-[11px] mb-2">Extra lenses are unavailable right now.</p>
             )}
-            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+            {error && ready && (
+              <p className="text-amber-300/80 text-[11px] mb-2">{error}</p>
+            )}
+            <div className="flex gap-3 overflow-x-auto scrollbar-none pb-2 pt-1 px-1">
               {lenses.map(f => (
                 <button
                   key={f.id}
                   onClick={() => setActiveFilter(f)}
-                  className={`flex-shrink-0 w-[76px] rounded-2xl p-1.5 text-left transition-all ${
-                    activeFilter.id === f.id
-                      ? 'bg-white text-slate-950 ring-2 ring-sky-400 scale-[1.03]'
-                      : 'bg-white/[0.07] text-white hover:bg-white/[0.14]'
-                  }`}
+                  className="group flex flex-col items-center gap-1.5 flex-shrink-0 w-16 transition-transform active:scale-95"
                 >
-                  <div className={`h-12 rounded-xl flex items-center justify-center text-[9px] font-black tracking-wide ${activeFilter.id === f.id ? 'bg-sky-100 text-sky-700' : 'bg-white/[0.08] text-white/70'}`}>
+                  <span
+                    className={`w-14 h-14 rounded-full flex items-center justify-center text-[11px] font-black tracking-wide transition-all duration-200 ${
+                      activeFilter.id === f.id
+                        ? 'bg-sky-400 text-slate-950 ring-2 ring-sky-300 ring-offset-2 ring-offset-slate-950 scale-110'
+                        : 'bg-white/10 text-white/80 group-hover:bg-white/20'
+                    }`}
+                  >
                     {f.emoji}
-                  </div>
-                  <span className="block text-[10px] font-semibold truncate mt-1.5">{f.name}</span>
-                  <span className={`block text-[9px] truncate ${activeFilter.id === f.id ? 'text-slate-500' : 'text-white/40'}`}>{f.creator}</span>
+                  </span>
+                  <span className={`text-[10px] font-medium truncate w-full text-center ${activeFilter.id === f.id ? 'text-sky-300' : 'text-white/50'}`}>{f.name}</span>
                 </button>
               ))}
             </div>
@@ -620,7 +626,7 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
         )}
 
         {/* Bottom controls */}
-        <div className="p-4 flex items-center justify-between bg-black">
+        <div className="px-6 pt-2 pb-6 flex items-center justify-between bg-slate-950">
           {captured ? (
             <>
               <button
@@ -698,9 +704,10 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
               <button
                 onClick={capture}
                 disabled={!ready}
-                className="w-16 h-16 rounded-full bg-white border-4 border-slate-300 flex items-center justify-center disabled:opacity-30 transition-all hover:scale-105 active:scale-95"
+                aria-label="Capture"
+                className="w-[76px] h-[76px] rounded-full border-[3px] border-white/80 flex items-center justify-center disabled:opacity-30 transition-transform hover:scale-105 active:scale-95"
               >
-                <Camera size={22} className="text-slate-900" />
+                <span className="w-[58px] h-[58px] rounded-full bg-white" />
               </button>
               <button
                 onClick={() => setShowSaved(true)}
