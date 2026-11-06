@@ -455,8 +455,7 @@ export default function ChatApp() {
 
   return (
     <div
-      className="flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors duration-300"
-      style={{ height: '100%' }}
+      className="fixed inset-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors duration-300"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

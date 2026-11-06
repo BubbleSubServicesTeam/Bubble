@@ -165,29 +165,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const p = await fetchProfile(session.user.id);
           clearTimeout(profileTimeout);
           if (!p) {
-            const fallback: Profile = {
-              id: session.user.id,
-              user_id: session.user.id,
-              display_name: (session.user.email ?? '').split('@')[0] || 'Unknown',
-              first_name: null,
-              last_name: null,
-              avatar_url: null,
-              status: 'online',
-              status_message: '',
-              last_seen: new Date().toISOString(),
-              created_at: new Date().toISOString(),
-              native_language: null,
-              pin_hash: null,
-              pin_length: null,
-              pin_voluntary: false,
-              fingerprint_enabled: false,
-              unlock_preference: 'pin',
-              deletion_scheduled_at: null,
-              deletion_cancelled_at: null,
-              email: session.user.email ?? null,
-              unread_badge_enabled: false,
-            };
-            setProfile(fallback);
+            intentionalSignOut.current = true;
+            setLoading(false);
+            await supabase.auth.signOut();
+            return;
           }
           applyPinState(p);
           setLoading(false);
@@ -215,29 +196,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           (async () => {
             const p = await fetchProfile(session.user.id);
             if (!p) {
-              const fallback: Profile = {
-                id: session.user.id,
-                user_id: session.user.id,
-                display_name: (session.user.email ?? '').split('@')[0] || 'Unknown',
-                first_name: null,
-                last_name: null,
-                avatar_url: null,
-                status: 'online',
-                status_message: '',
-                last_seen: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                native_language: null,
-                pin_hash: null,
-                pin_length: null,
-                pin_voluntary: false,
-                fingerprint_enabled: false,
-                unlock_preference: 'pin',
-                deletion_scheduled_at: null,
-                deletion_cancelled_at: null,
-                email: session.user.email ?? null,
-                unread_badge_enabled: false,
-              };
-              setProfile(fallback);
+              intentionalSignOut.current = true;
+              setLoading(false);
+              await supabase.auth.signOut();
+              return;
             }
             applyPinState(p);
             setLoading(false);
@@ -264,29 +226,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           (async () => {
             const p = await fetchProfile(session.user.id);
             if (!p) {
-              const fallback: Profile = {
-                id: session.user.id,
-                user_id: session.user.id,
-                display_name: (session.user.email ?? '').split('@')[0] || 'Unknown',
-                first_name: null,
-                last_name: null,
-                avatar_url: null,
-                status: 'online',
-                status_message: '',
-                last_seen: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                native_language: null,
-                pin_hash: null,
-                pin_length: null,
-                pin_voluntary: false,
-                fingerprint_enabled: false,
-                unlock_preference: 'pin',
-                deletion_scheduled_at: null,
-                deletion_cancelled_at: null,
-                email: session.user.email ?? null,
-                unread_badge_enabled: false,
-              };
-              setProfile(fallback);
+              intentionalSignOut.current = true;
+              setLoading(false);
+              await supabase.auth.signOut();
+              return;
             }
             applyPinState(p);
             setLoading(false);
