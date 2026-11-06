@@ -1200,10 +1200,25 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [translationErrors, setTranslationErrors] = useState<Set<string>>(new Set());
   const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set());
   const nativeLang = profile?.native_language ?? getBrowserTranslationLang();
+  const [translationLang, setTranslationLang] = useState(nativeLang);
+  const langRef = useRef(nativeLang);
+  if (translationLang !== nativeLang) {
+    setTranslationLang(nativeLang);
+    setTranslations({});
+    setTranslationErrors(new Set());
+    setTranslatingIds(new Set());
+    setShowOriginalIds(new Set());
+  }
+
+  useEffect(() => {
+    langRef.current = nativeLang;
+  }, [nativeLang]);
 
   // Auto-translate friends' text messages into the viewer's language
   useEffect(() => {
     if (!nativeLang) return;
+    const lang = nativeLang;
+    const lettersOnly = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
     messages.forEach(msg => {
       if (msg.message_type !== 'text' || !msg.content) return;
       if (msg.sender_id === user?.id && (!msg.sender_language || msg.sender_language === nativeLang)) return;
@@ -1211,9 +1226,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       if (translatingIds.has(msg.id)) return;
 
       setTranslatingIds(prev => new Set(prev).add(msg.id));
-      translateText(msg.content, nativeLang).then(outcome => {
+      translateText(msg.content, lang).then(outcome => {
+        if (langRef.current !== lang) return;
         setTranslatingIds(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
-        if (outcome.status === 'translated' && outcome.result.translatedText !== msg.content) {
+        if (outcome.status === 'translated' && lettersOnly(outcome.result.translatedText) !== lettersOnly(msg.content)) {
           const { result } = outcome;
           setTranslations(prev => ({
             ...prev,

@@ -782,10 +782,11 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             >
               <Clipboard size={isLargeKeyboard ? 14 : 11} />
             </button>
+            <div className={`col-span-3 grid grid-cols-2 ${gap}`}>
             <button
               type="button"
               onClick={() => moveCursorTo(cursorPosRef.current - 1)}
-              className={`col-span-1 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              className={`${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor left"
             >
               <ArrowLeft size={arrowSize} />
@@ -793,11 +794,12 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             <button
               type="button"
               onClick={() => moveCursorTo(cursorPosRef.current + 1)}
-              className={`col-span-2 ${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
+              className={`${sideSize} flex items-center justify-center transition-all ${FUNC_KEY_CLASS}`}
               title="Move cursor right"
             >
               <ArrowRight size={arrowSize} />
             </button>
+            </div>
             <button
               type="button"
               onClick={() => handleSpace()}

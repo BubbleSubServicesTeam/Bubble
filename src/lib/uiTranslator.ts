@@ -5,6 +5,7 @@ const HAS_LETTER = /\p{L}/u;
 const BATCH_SIZE = 100;
 const FLUSH_DELAY_MS = 150;
 const STORAGE_PREFIX = 'bubble-ui-translations-';
+const originals = new Map<Text, string>();
 
 type Waiting = { node: Text; source: string };
 
@@ -36,6 +37,7 @@ export function startUiTranslation(lang: string): () => void {
 
   function applyTranslation(node: Text, source: string, translated: string) {
     if (node.data !== source) return;
+    if (!originals.has(node)) originals.set(node, source);
     const lead = source.match(/^\s*/)?.[0] ?? '';
     const trail = source.match(/\s*$/)?.[0] ?? '';
     const next = lead + translated + trail;
@@ -116,5 +118,9 @@ export function startUiTranslation(lang: string): () => void {
     disposed = true;
     observer.disconnect();
     if (timer !== null) clearTimeout(timer);
+    originals.forEach((source, node) => {
+      if (node.isConnected) node.data = source;
+    });
+    originals.clear();
   };
 }
