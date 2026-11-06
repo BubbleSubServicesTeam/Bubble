@@ -13,6 +13,7 @@ import BubbleLoader from './components/BubbleLoader';
 import PinScreen from './components/PinScreen';
 import OAuthAuthorizePage from './components/OAuthAuthorizePage';
 import MaintenanceScreen from './components/MaintenanceScreen';
+import ProfileLoadError from './components/ProfileLoadError';
 import { useMaintenanceStatus } from './lib/maintenance';
 import { ROUTES, UNLOCK_RETURN_KEY, currentPath } from './lib/routes';
 
@@ -38,7 +39,7 @@ function initialAuthScreen(path: string): 'signin' | 'signup' | 'forgot' {
 }
 
 function AppInner() {
-  const { user, loading, profile, pinLocked, unlockWithPin, unlockWithPassword, lockApp } = useAuth();
+  const { user, loading, profile, pinLocked, unlockWithPin, unlockWithPassword, lockApp, profileLoadFailed, retryProfileLoad } = useAuth();
   const { t } = useAppLang();
   const maintenance = useMaintenanceStatus();
   const [adminSignIn, setAdminSignIn] = useState(false);
@@ -87,7 +88,7 @@ function AppInner() {
     if (!user && !adminSignIn) {
       return <MaintenanceScreen message={maintenance.message} onAdminSignIn={() => setAdminSignIn(true)} />;
     }
-    if (user && !profile) return <LoadingScreen />;
+    if (user && !profile) return profileLoadFailed ? <ProfileLoadError onRetry={retryProfileLoad} /> : <LoadingScreen />;
     if (user) return <MaintenanceScreen message={maintenance.message} />;
   }
 
@@ -99,6 +100,7 @@ function AppInner() {
   if (loading) return <LoadingScreen />;
 
   if (!user) return <AuthPage initialScreen={initialAuthScreen(path)} />;
+  if (!profile) return profileLoadFailed ? <ProfileLoadError onRetry={retryProfileLoad} /> : <LoadingScreen />;
 
   // Mount the chat app always (even behind PIN) so data preloads while typing
   const chatApp = (

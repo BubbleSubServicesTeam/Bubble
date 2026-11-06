@@ -49,6 +49,8 @@ type AuthCtx = {
   verifyPinForSensitiveAction: (pin: string) => Promise<boolean>;
   pinLockedUntil: string | null;
   passwordLockedUntil: string | null;
+  profileLoadFailed: boolean;
+  retryProfileLoad: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pinLockedUntil, setPinLockedUntil] = useState<string | null>(null);
   const [passwordLockedUntil, setPasswordLockedUntil] = useState<string | null>(null);
   const [pinSetupRequired, setPinSetupRequired] = useState(false);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pinStateResolved = useRef(false);
   const signedInHandled = useRef(false);
@@ -88,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data) {
           const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
           const merged = { ...data, ...contactRow };
+          setProfileLoadFailed(false);
           setPinLockedUntil(merged.pin_locked_until ?? null);
           setPasswordLockedUntil(merged.password_locked_until ?? null);
           setProfile(merged);
@@ -105,6 +109,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return null;
+  }
+
+  async function retryProfileLoad() {
+    const u = userRef.current;
+    if (!u) return;
+    setLoading(true);
+    const p = await fetchProfile(u.id);
+    if (p) {
+      setProfileLoadFailed(false);
+      applyPinState(p);
+    } else {
+      setProfileLoadFailed(true);
+    }
+    setLoading(false);
   }
 
   function applyPinState(p: Profile | null) {
@@ -165,9 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const p = await fetchProfile(session.user.id);
           clearTimeout(profileTimeout);
           if (!p) {
-            intentionalSignOut.current = true;
+            setProfileLoadFailed(true);
             setLoading(false);
-            await supabase.auth.signOut();
             return;
           }
           applyPinState(p);
@@ -196,9 +213,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           (async () => {
             const p = await fetchProfile(session.user.id);
             if (!p) {
-              intentionalSignOut.current = true;
+              setProfileLoadFailed(true);
               setLoading(false);
-              await supabase.auth.signOut();
               return;
             }
             applyPinState(p);
@@ -226,9 +242,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           (async () => {
             const p = await fetchProfile(session.user.id);
             if (!p) {
-              intentionalSignOut.current = true;
+              setProfileLoadFailed(true);
               setLoading(false);
-              await supabase.auth.signOut();
               return;
             }
             applyPinState(p);
@@ -635,7 +650,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, profile, loading, pinLocked, pinSetupRequired, pinLockedUntil, passwordLockedUntil,
+      user, profile, loading, pinLocked, pinSetupRequired, pinLockedUntil, passwordLockedUntil, profileLoadFailed, retryProfileLoad,
       unlockWithPin, unlockWithPassword, unlockWithFingerprint, bypassPin, lockApp,
       signIn, signUp, signOut, updateProfile, deleteAccount, cancelAccountDeletion,
       sendPasswordReset, sendDeleteVerification, verifyDeleteOTP,
