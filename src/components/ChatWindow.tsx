@@ -850,6 +850,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       reactions: {},
       text_effect: type === 'text' ? textEffect : null,
       text_effect_spans: type === 'text' && textEffectSpans.length > 0 ? textEffectSpans : null,
+      sender_language: profile?.native_language ?? null,
       ...extra,
     };
     // Optimistic insert — show immediately
@@ -903,6 +904,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       message_type: 'gif',
       gif_url: url,
       content: null,
+      sender_language: profile?.native_language ?? null,
       reply_to: replyTo?.id ?? null,
       reply_excerpt: replyExcerpt || null,
       reactions: {},
@@ -993,6 +995,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         sender_id: user!.id,
         message_type: 'text',
         content: message,
+        sender_language: profile?.native_language ?? null,
         reply_to: replyTo?.id ?? null,
         reply_excerpt: replyExcerpt || null,
         reactions: {},
@@ -1200,7 +1203,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     if (!nativeLang) return;
     messages.forEach(msg => {
       if (msg.message_type !== 'text' || !msg.content) return;
-      if (msg.sender_id === user?.id) return;
+      if (msg.sender_id === user?.id && (!msg.sender_language || msg.sender_language === nativeLang)) return;
       if (translations[msg.id] || translationErrors.has(msg.id)) return;
       if (translatingIds.has(msg.id)) return;
 

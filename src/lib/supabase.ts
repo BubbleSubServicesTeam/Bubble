@@ -112,6 +112,7 @@ export type Message = {
   reply_excerpt?: string | null;
   text_effect?: TextEffect | null;
   text_effect_spans?: TextEffectSpan[] | null;
+  sender_language?: string | null;
   edited_at: string | null;
   deleted_at: string | null;
   created_at: string;
