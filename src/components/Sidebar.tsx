@@ -206,7 +206,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   return (
     <div className="w-full md:w-[300px] flex-shrink-0 bg-white dark:bg-[#0d1117] border-r border-slate-200 dark:border-white/[0.05] flex flex-col h-full transition-colors duration-300">
       {/* Header */}
-      <div className="px-5 pt-[max(3.5rem,env(safe-area-inset-top))] md:pt-5 pb-3 flex items-center justify-between">
+      <div className="px-5 pt-4 pb-3 md:pt-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-[14px] overflow-hidden ring-1 ring-slate-200 dark:ring-white/[0.08] shadow-lg">
             <img src={getLogoUrl(resolvedTheme)} alt="Bubble" className="w-full h-full object-cover" />
@@ -368,7 +368,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       )}
 
       {/* User footer — settings & sign out, pinned to bottom edge on mobile */}
-      <div className="p-3 bg-white dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/[0.05] flex items-center gap-2.5" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))', paddingTop: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="p-3 bg-white dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/[0.05] flex items-center gap-2.5">
         <div className="flex-shrink-0">
           <Avatar profile={profile} size="sm" showStatus />
         </div>

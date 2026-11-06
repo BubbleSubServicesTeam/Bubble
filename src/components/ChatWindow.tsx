@@ -1560,7 +1560,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       }}
     >
       {/* Header */}
-      <div className="relative z-[60] flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-200 dark:border-white/[0.05] bg-white dark:bg-slate-950" style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))' }}>
+      <div className="relative z-[60] flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-200 dark:border-white/[0.05] bg-white dark:bg-slate-950">
         {onBack && (
           <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-all flex-shrink-0">
             <ArrowLeft size={20} />
@@ -2246,7 +2246,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       )}
 
       {/* Input area */}
-      <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5">
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
             <Reply size={13} className="text-sky-400 flex-shrink-0 mt-0.5" />
