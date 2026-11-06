@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { X, Camera, RefreshCw, Send, Download, Trash2, Sparkles } from 'lucide-react';
+import { loadCatalogLenses } from '../lib/faceFilterCatalog';
 
 const MEDIAPIPE_BUNDLE_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 const MEDIAPIPE_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
@@ -297,6 +298,9 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
   const rafRef = useRef<number | null>(null);
   const faceLandmarkerRef = useRef<any>(null);
   const lastVideoTimeRef = useRef(-1);
+  const activeFilterRef = useRef<FilterDef>(FILTERS[0]);
+  const [catalogLenses, setCatalogLenses] = useState<FilterDef[]>([]);
+  const [catalogError, setCatalogError] = useState(false);
 
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -313,6 +317,14 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
       const raw = localStorage.getItem(SAVED_KEY);
       if (raw) setSaved(JSON.parse(raw));
     } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadCatalogLenses()
+      .then(lenses => { if (!cancelled) setCatalogLenses(lenses); })
+      .catch(() => { if (!cancelled) setCatalogError(true); });
+    return () => { cancelled = true; };
   }, []);
 
   const persistSaved = useCallback((items: SavedFace[]) => {
@@ -386,6 +398,7 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
   }
 
   function startRenderLoop() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const video = videoRef.current;
     const overlay = overlayRef.current;
     if (!video || !overlay) return;
@@ -405,8 +418,9 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
             const results = faceLandmarkerRef.current.detectForVideo(video, performance.now());
             if (results.faceLandmarks && results.faceLandmarks.length > 0) {
               const landmarks = results.faceLandmarks[0];
-              if (activeFilter.id !== 'none') {
-                activeFilter.draw(ctx, landmarks, overlay.width, overlay.height);
+              const filter = activeFilterRef.current;
+              if (filter.id !== 'none') {
+                filter.draw(ctx, landmarks, overlay.width, overlay.height);
               }
             }
           } catch { /* ignore detection errors */ }
@@ -418,8 +432,12 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
   }
 
   useEffect(() => {
+    activeFilterRef.current = activeFilter;
+  }, [activeFilter]);
+
+  useEffect(() => {
     if (ready) startRenderLoop();
-  }, [ready, activeFilter]);
+  }, [ready]);
 
   function capture() {
     const video = videoRef.current;
@@ -477,6 +495,7 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
     a.click();
   }
 
+  const lenses = [...FILTERS, ...catalogLenses];
   const mirror = facing === 'user';
 
   return (
@@ -538,8 +557,11 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
               </div>
               <span className="text-[10px] text-white/40">{activeFilter.creator}</span>
             </div>
+            {catalogError && (
+              <p className="text-white/40 text-[10px] mb-2">Extra lenses are unavailable right now.</p>
+            )}
             <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-              {FILTERS.map(f => (
+              {lenses.map(f => (
                 <button
                   key={f.id}
                   onClick={() => setActiveFilter(f)}

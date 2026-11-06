@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.oauth-provider]
 verify_jwt = false
+
+[functions.face-filters]
+verify_jwt = true

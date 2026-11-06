@@ -36,6 +36,10 @@
     "translate-message": {
       "hasChanged": false,
       "hash": "0e825f828eef97e3dd38597a3f01c00da343135da8b2cfa3b22dde62502cdaba"
+    },
+    "face-filters": {
+      "hasChanged": false,
+      "hash": "1f2fdac2e20040b22b05d05dba69e04c1566ee46446bb1b60c9e421bf50ec9c4"
     }
   }
 }
