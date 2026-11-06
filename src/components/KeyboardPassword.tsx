@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Delete, Eye, EyeOff, ArrowUp, ArrowLeft, ArrowRight, CornerDownLeft as Return, Clipboard, ChevronDown, CaseSensitive, Eraser, X } from 'lucide-react';
 import TextEffectText from './TextEffectText';
@@ -20,7 +19,6 @@ type Props = {
   cursorAtEnd?: boolean;
   showField?: boolean;
   composer?: boolean;
-  composerActions?: ReactNode;
   textEffect?: TextEffect | null;
   onTextEffectChange?: (effect: TextEffect | null, range: TextRange | null) => void;
   selection?: TextRange | null;
@@ -74,7 +72,7 @@ const PRESSED_KEY_CLASS = 'bg-white dark:bg-white text-slate-900 scale-95 shadow
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
-export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true, composer = false, composerActions, textEffect = null, onTextEffectChange, selection = null }: Props) {
+export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true, composer = false, textEffect = null, onTextEffectChange, selection = null }: Props) {
   const [show, setShow] = useState(false);
   const [effectsOpen, setEffectsOpen] = useState(false);
   const [previewEffect, setPreviewEffect] = useState<TextEffect | null>(null);
@@ -143,13 +141,13 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     const root = document.getElementById('root');
     const el = kbdRef.current;
     if (!root || !el) return;
-    const fit = () => { root.style.height = `calc(100dvh - ${el.offsetHeight}px)`; };
+    const fit = () => { root.style.paddingBottom = `${el.offsetHeight}px`; };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(el);
     return () => {
       observer.disconnect();
-      root.style.height = '';
+      root.style.paddingBottom = '';
     };
   }, [active]);
 
@@ -629,7 +627,6 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
             {effectsOpen ? <X size={15} /> : <CaseSensitive size={17} />}
           </button>
         </div>
-        {composerActions && <div className="flex items-center justify-end gap-1">{composerActions}</div>}
       </div>
     );
   }

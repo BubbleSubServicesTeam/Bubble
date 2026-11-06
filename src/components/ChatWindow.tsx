@@ -1246,46 +1246,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     });
   }, [messages, nativeLang]);
 
-  function renderComposerButtons() {
-    return (
-      <>
-        <button
-          onClick={() => setShowAttachMenu(true)}
-          disabled={uploadingFile}
-          className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-300 transition-all"
-          title="Attach"
-        >
-          {uploadingFile ? <BubbleLoader size={22} /> : <Paperclip size={18} />}
-        </button>
-        <button
-          onClick={() => setShowGifPicker(s => !s)}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-            showGifPicker ? 'bg-sky-500/20 text-sky-400' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-          title="GIFs"
-        >
-          <Smile size={18} />
-        </button>
-        <button
-          onClick={toggleDictation}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-            listening ? 'bg-sky-500/20 text-sky-400 animate-pulse' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-          title={listening ? 'Stop dictation' : 'Dictate text'}
-        >
-          <Mic size={18} />
-        </button>
-        <button
-          onClick={() => sendMessage()}
-          disabled={!text.trim() || sending || isBlocked}
-          className="w-9 h-9 rounded-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-200 dark:disabled:bg-slate-700 dark:disabled:text-slate-500 flex items-center justify-center text-white transition-all shadow-lg shadow-sky-500/20"
-        >
-          <Send size={16} />
-        </button>
-      </>
-    );
-  }
-
   function toggleShowOriginal(msgId: string) {
     setShowOriginalIds(prev => {
       const n = new Set(prev);
@@ -2386,7 +2346,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 onDismiss={() => setBubbleKeyboardOpen(false)}
                 cursorAtEnd
                 showField={false}
-                composerActions={renderComposerButtons()}
               />
             )}
           </div>
