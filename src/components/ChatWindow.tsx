@@ -178,6 +178,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showDraftPanel, setShowDraftPanel] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [lastReadAt, setLastReadAt] = useState<string | null>(null);
+  const [lastReadLoaded, setLastReadLoaded] = useState(false);
   const [savedMsgIds, setSavedMsgIds] = useState<Set<string>>(new Set());
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [showFilesViewer, setShowFilesViewer] = useState(false);
@@ -416,13 +417,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   // Fetch last_read_at for the summary "what you missed" feature
   useEffect(() => {
     if (!user || !conversation.id) return;
+    setLastReadLoaded(false);
     supabase
       .from('conversation_members')
       .select('last_read_at')
       .eq('conversation_id', conversation.id)
       .eq('user_id', user.id)
       .maybeSingle()
-      .then(({ data }) => { setLastReadAt(data?.last_read_at ?? null); });
+      .then(({ data }) => { setLastReadAt(data?.last_read_at ?? null); setLastReadLoaded(true); });
   }, [user, conversation.id]);
 
   // Load saved message IDs for this conversation
@@ -665,7 +667,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   // Mark messages as read only when the chat is actually visible on screen
   const markAsRead = useCallback(() => {
-    if (!user) return;
+    if (!user || initialPositionKeyRef.current !== conversation.id) return;
     supabase
       .from('conversation_members')
       .update({ last_read_at: new Date().toISOString() })
@@ -759,10 +761,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   }
 
   useEffect(() => {
-    if (!openPositionLoaded || loadingMessages || messages.length === 0 || initialPositionKeyRef.current === conversation.id) return;
+    if (!openPositionLoaded || !lastReadLoaded || loadingMessages || messages.length === 0 || initialPositionKeyRef.current === conversation.id) return;
     const el = scrollRef.current;
     if (!el) return;
     initialPositionKeyRef.current = conversation.id;
+    markAsRead();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
       if (openPosition === 'last_read' && lastReadAt) {
@@ -792,7 +795,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         pinToBottom();
       });
     });
-  }, [openPositionLoaded, loadingMessages, messages.length, openPosition, lastReadAt, conversation.id]);
+  }, [openPositionLoaded, lastReadLoaded, loadingMessages, messages.length, openPosition, lastReadAt, conversation.id]);
 
   async function saveOpenPosition(position: 'last_read' | 'bottom') {
     if (!user) return;
