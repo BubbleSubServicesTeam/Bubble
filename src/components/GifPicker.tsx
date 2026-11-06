@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type UIEvent } from 'react';
 import { supabase, GIF, GifCollection } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import { GifMedia, isVideoUrl } from './GifStudio';
-import { X, Search, Layers, ChevronRight, Plus, ExternalLink, Sparkles } from 'lucide-react';
+import { GifMedia } from './GifStudio';
+import { X, Search, Layers, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 
 type Props = {
@@ -12,13 +12,31 @@ type Props = {
   onOpenStudio: () => void;
 };
 
+type TenorGif = { url: string; preview: string; id: string };
+type TenorKind = 'trending' | 'search';
+
 const GIPHY_KEY = '8blk9mlVWTo1kGAN49Lb7ffA3BtlAJib';
+const PAGE_SIZE = 24;
+
+function toTenorGifs(data: any): TenorGif[] {
+  if (!Array.isArray(data?.data)) return [];
+  return data.data.map((g: any) => ({
+    id: g.id,
+    url: g.images?.original?.mp4 ?? g.images?.original?.url ?? g.images?.downsized?.url ?? '',
+    preview: g.images?.fixed_height_small?.mp4 ?? g.images?.fixed_height_small?.url ?? g.images?.downsized_small?.url ?? '',
+  })).filter((g: TenorGif) => g.url);
+}
 
 export default function GifPicker({ onSelect, onClose, conversationId, onOpenStudio }: Props) {
   const { user } = useAuth();
   const [tab, setTab] = useState<'trending' | 'search' | 'my' | 'collections'>('trending');
   const [search, setSearch] = useState('');
-  const [tenorGifs, setTenorGifs] = useState<{ url: string; preview: string; id: string }[]>([]);
+  const [tenorGifs, setTenorGifs] = useState<TenorGif[]>([]);
+  const [tenorQuery, setTenorQuery] = useState<{ kind: TenorKind; q: string }>({ kind: 'trending', q: '' });
+  const [tenorOffset, setTenorOffset] = useState(0);
+  const [tenorHasMore, setTenorHasMore] = useState(false);
+  const [loadingMoreTenor, setLoadingMoreTenor] = useState(false);
+  const tenorRequestRef = useRef(0);
   const [myGifs, setMyGifs] = useState<GIF[]>([]);
   const [collections, setCollections] = useState<GifCollection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<GifCollection | null>(null);
@@ -26,50 +44,60 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (tab === 'trending') fetchTrending();
+    if (tab === 'trending') loadTenorPage('trending', '', 0);
     if (tab === 'my') fetchMyGifs();
     if (tab === 'collections') fetchCollections();
   }, [tab]);
 
   useEffect(() => {
     if (tab === 'search' && search.trim()) {
-      const t = setTimeout(() => searchTenor(search), 400);
+      const t = setTimeout(() => loadTenorPage('search', search.trim(), 0), 400);
       return () => clearTimeout(t);
     }
   }, [search, tab]);
 
-  async function fetchTrending() {
-    setLoading(true);
-    try {
-      const res = await fetch(`https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=24&rating=g`);
-      const data = await res.json();
-      if (data.data) {
-        setTenorGifs(data.data.map((g: any) => ({
-          id: g.id,
-          url: g.images?.original?.mp4 ?? g.images?.original?.url ?? g.images?.downsized?.url ?? '',
-          preview: g.images?.fixed_height_small?.mp4 ?? g.images?.fixed_height_small?.url ?? g.images?.downsized_small?.url ?? '',
-        })).filter((g: any) => g.url));
-      }
-    } catch {
-      setTenorGifs([]);
+  async function loadTenorPage(kind: TenorKind, q: string, offset: number) {
+    const requestId = offset === 0 ? ++tenorRequestRef.current : tenorRequestRef.current;
+    const isCurrent = () => requestId === tenorRequestRef.current;
+    if (offset === 0) {
+      setTenorQuery({ kind, q });
+      setLoading(true);
+    } else {
+      setLoadingMoreTenor(true);
     }
-    setLoading(false);
+    const params = new URLSearchParams({ api_key: GIPHY_KEY, limit: String(PAGE_SIZE), rating: 'g', offset: String(offset) });
+    if (kind === 'search') params.set('q', q);
+    try {
+      const res = await fetch(`https://api.giphy.com/v1/gifs/${kind}?${params}`);
+      const data = await res.json();
+      if (!isCurrent()) return;
+      const rawCount = Array.isArray(data?.data) ? data.data.length : 0;
+      const page = toTenorGifs(data);
+      setTenorGifs(prev => {
+        if (offset === 0) return page;
+        const seen = new Set(prev.map(g => g.id));
+        return [...prev, ...page.filter(g => !seen.has(g.id))];
+      });
+      setTenorOffset(offset + rawCount);
+      setTenorHasMore(rawCount === PAGE_SIZE);
+    } catch {
+      if (!isCurrent()) return;
+      if (offset === 0) setTenorGifs([]);
+      setTenorHasMore(false);
+    } finally {
+      if (isCurrent()) {
+        setLoading(false);
+        setLoadingMoreTenor(false);
+      }
+    }
   }
 
-  async function searchTenor(q: string) {
-    setLoading(true);
-    try {
-      const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=24&rating=g`);
-      const data = await res.json();
-      if (data.data) {
-        setTenorGifs(data.data.map((g: any) => ({
-          id: g.id,
-          url: g.images?.original?.mp4 ?? g.images?.original?.url ?? g.images?.downsized?.url ?? '',
-          preview: g.images?.fixed_height_small?.mp4 ?? g.images?.fixed_height_small?.url ?? g.images?.downsized_small?.url ?? '',
-        })).filter((g: any) => g.url));
-      }
-    } catch { setTenorGifs([]); }
-    setLoading(false);
+  function handleScroll(e: UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight > 240) return;
+    if (tab !== 'trending' && tab !== 'search') return;
+    if (!tenorHasMore || loadingMoreTenor || loading) return;
+    loadTenorPage(tenorQuery.kind, tenorQuery.q, tenorOffset);
   }
 
   async function fetchMyGifs() {
@@ -115,7 +143,7 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
   }
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden" style={{ height: '400px' }}>
+    <div className="flex flex-col bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden" style={{ height: '75vh' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/5">
         <div className="flex items-center gap-2">
@@ -168,7 +196,7 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
       )}
 
       {/* Content */}
-      <div className="overflow-y-auto scrollbar-thin" style={{ height: 'calc(400px - 120px)' }}>
+      <div onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
         {/* Tenor GIFs */}
         {(tab === 'trending' || tab === 'search') && (
           <div className="p-2">
@@ -177,17 +205,24 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
                 <BubbleLoader size={36} />
               </div>
             ) : (
-              <div className="columns-3 gap-1">
-                {tenorGifs.map(gif => (
-                  <button
-                    key={gif.id}
-                    onClick={() => onSelect(gif.url)}
-                    className="w-full mb-1 rounded-xl overflow-hidden hover:ring-2 hover:ring-sky-500 transition-all"
-                  >
-                    <GifMedia src={gif.preview} alt="" className="w-full object-cover" />
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="columns-3 gap-1">
+                  {tenorGifs.map(gif => (
+                    <button
+                      key={gif.id}
+                      onClick={() => onSelect(gif.url)}
+                      className="w-full mb-1 rounded-xl overflow-hidden hover:ring-2 hover:ring-sky-500 transition-all"
+                    >
+                      <GifMedia src={gif.preview} alt="" className="w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+                {loadingMoreTenor && (
+                  <div className="flex justify-center py-4">
+                    <BubbleLoader size={28} />
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

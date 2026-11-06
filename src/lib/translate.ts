@@ -79,19 +79,16 @@ async function postToTranslator(body: Record<string, unknown>): Promise<Response
   });
 }
 
-export async function translateText(text: string, targetLang: string): Promise<TranslationOutcome> {
-  if (!text || !targetLang) return { status: 'error' };
-  const cacheKey = `${targetLang}:${text}`;
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
+const RETRY_DELAYS_MS = [400, 1200];
 
+async function requestTranslation(text: string, targetLang: string): Promise<TranslationOutcome> {
   try {
     const resp = await postToTranslator({ text, targetLang });
     if (!resp.ok) return { status: 'error' };
     const data: unknown = await resp.json();
     if (!data || typeof data !== 'object' || !('translatedText' in data) || typeof data.translatedText !== 'string' || !data.translatedText.trim()) return { status: 'error' };
     const response = data as Record<string, unknown>;
-    const outcome: TranslationOutcome = response.sameLanguage === true
+    return response.sameLanguage === true
       ? { status: 'same-language' }
       : {
           status: 'translated',
@@ -102,11 +99,26 @@ export async function translateText(text: string, targetLang: string): Promise<T
             targetLangName: typeof response.targetLangName === 'string' ? response.targetLangName : null,
           },
         };
-    cache.set(cacheKey, outcome);
-    return outcome;
   } catch {
     return { status: 'error' };
   }
+}
+
+export async function translateText(text: string, targetLang: string): Promise<TranslationOutcome> {
+  if (!text || !targetLang) return { status: 'error' };
+  const cacheKey = `${targetLang}:${text}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    const outcome = await requestTranslation(text, targetLang);
+    if (outcome.status !== 'error') {
+      cache.set(cacheKey, outcome);
+      return outcome;
+    }
+    if (attempt < RETRY_DELAYS_MS.length) await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+  }
+  return { status: 'error' };
 }
 
 // Returns one entry per input text: the translation, or null when the text should stay as-is
