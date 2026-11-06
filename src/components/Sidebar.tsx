@@ -368,7 +368,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       )}
 
       {/* User footer — settings & sign out, pinned to bottom edge on mobile */}
-      <div className="p-3 bg-white dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/[0.05] flex items-center gap-2.5">
+      <div className="px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/[0.05] flex items-center gap-2.5">
         <div className="flex-shrink-0">
           <Avatar profile={profile} size="sm" showStatus />
         </div>
