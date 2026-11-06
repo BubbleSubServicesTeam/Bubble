@@ -138,19 +138,17 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
   useEffect(() => {
     if (!active) return;
-    const root = document.getElementById('root');
     const el = kbdRef.current;
-    if (!root || !el) return;
+    if (!el) return;
     const fit = () => {
-      const h = el.offsetHeight;
-      document.documentElement.style.setProperty('--kbd-h', `${h}px`);
+      window.dispatchEvent(new CustomEvent('bubble-kbd-height', { detail: { height: el.offsetHeight } }));
     };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(el);
     return () => {
       observer.disconnect();
-      document.documentElement.style.setProperty('--kbd-h', '0px');
+      window.dispatchEvent(new CustomEvent('bubble-kbd-height', { detail: { height: 0 } }));
     };
   }, [active]);
 

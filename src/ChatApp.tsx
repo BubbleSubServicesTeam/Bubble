@@ -19,7 +19,16 @@ export default function ChatApp() {
   const { t } = useAppLang();
   const { user, profile } = useAuth();
   const { theme, resolvedTheme } = useTheme();
-  const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
+  const [kbdHeight, setKbdHeight] = useState(0);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { height: number };
+      setKbdHeight(detail.height);
+    };
+    window.addEventListener('bubble-kbd-height', handler);
+    return () => window.removeEventListener('bubble-kbd-height', handler);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -456,7 +465,7 @@ export default function ChatApp() {
   return (
     <div
       className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-[height] duration-200 ease-out"
-      style={{ height: 'calc(100dvh - var(--kbd-h, 0px))' }}
+      style={{ height: `calc(100dvh - ${kbdHeight}px)` }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
