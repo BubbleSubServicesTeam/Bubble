@@ -173,7 +173,7 @@ export default function PinScreen({
     : 'Enter your PIN to continue');
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex flex-col items-center justify-center p-6 transition-colors duration-300 relative overflow-hidden" style={{ position: 'fixed', inset: 0, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none' }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex flex-col items-center justify-center p-6 transition-[height] duration-200 ease-out relative overflow-hidden" style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 'calc(100dvh - var(--kbd-h, 0px))', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none' }}>
       {/* Ambient glow — pulsing orbs */}
       <div
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[420px] h-[420px] bg-sky-500/10 rounded-full blur-3xl pointer-events-none"

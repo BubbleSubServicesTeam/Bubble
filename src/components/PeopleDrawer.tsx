@@ -66,9 +66,9 @@ export default function PeopleDrawer({ onClose, onSelectChat }: Props) {
     if (!search.trim()) { setUsers([]); return; }
     const q = search.toLowerCase();
     const localMatches = contacts.filter(p =>
-      p.first_name?.toLowerCase().startsWith(q) ||
-      p.last_name?.toLowerCase().startsWith(q) ||
-      p.display_name?.toLowerCase().startsWith(q)
+      p.first_name?.toLowerCase().includes(q) ||
+      p.last_name?.toLowerCase().includes(q) ||
+      p.display_name?.toLowerCase().includes(q)
     ).slice(0, 20);
 
     if (localMatches.length > 0) {
@@ -85,7 +85,7 @@ export default function PeopleDrawer({ onClose, onSelectChat }: Props) {
           .from('profiles')
           .select(PROFILE_COLUMNS)
           .neq('user_id', user.id)
-          .or(`first_name.ilike.${search}%,last_name.ilike.${search}%,display_name.ilike.${search}%`)
+          .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,display_name.ilike.%${search}%`)
           .order('last_seen', { ascending: false, nullsFirst: false })
           .limit(20);
         if (error) throw error;
