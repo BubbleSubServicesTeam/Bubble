@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Delete, Fingerprint, ArrowLeft, KeyRound, LogOut } from 'lucide-react';
+
+function useKbdHeight() {
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const handler = (e: Event) => setH((e as CustomEvent).detail.height);
+    window.addEventListener('bubble-kbd-height', handler);
+    return () => window.removeEventListener('bubble-kbd-height', handler);
+  }, []);
+  return h;
+}
 import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
 import KeyboardPassword from './KeyboardPassword';
@@ -25,6 +35,7 @@ export default function PinScreen({
   title, subtitle,
 }: Props) {
   const { user, profile, pinLockedUntil, passwordLockedUntil, unlockWithFingerprint, signOut } = useAuth();
+  const kbdHeight = useKbdHeight();
   const [digits, setDigits] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -173,7 +184,7 @@ export default function PinScreen({
     : 'Enter your PIN to continue');
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex flex-col items-center justify-center p-6 transition-colors duration-300 relative overflow-hidden" style={{ position: 'fixed', inset: 0, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none' }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex flex-col items-center justify-center p-6 transition-[height] duration-200 ease-out relative overflow-hidden" style={{ position: 'fixed', left: 0, right: 0, top: 0, height: `calc(100dvh - ${kbdHeight}px)`, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none' }}>
       {/* Ambient glow — pulsing orbs */}
       <div
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[420px] h-[420px] bg-sky-500/10 rounded-full blur-3xl pointer-events-none"
