@@ -27,9 +27,6 @@ export function useMaintenanceStatus(): MaintenanceStatus {
           enabled: Boolean(data.enabled),
           message: typeof data.message === 'string' && data.message.trim() ? data.message : DEFAULT_MESSAGE,
         });
-      })
-      .catch(() => {
-        if (!cancelled) setStatus({ loaded: true, enabled: false, message: DEFAULT_MESSAGE });
       });
     return () => {
       cancelled = true;
