@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase, Conversation, Profile, smartName } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import { X, Search, UserPlus, Users, Check, Camera, Trophy } from 'lucide-react';
+import { X, Search, UserPlus, Users, Check, Camera } from 'lucide-react';
 import Avatar from './Avatar';
 import BubbleLoader from './BubbleLoader';
-import FantasyFootballModal from './FantasyFootballModal';
 
 type Props = {
   onClose: () => void;
@@ -24,8 +23,6 @@ export default function NewChatModal({ onClose, onCreated, preloadedProfiles }: 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [isFantasy, setIsFantasy] = useState(false);
-  const [showFantasy, setShowFantasy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Use preloaded profiles if available — shows instantly
@@ -172,29 +169,6 @@ export default function NewChatModal({ onClose, onCreated, preloadedProfiles }: 
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Fantasy Football pill switch */}
-          <div className="flex items-center justify-between bg-slate-100 dark:bg-white/5 rounded-xl px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Trophy size={16} className="text-sky-500" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Fantasy Football League</span>
-            </div>
-            <button
-              onClick={() => { const next = !isFantasy; setIsFantasy(next); setShowFantasy(next); }}
-              className={`relative w-12 h-6 rounded-full transition-colors ${isFantasy ? 'bg-sky-500' : 'bg-slate-300 dark:bg-white/10'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${isFantasy ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
-          {isFantasy && showFantasy && (
-            <div className="border border-sky-500/20 rounded-xl p-3 bg-sky-500/5">
-              <FantasyFootballModal
-                onClose={() => { setShowFantasy(false); setIsFantasy(false); }}
-                onCreated={(conv) => { setShowFantasy(false); setIsFantasy(false); onCreated(conv); }}
-              />
-            </div>
-          )}
-
           {/* Group avatar upload (for groups) */}
           {selected.length > 1 && (
             <div className="flex flex-col items-center gap-3">

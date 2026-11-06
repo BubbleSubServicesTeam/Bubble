@@ -11,7 +11,7 @@ type FilterDef = {
   emoji: string;
   creator?: string;
   description?: string;
-  draw: (ctx: CanvasRenderingContext2D, landmarks: number[][], w: number, h: number) => void;
+  draw: (ctx: CanvasRenderingContext2D, landmarks: number[][], w: number, h: number, source: CanvasImageSource) => void;
 };
 
 type SavedFace = {
@@ -420,7 +420,7 @@ export default function FaceFilterModal({ onSend, onClose }: Props) {
               const landmarks = results.faceLandmarks[0];
               const filter = activeFilterRef.current;
               if (filter.id !== 'none') {
-                filter.draw(ctx, landmarks, overlay.width, overlay.height);
+                filter.draw(ctx, landmarks, overlay.width, overlay.height, video);
               }
             }
           } catch { /* ignore detection errors */ }
