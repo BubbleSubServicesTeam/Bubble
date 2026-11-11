@@ -1,0 +1,50 @@
+{
+  "name": "Bubble — Chat, Call & GIFs",
+  "short_name": "Bubble",
+  "description": "Chat, call, FaceTime, and share GIFs with friends",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83 copy copy copy.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["social", "messaging", "communication"],
+  "shortcuts": [
+    {
+      "name": "New Chat",
+      "short_name": "New",
+      "description": "Start a new conversation",
+      "url": "/?action=new",
+      "icons": [{ "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png", "sizes": "any", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
