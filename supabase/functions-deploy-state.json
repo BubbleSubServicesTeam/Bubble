@@ -40,6 +40,10 @@
     "translate-message": {
       "hasChanged": false,
       "hash": "0e825f828eef97e3dd38597a3f01c00da343135da8b2cfa3b22dde62502cdaba"
+    },
+    "qr-login": {
+      "hasChanged": false,
+      "hash": "eef19171ac546c0ddf40c2ceb91b5f66c7aeb09c41cbb18178e32a963b511415"
     }
   }
 }
