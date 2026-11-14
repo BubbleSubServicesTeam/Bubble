@@ -482,7 +482,8 @@ function ApiKeysSection({ userId }: { userId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/[0.05] rounded-xl px-3 py-2.5">
-            <code className="flex-1 text-slate-900 dark:text-white text-[13px] font-mono truncate">{newKey}</code>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex-shrink-0">API Key</span>
+            <code className="flex-1 min-w-0 text-slate-900 dark:text-white text-[12px] font-mono break-all">{newKey}</code>
             <button
               onClick={() => copy(newKey, 'newkey')}
               className="flex-shrink-0 flex items-center gap-1.5 text-[12px] font-medium text-sky-500 hover:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 px-2.5 py-1.5 rounded-lg transition-colors"
