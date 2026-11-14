@@ -131,8 +131,6 @@ function AppInner() {
     </div>
   ) : null;
 
-  if (pinLockActive) return pinOverlay;
-
   if (path === ROUTES.oauthAuthorize) {
     return (
       <>
