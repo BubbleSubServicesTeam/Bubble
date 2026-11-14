@@ -39,7 +39,7 @@ function initialAuthScreen(path: string): 'signin' | 'signup' | 'forgot' {
 }
 
 function AppInner() {
-  const { user, loading, profile, pinLocked, unlockWithPin, unlockWithPassword, lockApp, profileLoadFailed, retryProfileLoad } = useAuth();
+  const { user, loading, profile, pinLocked, unlockWithPin, unlockWithPassword, confirmUnlock, lockApp, profileLoadFailed, retryProfileLoad } = useAuth();
   const { t } = useAppLang();
   const maintenance = useMaintenanceStatus();
   const [adminSignIn, setAdminSignIn] = useState(false);
@@ -124,6 +124,7 @@ function AppInner() {
       <PinScreen
         onUnlock={unlockWithPin}
         onUsePassword={unlockWithPassword}
+        onConfirmUnlock={confirmUnlock}
         userName={profile.display_name ?? undefined}
         avatarUrl={profile.avatar_url}
         pinLength={profile.pin_length ?? 4}

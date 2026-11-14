@@ -141,6 +141,7 @@ export default function PinSetupRequired({ onComplete }: Props) {
         }}
         onUnlock={async () => false}
         onUsePassword={() => {}}
+        onConfirmUnlock={() => {}}
       />
     );
   }
@@ -166,6 +167,7 @@ export default function PinSetupRequired({ onComplete }: Props) {
         }}
         onUnlock={async () => false}
         onUsePassword={() => {}}
+        onConfirmUnlock={() => {}}
       />
     );
   }

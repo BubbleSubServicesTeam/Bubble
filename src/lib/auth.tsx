@@ -32,6 +32,7 @@ type AuthCtx = {
   unlockWithFingerprint: (pattern?: TouchPattern) => Promise<boolean>;
   bypassPin: () => void;
   lockApp: () => void;
+  confirmUnlock: () => void;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, firstName: string, lastName: string, nativeLanguage: string) => Promise<{ error: string | null; needsVerification: boolean; userId: string | null }>;
   signOut: () => Promise<void>;
@@ -375,7 +376,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (hashed === profile.pin_hash) {
       await supabase.rpc('clear_pin_failures');
       setPinLockedUntil(null);
-      setPinLocked(false);
       return true;
     }
     const { data } = await supabase.rpc('record_pin_failure');
@@ -418,7 +418,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.rpc('clear_pin_failures');
     setPasswordLockedUntil(null);
     setPinLockedUntil(null);
-    setPinLocked(false);
     return true;
   }
 
@@ -430,8 +429,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       ok = await verifyFingerprint(user.id);
     }
-    if (ok) setPinLocked(false);
     return ok;
+  }
+
+  function confirmUnlock() {
+    setPinLocked(false);
   }
 
   async function setupPin(pin: string, length: number) {
@@ -666,7 +668,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, profile, loading, pinLocked, pinSetupRequired, pinLockedUntil, passwordLockedUntil, profileLoadFailed, retryProfileLoad,
-      unlockWithPin, unlockWithPassword, unlockWithFingerprint, bypassPin, lockApp,
+      unlockWithPin, unlockWithPassword, unlockWithFingerprint, bypassPin, lockApp, confirmUnlock,
       signIn, signUp, signOut, updateProfile, deleteAccount, cancelAccountDeletion,
       sendPasswordReset, sendDeleteVerification, verifyDeleteOTP,
       setupPin, dismissPinSetup, removePin, changePassword, changeEmail, verifyPinForSensitiveAction,

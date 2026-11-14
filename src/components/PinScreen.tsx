@@ -11,6 +11,7 @@ import { getBiometricCapability } from '../lib/fingerprint';
 type Props = {
   onUnlock: (pin: string) => Promise<boolean>;
   onUsePassword: (password: string) => Promise<boolean>;
+  onConfirmUnlock: () => void;
   userName?: string;
   avatarUrl?: string;
   pinLength?: number;
@@ -21,7 +22,7 @@ type Props = {
 };
 
 export default function PinScreen({
-  onUnlock, onUsePassword, userName, avatarUrl,
+  onUnlock, onUsePassword, onConfirmUnlock, userName, avatarUrl,
   pinLength = 4, setupMode = false, onSetupComplete,
   title, subtitle,
 }: Props) {
@@ -106,7 +107,12 @@ export default function PinScreen({
         setLoading(false);
       } else {
         const ok = await onUnlock(next.join(''));
-        if (!ok) {
+        if (ok) {
+          setSuccess(true);
+          setLoading(false);
+          setTimeout(() => onConfirmUnlock(), 450);
+          return;
+        } else {
           const newAttempts = attempts + 1;
           setAttempts(newAttempts);
           triggerShake();
@@ -127,7 +133,12 @@ export default function PinScreen({
     setPasswordLoading(true);
     setPasswordError('');
     const ok = await onUsePassword(password);
-    if (!ok) {
+    if (ok) {
+      setSuccess(true);
+      setPasswordLoading(false);
+      setTimeout(() => onConfirmUnlock(), 450);
+      return;
+    } else {
       setPasswordError(passwordRemaining > 0 ? 'Password is temporarily locked after too many incorrect attempts.' : 'Incorrect password. Try again.');
       setPassword('');
     }
@@ -261,8 +272,7 @@ export default function PinScreen({
                 if (success) {
                   setSuccess(true);
                   setError('');
-                  // Keep the "Verified" state visible briefly before the lock screen closes
-                  setTimeout(() => setShowFingerprint(false), 400);
+                  setTimeout(() => onConfirmUnlock(), 450);
                 } else {
                   setError('Fingerprint not recognized.');
                 }
