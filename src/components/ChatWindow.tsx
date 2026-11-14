@@ -7,7 +7,7 @@ import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, S
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
-import { revealMessage, revealMessages, sealTextForConversation } from '../lib/messageVault';
+import { revealMessage, revealMessages, sealTextForConversation, uploadSealedMedia } from '../lib/messageVault';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -857,7 +857,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
   }
 
-  async function sendMessage(type: Message['message_type'] = 'text', extra: Partial<Message> = {}) {
+  async function sendMessage(type: Message['message_type'] = 'text', extra: Partial<Message> = {}, display: Partial<Message> = {}) {
     if (!user) return;
     if (type === 'text' && !text.trim()) return;
     // Send push notification to other members for text messages
@@ -893,6 +893,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     const optimisticMsg: Message = {
       ...payload,
       content: displayContent,
+      ...display,
       id: tempId,
       created_at: new Date().toISOString(),
       edited_at: null,
@@ -1100,6 +1101,23 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     try { return new URL(u).hostname.replace('www.', ''); } catch { return 'Embed'; }
   }
 
+  async function sendSealedMedia(
+    type: 'image' | 'file' | 'voicemail',
+    folder: string,
+    blob: Blob,
+    meta: { file_name: string; file_mime: string },
+    extra: Partial<Message>,
+  ) {
+    if (!user) return;
+    const uploaded = await uploadSealedMedia(user.id, conversation.id, folder, blob, meta);
+    if (!uploaded) throw new Error('Could not encrypt this file.');
+    await sendMessage(
+      type,
+      { ...extra, media_url: uploaded.media_url, vault: uploaded.vault, file_name: null, file_mime: null, file_size: null },
+      { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
+    );
+  }
+
   async function handleSelfieCapture(dataUrl: string) {
     if (!user) return;
     setShowSelfieModal(false);
@@ -1107,11 +1125,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     try {
       const res = await fetch(dataUrl);
       const blob = await res.blob();
-      const path = `uploads/${user.id}/selfie-${Date.now()}.jpg`;
-      const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
-      await sendMessage('image', { media_url: urlData.publicUrl, file_name: 'selfie.jpg', file_mime: 'image/jpeg' });
+      await sendSealedMedia('image', 'uploads', blob, { file_name: 'selfie.jpg', file_mime: 'image/jpeg' }, {});
     } catch (err: any) {
       alert(err.message ?? 'Upload failed');
     } finally {
@@ -1132,11 +1146,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     try {
       const mime = blob.type || 'audio/webm';
       const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
-      const path = `voicemails/${user.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('media').upload(path, blob, { contentType: mime, upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
-      await sendMessage('voicemail', { media_url: urlData.publicUrl, duration_seconds: durationSeconds });
+      await sendSealedMedia('voicemail', 'voicemails', blob, { file_name: `voice.${ext}`, file_mime: mime }, { duration_seconds: durationSeconds });
     } catch (err: any) {
       alert(err.message ?? 'Upload failed');
     } finally {
@@ -1147,20 +1157,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024 * 1024) { alert('File must be 5 GB or smaller.'); return; }
+    if (file.size > 100 * 1024 * 1024) { alert('File must be 100 MB or smaller.'); return; }
     setUploadingFile(true);
     try {
-      const path = `uploads/${user.id}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from('media').upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
       const isImage = file.type.startsWith('image/');
-      await sendMessage(isImage ? 'image' : 'file', {
-        media_url: urlData.publicUrl,
+      await sendSealedMedia(isImage ? 'image' : 'file', 'uploads', file, {
         file_name: file.name,
-        file_size: file.size,
-        file_mime: file.type,
-      });
+        file_mime: file.type || 'application/octet-stream',
+      }, {});
     } catch (err: any) {
       alert(err.message ?? 'Upload failed');
     } finally {
@@ -1893,6 +1897,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         )
                       )}
 
+                      {msg.vault_locked && msg.message_type !== 'text' && (
+                        <p className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
+                      )}
                       {msg.message_type === 'gif' && msg.gif_url && (
                         <GifMedia src={msg.gif_url} alt="GIF" className="w-full max-w-[min(640px,calc(100vw-4rem))] max-h-[460px] object-contain rounded-2xl" />
                       )}

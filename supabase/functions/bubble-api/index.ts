@@ -277,24 +277,7 @@ Deno.serve(async (req: Request) => {
 
           if (toolName === "bubble_send_message") {
             if (!ctx.permissions.includes("send_message")) return sendError(-32003, "Send permission is required.");
-            const conversationId = typeof args.conversation_id === "string" ? args.conversation_id : "";
-            const content = typeof args.content === "string" ? args.content.trim() : "";
-            const messageType = args.message_type === "code" ? "code" : "text";
-            if (!conversationId || !content) return sendError(-32602, "conversation_id and content are required.");
-            const { data: membership } = await supabase
-              .from("conversation_members")
-              .select("conversation_id")
-              .eq("conversation_id", conversationId)
-              .eq("user_id", ctx.userId)
-              .maybeSingle();
-            if (!membership) return sendError(-32003, "You are not a member of that conversation.");
-            const { data: message, error: msgError } = await supabase
-              .from("messages")
-              .insert({ conversation_id: conversationId, sender_id: ctx.userId, message_type: messageType, content })
-              .select("id, created_at")
-              .maybeSingle();
-            if (msgError || !message) return sendError(-32000, "Could not send the message.");
-            return sendResult(textResult({ success: true, message_id: message.id, created_at: message.created_at }));
+            return sendError(-32000, "Sending messages through the connector is turned off because chat messages are encrypted on each person's devices. Send from the Bubble app instead.");
           }
 
           return sendError(-32601, "Unknown tool.");
@@ -315,29 +298,7 @@ Deno.serve(async (req: Request) => {
 
     // ─── REST API endpoints (legacy) ───
     if (req.method === "POST" && (path === "/send" || path === "/messages/send")) {
-      const body = await req.json().catch(() => ({}));
-      const { conversation_id, content, message_type } = body;
-      if (!conversation_id || !content) {
-        return json({ error: "conversation_id and content are required" }, 400);
-      }
-      if (!ctx.permissions.includes("send_message")) {
-        return json({ error: "This API key does not have permission to send messages." }, 403);
-      }
-      const { data: membership } = await supabase
-        .from("conversation_members")
-        .select("conversation_id")
-        .eq("conversation_id", conversation_id)
-        .eq("user_id", ctx.userId)
-        .maybeSingle();
-      if (!membership) return json({ error: "You are not a member of this conversation." }, 403);
-
-      const { data: message, error: msgError } = await supabase
-        .from("messages")
-        .insert({ conversation_id, sender_id: ctx.userId, message_type: message_type ?? "text", content })
-        .select("id, created_at")
-        .single();
-      if (msgError) return json({ error: "Failed to send message: " + msgError.message }, 500);
-      return json({ success: true, message_id: message.id, created_at: message.created_at });
+      return json({ error: "Sending messages through the API is turned off because chat messages are encrypted on each person's devices. Send from the Bubble app instead." }, 403);
     }
 
     if (req.method === "GET" && (path === "/conversations" || path === "/")) {
