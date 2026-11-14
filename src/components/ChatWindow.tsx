@@ -7,10 +7,11 @@ import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, S
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
+import { revealMessage, revealMessages, sealTextForConversation } from '../lib/messageVault';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
-import { Bell, Languages } from 'lucide-react';
+import { Bell, Languages, Lock } from 'lucide-react';
 import GifPicker from './GifPicker';
 import GroupInfoModal from './GroupInfoModal';
 import AttachMenu from './AttachMenu';
@@ -628,12 +629,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${conversation.id}`
       }, async (payload) => {
-        const { data } = await supabase
+        const { data: row } = await supabase
           .from('messages')
           .select(`*, sender:profiles!messages_profile_sender_id_fkey(${SENDER_PROFILE_COLUMNS})`)
           .eq('id', payload.new.id)
           .maybeSingle();
-        if (data) {
+        if (row) {
+          const data = user ? await revealMessage(user.id, row as Message) : row as Message;
           setMessages(prev => {
             if (prev.some(m => m.id === data.id)) return prev;
             // Also dedup optimistic messages: same sender + same content within 5 seconds
@@ -680,8 +682,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${conversation.id}`
-      }, (payload) => {
-        const updated = payload.new as Message;
+      }, async (payload) => {
+        const updated = user ? await revealMessage(user.id, payload.new as Message) : payload.new as Message;
         if (updated.deleted_at) {
           setMessages(prev => prev.filter(m => m.id !== updated.id));
         } else {
@@ -764,7 +766,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     setMessageLoadError(false);
     if (msgResult.data) {
-      const msgs = msgResult.data as Message[];
+      const msgs = user ? await revealMessages(user.id, msgResult.data as Message[]) : msgResult.data as Message[];
       if (membersResult.data) {
         for (const msg of msgs) {
           const msgTime = new Date(msg.created_at).getTime();
@@ -863,20 +865,23 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       const senderName = profile?.display_name ?? 'Someone';
       sendNotificationToMembers(
         `${senderName} in ${convName}`,
-        text.trim(),
+        'New message',
         'message'
       );
     }
     setSending(true);
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const messageContent = type === 'text' ? text.trim() : null;
+    const vault = messageContent ? await sealTextForConversation(user.id, conversation.id, messageContent) : null;
+    if (messageContent && !vault) return;
     const payload: any = {
       conversation_id: conversation.id,
       sender_id: user.id,
       message_type: type,
-      content: messageContent,
+      content: vault ? null : messageContent,
+      vault,
       reply_to: replyTo?.id ?? null,
-      reply_excerpt: replyExcerpt || null,
+      reply_excerpt: vault ? null : replyExcerpt || null,
       reactions: {},
       text_effect: type === 'text' ? textEffect : null,
       text_effect_spans: type === 'text' && textEffectSpans.length > 0 ? textEffectSpans : null,
@@ -886,6 +891,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     // Optimistic insert — show immediately
     const optimisticMsg: Message = {
       ...payload,
+      content: messageContent,
       id: tempId,
       created_at: new Date().toISOString(),
       edited_at: null,
@@ -1019,18 +1025,21 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function handleSendIframe(url: string, title: string, message: string) {
     setShowIframeModal(false);
     if (message) {
+      const vault = await sealTextForConversation(user!.id, conversation.id, message);
+      if (!vault) return;
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const textPayload: any = {
         conversation_id: conversation.id,
         sender_id: user!.id,
         message_type: 'text',
-        content: message,
+        content: null,
+        vault,
         sender_language: profile?.native_language ?? null,
         reply_to: replyTo?.id ?? null,
-        reply_excerpt: replyExcerpt || null,
+        reply_excerpt: null,
         reactions: {},
       };
-      setMessages(prev => [...prev, { ...textPayload, id: tempId, created_at: new Date().toISOString(), edited_at: null, deleted_at: null, duration_seconds: null, sender: profile ?? undefined }]);
+      setMessages(prev => [...prev, { ...textPayload, content: message, id: tempId, created_at: new Date().toISOString(), edited_at: null, deleted_at: null, duration_seconds: null, sender: profile ?? undefined }]);
       requestAnimationFrame(() => scrollToBottom('auto', true));
       await supabase.from('messages').insert(textPayload);
     }
@@ -1169,8 +1178,12 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     const previousContent = message.content ?? '';
     const nextContent = editText.trim();
+    if (!user || message.vault_locked) return;
+    const vault = await sealTextForConversation(user.id, conversation.id, nextContent);
+    if (!vault) return;
     const { error } = await supabase.from('messages').update({
-      content: nextContent,
+      content: null,
+      vault,
       edited_at: new Date().toISOString(),
     }).eq('id', editingId);
     if (error) return;
@@ -1185,10 +1198,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function undoEditMessage() {
     if (!undoEdit) return;
     clearTimeout(undoEdit.timer);
-    const { error } = await supabase.from('messages').update({
-      content: undoEdit.previousContent,
-      edited_at: null,
-    }).eq('id', undoEdit.messageId);
+    const vault = user ? await sealTextForConversation(user.id, conversation.id, undoEdit.previousContent) : null;
+    const { error } = vault
+      ? await supabase.from('messages').update({
+          content: null,
+          vault,
+          edited_at: null,
+        }).eq('id', undoEdit.messageId)
+      : { error: new Error('Could not encrypt message') };
     if (!error) {
       setMessages(prev => prev.map(m => m.id === undoEdit.messageId ? { ...m, content: undoEdit.previousContent, edited_at: null } : m));
     }
@@ -1839,10 +1856,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                           </div>
                         ) : (
                           <div className="px-3.5 py-2" data-no-translate data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
+                            {msg.vault_locked ? (
+                              <p className="flex items-center gap-1.5 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
+                            ) : (
                             <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
                               {(msg.text_effect || msg.text_effect_spans?.length) && (showOriginalIds.has(msg.id) || !translations[msg.id]?.translatedText) ? <TextEffectText text={msg.content ?? ''} effect={msg.text_effect ?? null} spans={msg.text_effect_spans} /> : renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
                               {msg.edited_at && <span className="text-[10px] opacity-60 ml-1.5">(edited)</span>}
                             </p>
+                            )}
                             {translations[msg.id] && !showOriginalIds.has(msg.id) && (
                               <button
                                 onClick={() => toggleShowOriginal(msg.id)}
@@ -2079,7 +2100,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       <MsgAction onClick={startLensReply} title="Reply">
                         <Reply size={13} />
                       </MsgAction>
-                      {msg.message_type === 'text' && (
+                      {msg.message_type === 'text' && !msg.vault_locked && (
                         <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy">
                           {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
                         </MsgAction>
@@ -2095,7 +2116,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       <MsgAction onClick={() => toggleSaveMessage(msg)} title={savedMsgIds.has(msg.id) ? 'Unsave' : 'Save'}>
                         {savedMsgIds.has(msg.id) ? <BookmarkCheck size={13} className="text-sky-400" /> : <Bookmark size={13} />}
                       </MsgAction>
-                      {isMe && ['text', 'code', 'iframe'].includes(msg.message_type) && (
+                      {isMe && !msg.vault_locked && ['text', 'code', 'iframe'].includes(msg.message_type) && (
                         <MsgAction onClick={() => { setEditingId(msg.id); setEditText(msg.content ?? ''); }} title="Edit message">
                           <Edit2 size={13} />
                         </MsgAction>
