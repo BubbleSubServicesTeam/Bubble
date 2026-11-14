@@ -108,9 +108,7 @@ export default function PinScreen({
       } else {
         const ok = await onUnlock(next.join(''));
         if (ok) {
-          setSuccess(true);
-          setLoading(false);
-          setTimeout(() => onConfirmUnlock(), 450);
+          onConfirmUnlock();
           return;
         } else {
           const newAttempts = attempts + 1;
@@ -134,9 +132,7 @@ export default function PinScreen({
     setPasswordError('');
     const ok = await onUsePassword(password);
     if (ok) {
-      setSuccess(true);
-      setPasswordLoading(false);
-      setTimeout(() => onConfirmUnlock(), 450);
+      onConfirmUnlock();
       return;
     } else {
       setPasswordError(passwordRemaining > 0 ? 'Password is temporarily locked after too many incorrect attempts.' : 'Incorrect password. Try again.');
@@ -270,9 +266,7 @@ export default function PinScreen({
               }}
               onScanComplete={(success) => {
                 if (success) {
-                  setSuccess(true);
-                  setError('');
-                  setTimeout(() => onConfirmUnlock(), 450);
+                  onConfirmUnlock();
                 } else {
                   setError('Fingerprint not recognized.');
                 }

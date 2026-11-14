@@ -1249,6 +1249,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     messages.forEach(msg => {
       if (msg.message_type !== 'text' || !msg.content) return;
       if (msg.sender_id === user?.id && (!msg.sender_language || msg.sender_language === nativeLang)) return;
+      // Skip messages where the sender explicitly declared the same language as ours
+      if (msg.sender_language && msg.sender_language === nativeLang) return;
       if (translations[msg.id] || translationErrors.has(msg.id)) return;
       if (translatingIds.has(msg.id)) return;
 
@@ -1266,9 +1268,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
               targetLangName: result.targetLangName,
             },
           }));
-        } else if (outcome.status === 'error') {
-          setTranslationErrors(prev => new Set(prev).add(msg.id));
         }
+        // 'same-language' and 'error' both do nothing — don't show "Translation unavailable"
+        // for same-language messages, and silently skip errors instead of cluttering the UI
       });
     });
   }, [messages, nativeLang]);
@@ -1862,9 +1864,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                             )}
                             {translatingIds.has(msg.id) && !translations[msg.id] && (
                               <p className="text-[10px] opacity-50 mt-1">Translating...</p>
-                            )}
-                            {translationErrors.has(msg.id) && !translations[msg.id] && (
-                              <p className="text-[10px] text-amber-500 mt-1">Translation unavailable</p>
                             )}
                           </div>
                         )

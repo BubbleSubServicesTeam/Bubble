@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import QRCode from 'qrcode';
 import { supabase, smartName, Profile, ContactVisibility } from '../lib/supabase';
+import { ROUTES, absoluteUrl } from '../lib/routes';
 import ContactVisibilityPicker from './ContactVisibilityPicker';
 import { regionsByCountry, postalCodePatterns } from '../lib/regions';
 import { useAuth } from '../lib/auth';
@@ -19,7 +21,7 @@ import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
   X, Check, Camera, AlertTriangle,
   ArrowLeft, Eye, EyeOff, Mail, Trash2, User, Shield, Sun, Moon, Palette, DollarSign, Lock, Delete, Globe, ChevronDown, Ban,
-  Fingerprint, Plus, KeyRound, Smartphone, Monitor, Tablet, LogOut, Code2
+  Fingerprint, Plus, KeyRound, Smartphone, Monitor, Tablet, LogOut, Code2, QrCode, Copy, Check, RefreshCw, Loader2
 } from 'lucide-react';
 import FingerprintScanner from './FingerprintScanner';
 import { getBiometricCapability, enrollFingerprintWithPattern, listFingerprints, deleteFingerprint, FingerprintRecord, type TouchPattern } from '../lib/fingerprint';
@@ -126,6 +128,11 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [emailSuccess, setEmailSuccess] = useState(false);
+  const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrCopied, setQrCopied] = useState(false);
+  const [qrError, setQrError] = useState('');
 
   function pinAddDigit(digit: string, forConfirm: boolean) {
     const limit = pinLength;
@@ -1437,6 +1444,90 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                     Change Email
                   </button>
                 )}
+              </div>
+
+              {/* QR Login — scan to log into this account on another device */}
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <QrCode size={16} className="text-sky-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-slate-900 dark:text-white font-semibold text-[14px] mb-1">Quick Login QR Code</p>
+                    <p className="text-slate-500 dark:text-slate-500 text-[13px] leading-relaxed">
+                      Generate a QR code that logs another device into your account instantly. The code expires in 5 minutes and works only once.
+                    </p>
+                  </div>
+                </div>
+
+                {!qrToken ? (
+                  <button
+                    onClick={async () => {
+                      setQrLoading(true);
+                      setQrError('');
+                      try {
+                        const { data, error } = await supabase.rpc('create_qr_login_token');
+                        if (error || typeof data !== 'string') {
+                          setQrError('Could not generate login code.');
+                          return;
+                        }
+                        setQrToken(data);
+                        const url = absoluteUrl(ROUTES.qrLogin(data));
+                        const dataUrl = await QRCode.toDataURL(url, {
+                          width: 200, margin: 2,
+                          color: { dark: '#0f172a', light: '#ffffff' },
+                        });
+                        setQrDataUrl(dataUrl);
+                      } catch {
+                        setQrError('Something went wrong.');
+                      } finally {
+                        setQrLoading(false);
+                      }
+                    }}
+                    disabled={qrLoading}
+                    className="w-full py-2.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-600 dark:text-sky-400 font-medium text-[14px] rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {qrLoading ? <Loader2 size={16} className="animate-spin" /> : <QrCode size={16} />}
+                    {qrLoading ? 'Generating...' : 'Generate login QR code'}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 border border-slate-200 dark:border-white/10">
+                      {qrDataUrl ? (
+                        <img src={qrDataUrl} alt="Login QR code" className="w-44 h-44" />
+                      ) : (
+                        <div className="w-44 h-44 flex items-center justify-center">
+                          <Loader2 size={20} className="animate-spin text-slate-400" />
+                        </div>
+                      )}
+                      <p className="text-[11px] text-slate-500 text-center">Scan with another device's camera to log in</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{absoluteUrl(ROUTES.qrLogin(qrToken))}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(absoluteUrl(ROUTES.qrLogin(qrToken)));
+                          setQrCopied(true);
+                          setTimeout(() => setQrCopied(false), 2000);
+                        }}
+                        className="w-9 h-9 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-500 flex items-center justify-center transition-all flex-shrink-0"
+                        title="Copy link"
+                      >
+                        {qrCopied ? <Check size={15} /> : <Copy size={15} />}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => { setQrToken(null); setQrDataUrl(null); setQrCopied(false); }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 font-medium text-[13px] rounded-xl transition-all"
+                    >
+                      <RefreshCw size={14} />
+                      Clear code
+                    </button>
+                  </div>
+                )}
+                {qrError && <p className="text-red-400 text-[12px] mt-2 text-center">{qrError}</p>}
               </div>
 
               <div className="bg-red-500/[0.05] border border-red-500/[0.12] rounded-2xl p-4">
