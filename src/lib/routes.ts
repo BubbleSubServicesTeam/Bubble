@@ -6,8 +6,7 @@ export const SETTINGS_TABS = [
   'account',
   'paypal',
   'blocked',
-  'apikeys',
-  'clientids',
+  'developer',
   'admin',
 ] as const;
 

@@ -11,8 +11,7 @@ import { LANGUAGES, flagUrl } from '../lib/translate';
 import Avatar from './Avatar';
 import PayPalTab from './PayPalTab';
 import AdminPanel from './AdminPanel';
-import ApiKeysTab from './ApiKeysTab';
-import ClientIdsTab from './ClientIdsTab';
+import DeveloperSettings from './DeveloperSettings';
 import LocationPrivacySettings from './LocationPrivacySettings';
 import TrustedPeopleSettings from './TrustedPeopleSettings';
 import SelfSuspensionSection from './SelfSuspensionSection';
@@ -1105,15 +1104,10 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
               tab === 'blocked' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
             <Ban size={15} /> {t('tabBlocked')}
           </button>
-          <button onClick={() => selectTab('apikeys')}
+          <button onClick={() => selectTab('developer')}
             className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
-              tab === 'apikeys' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
-            <Code2 size={15} /> {t('tabApiKeys')}
-          </button>
-          <button onClick={() => selectTab('clientids')}
-            className={`flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-medium transition-all ${
-              tab === 'clientids' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
-            <Globe size={15} /> Client IDs
+              tab === 'developer' ? 'bg-sky-500/10 text-sky-500 dark:text-sky-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'}`}>
+            <Code2 size={15} /> Developer
           </button>
           {profile?.is_admin && (
             <button onClick={() => selectTab('admin')}
@@ -1710,9 +1704,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
 
           {tab === 'paypal' && user && <PayPalTab userId={user.id} />}
 
-          {tab === 'apikeys' && user && <ApiKeysTab userId={user.id} />}
-
-          {tab === 'clientids' && user && <ClientIdsTab userId={user.id} />}
+          {tab === 'developer' && user && <DeveloperSettings userId={user.id} />}
           {tab === 'admin' && profile?.is_admin && user && <AdminPanel currentUserId={user.id} />}
 
           {tab === 'language' && (
