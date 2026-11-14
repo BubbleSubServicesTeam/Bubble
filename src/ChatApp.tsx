@@ -441,6 +441,45 @@ export default function ChatApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, joinToken]);
 
+  // QR login: when someone scans a QR login code, exchange the token for a session
+  const qrLoginToken = route.kind === 'qrLogin' ? route.token : null;
+  useEffect(() => {
+    if (!qrLoginToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/qr-login?token=${encodeURIComponent(qrLoginToken)}`);
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || json.error) {
+          window.alert(json.error || 'This login code is invalid or expired.');
+          go(ROUTES.login, true);
+          return;
+        }
+        // Use the token_hash from the edge function to verify the OTP
+        const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+          type: 'magiclink',
+          token_hash: json.token_hash,
+        });
+        if (cancelled) return;
+        if (otpError || !otpData.session) {
+          window.alert('Could not log in with this code. It may have expired.');
+          go(ROUTES.login, true);
+          return;
+        }
+        // Session is now set — onAuthStateChange will pick it up
+        go(ROUTES.home, true);
+      } catch {
+        if (!cancelled) {
+          window.alert('Something went wrong. Please try logging in manually.');
+          go(ROUTES.login, true);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrLoginToken]);
+
   // Update browser tab title with unread count when setting is enabled
   useEffect(() => {
     const totalUnread = conversations.reduce((sum, c) => (

@@ -93,6 +93,7 @@ export type Conversation = {
   last_message?: Message | null;
   unread_count?: number;
   history_visible_to_new_members?: boolean;
+  ownership_mode?: 'single' | 'dual' | 'everyone';
 };
 
 export type VaultEnvelope = {

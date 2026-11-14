@@ -1612,9 +1612,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         <div
           className="flex-shrink-0 cursor-pointer"
           onClick={() => {
-            if (conversation.is_group) setShowGroupInfo(true);
-            else if (canEditInfo) setShowEditInfo(true);
-            else if (otherProfile) setShowProfile(otherProfile);
+            if (conversation.is_self_chat) { if (canEditInfo) setShowEditInfo(true); }
+            else setShowGroupInfo(true);
           }}
 >
           {conversation.is_group ? (
@@ -1632,9 +1631,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         <div
           className="flex-1 min-w-0 cursor-pointer"
           onClick={() => {
-            if (conversation.is_group) setShowGroupInfo(true);
-            else if (canEditInfo) setShowEditInfo(true);
-            else if (otherProfile) setShowProfile(otherProfile);
+            if (conversation.is_self_chat) { if (canEditInfo) setShowEditInfo(true); }
+            else setShowGroupInfo(true);
           }}
 >
           <div className="flex items-center gap-2 min-w-0">
@@ -1694,13 +1692,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             <>
               <div className="fixed inset-0 z-[90]" onPointerDown={() => setShowMenu(false)} />
               <div className="absolute right-0 top-11 z-[210] pointer-events-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl py-1.5 w-56 overflow-hidden max-h-[70vh] overflow-y-auto">
-                {conversation.is_group && (
-                  <>
-                    <MenuItem icon={<Link2 size={14} />} onClick={() => { setShowMenu(false); copyChatLink(); }}>
-                      {linkCopied ? 'Invite link copied' : 'Copy invite link'}
-                    </MenuItem>
-                    {linkError && <p className="px-4 pb-2 text-[11px] text-red-400">{linkError}</p>}
-                  </>
+                {!conversation.is_self_chat && (
+                  <MenuItem icon={<Users size={14} />} onClick={() => { setShowMenu(false); setShowGroupInfo(true); }}>
+                    Chat info & invite
+                  </MenuItem>
                 )}
                 {canEditInfo && (
                   <MenuItem icon={<Edit2 size={14} />} onClick={() => { setShowMenu(false); setShowEditInfo(true); }}>
@@ -2485,8 +2480,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         </div>
       )}
 
-      {/* Group info modal — view members, add/remove */}
-      {showGroupInfo && conversation.is_group && (
+      {/* Chat info modal — members, invite QR/link, ownership */}
+      {showGroupInfo && !conversation.is_self_chat && (
         <GroupInfoModal
           conversation={conversation}
           onClose={() => setShowGroupInfo(false)}

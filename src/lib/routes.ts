@@ -27,6 +27,7 @@ export const ROUTES = {
   unlock: '/unlock',
   chat: (id: string) => `/chat/${encodeURIComponent(id)}`,
   join: (token: string) => `/join/${encodeURIComponent(token)}`,
+  qrLogin: (token: string) => `/qr-login/${encodeURIComponent(token)}`,
   settings: (tab: SettingsTab = 'profile', sub: SettingsSub | null = null) => {
     if (sub) return `/settings/${tab}/${sub}`;
     return `/settings/${tab}`;
@@ -44,6 +45,7 @@ export type AppRoute =
   | { kind: 'home' }
   | { kind: 'chat'; id: string }
   | { kind: 'join'; token: string }
+  | { kind: 'qrLogin'; token: string }
   | { kind: 'settings'; tab: SettingsTab; sub: SettingsSub | null }
   | { kind: 'newChat' }
   | { kind: 'gifs' }
@@ -62,6 +64,8 @@ export function parseAppRoute(path: string): AppRoute {
       return rest[0] ? { kind: 'chat', id: decodeURIComponent(rest[0]) } : { kind: 'home' };
     case 'join':
       return rest[0] ? { kind: 'join', token: decodeURIComponent(rest[0]) } : { kind: 'home' };
+    case 'qr-login':
+      return rest[0] ? { kind: 'qrLogin', token: decodeURIComponent(rest[0]) } : { kind: 'home' };
     case 'settings': {
       const tab = (SETTINGS_TABS as readonly string[]).includes(rest[0]) ? (rest[0] as SettingsTab) : 'profile';
       const sub = (SETTINGS_SUBS as readonly string[]).includes(rest[1]) ? (rest[1] as SettingsSub) : null;
