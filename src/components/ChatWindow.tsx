@@ -935,40 +935,18 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function sendGif(url: string) {
     if (!user) return;
     setShowGifPicker(false);
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const payload: any = {
-      conversation_id: conversation.id,
-      sender_id: user.id,
-      message_type: 'gif',
-      gif_url: url,
-      content: null,
-      sender_language: profile?.native_language ?? null,
-      reply_to: replyTo?.id ?? null,
-      reply_excerpt: replyExcerpt || null,
-      reactions: {},
-    };
-    const optimisticMsg: Message = {
-      ...payload,
-      id: tempId,
-      created_at: new Date().toISOString(),
-      edited_at: null,
-      deleted_at: null,
-      duration_seconds: null,
-      sender: profile ?? undefined,
-    };
-    setMessages(prev => [...prev, optimisticMsg]);
-    setReplyTo(null);
-    setReplyExcerpt('');
-    requestAnimationFrame(() => scrollToBottom('auto', true));
-    const { data, error } = await supabase.from('messages').insert(payload).select('id').single();
-    if (error) {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-      return;
+    setUploadingFile(true);
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const mime = blob.type || (isVideoUrl(url) ? 'video/mp4' : 'image/gif');
+      const ext = mime.includes('mp4') ? 'mp4' : mime.includes('webm') ? 'webm' : 'gif';
+      await sendSealedMedia('gif', 'gifs', blob, { file_name: `gif.${ext}`, file_mime: mime }, {});
+    } catch {
+      alert('Could not send this GIF. Try another one.');
+    } finally {
+      setUploadingFile(false);
     }
-    if (data) {
-      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: data.id } : m));
-    }
-    await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversation.id);
   }
 
   async function sendNotificationToMembers(title: string, body: string, type: 'message' | 'call') {
