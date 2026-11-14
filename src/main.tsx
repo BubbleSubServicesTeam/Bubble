@@ -6,7 +6,7 @@ import './index.css';
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).then((reg) => {
       // Check for updates every 60 seconds
       setInterval(() => reg.update().catch(() => {}), 60000);
     }).catch(() => {

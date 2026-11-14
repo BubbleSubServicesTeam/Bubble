@@ -21,7 +21,7 @@ import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
   X, Check, Camera, AlertTriangle,
   ArrowLeft, Eye, EyeOff, Mail, Trash2, User, Shield, Sun, Moon, Palette, DollarSign, Lock, Delete, Globe, ChevronDown, Ban,
-  Fingerprint, Plus, KeyRound, Smartphone, Monitor, Tablet, LogOut, Code2, QrCode, Copy, Check, RefreshCw, Loader2
+  Fingerprint, Plus, KeyRound, Smartphone, Monitor, Tablet, LogOut, Code2, QrCode, Copy, RefreshCw, Loader2
 } from 'lucide-react';
 import FingerprintScanner from './FingerprintScanner';
 import { getBiometricCapability, enrollFingerprintWithPattern, listFingerprints, deleteFingerprint, FingerprintRecord, type TouchPattern } from '../lib/fingerprint';
