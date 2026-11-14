@@ -871,14 +871,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     setSending(true);
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const messageContent = type === 'text' ? text.trim() : null;
-    const vault = messageContent ? await sealTextForConversation(user.id, conversation.id, messageContent) : null;
-    if (messageContent && !vault) return;
+    const sealable = ['text', 'code', 'location', 'iframe'].includes(type);
+    const displayContent = type === 'text' ? text.trim() : (extra.content ?? null);
+    const vault = sealable && displayContent ? await sealTextForConversation(user.id, conversation.id, displayContent) : null;
+    if (sealable && displayContent && !vault) return;
     const payload: any = {
       conversation_id: conversation.id,
       sender_id: user.id,
       message_type: type,
-      content: vault ? null : messageContent,
       vault,
       reply_to: replyTo?.id ?? null,
       reply_excerpt: vault ? null : replyExcerpt || null,
@@ -887,11 +887,12 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       text_effect_spans: type === 'text' && textEffectSpans.length > 0 ? textEffectSpans : null,
       sender_language: profile?.native_language ?? null,
       ...extra,
+      content: vault ? null : displayContent,
     };
     // Optimistic insert — show immediately
     const optimisticMsg: Message = {
       ...payload,
-      content: messageContent,
+      content: displayContent,
       id: tempId,
       created_at: new Date().toISOString(),
       edited_at: null,
@@ -918,7 +919,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     if (error) {
       // Remove optimistic message on failure
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      setText(messageContent ?? '');
+      setText(type === 'text' ? (displayContent ?? '') : text);
       setSending(false);
       return;
     }
@@ -1273,7 +1274,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       translateText(msg.content, lang).then(outcome => {
         if (langRef.current !== lang) return;
         setTranslatingIds(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
-        if (outcome.status === 'translated' && lettersOnly(outcome.result.translatedText) !== lettersOnly(msg.content)) {
+        if (outcome.status === 'translated' && lettersOnly(outcome.result.translatedText) !== lettersOnly(msg.content ?? '')) {
           const { result } = outcome;
           setTranslations(prev => ({
             ...prev,
