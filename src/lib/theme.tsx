@@ -50,7 +50,7 @@ function applyThemeToDocument(resolved: ResolvedTheme) {
 }
 
 function updateFavicon(resolved: ResolvedTheme) {
-  const icon = resolved === 'light' ? '/image copy 3.png' : '/image copy 2.png';
+  const icon = resolved === 'light' ? '/image copy 2.png' : '/image copy 3.png';
   const iconType = 'image/png';
 
   const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
@@ -135,7 +135,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 ['auto', 'Auto'],
               ] as const).map(([value, label]) => (
                 <button key={value} onClick={() => chooseTheme(value)} className="rounded-2xl border border-slate-200 bg-slate-50 p-2 font-semibold text-slate-900 transition hover:border-sky-400 hover:bg-sky-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
-                  <img src={value === 'light' ? '/image copy 3.png' : value === 'dark' ? '/image copy 2.png' : '/image copy.png'} alt={`${label} theme`} className="mb-2 h-16 w-full rounded-xl object-cover" />
+                  <img src={value === 'light' ? '/image copy 2.png' : value === 'dark' ? '/image copy 3.png' : '/image copy.png'} alt={`${label} theme`} className="mb-2 h-16 w-full rounded-xl object-cover" />
                   <span className="text-xs">{label}</span>
                 </button>
               ))}
@@ -154,5 +154,5 @@ export function useTheme() {
 }
 
 export function getLogoUrl(theme: ResolvedTheme): string {
-  return theme === 'light' ? '/image copy 3.png' : '/image copy 2.png';
+  return theme === 'light' ? '/image copy 2.png' : '/image copy 3.png';
 }
