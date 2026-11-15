@@ -1334,11 +1334,8 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                         : 'border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.15] bg-white dark:bg-white/[0.03]'
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-2xl overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 shadow-md flex items-center justify-center">
-                      <div className="flex w-full h-full">
-                        <div className="w-1/2 h-full bg-slate-100 flex items-center justify-center"><Sun size={12} className="text-amber-500" /></div>
-                        <div className="w-1/2 h-full bg-slate-800 flex items-center justify-center"><Moon size={12} className="text-indigo-400" /></div>
-                      </div>
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 shadow-md">
+                      <img src="/assets/images/bubble_combined copy 2.png" alt="Auto theme" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-slate-900 dark:text-white font-semibold text-[12px]">Auto</span>
