@@ -165,9 +165,9 @@ export default function PeopleDrawer({ onClose, onSelectChat }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0e14] animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-[#0a0e14] animate-in fade-in duration-200">
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-6 pb-4 bg-[#0a0e14]/95 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.05]" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-6 pb-4 bg-white/95 dark:bg-[#0a0e14]/95 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.05]" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-sky-500/10 flex items-center justify-center">
             <MessageCircle size={20} className="text-sky-400" />
@@ -186,7 +186,7 @@ export default function PeopleDrawer({ onClose, onSelectChat }: Props) {
       </div>
 
       {/* Search */}
-      <div className="flex-shrink-0 px-5 py-3 bg-[#0a0e14]/95 backdrop-blur-md">
+      <div className="flex-shrink-0 px-5 py-3 bg-white/95 dark:bg-[#0a0e14]/95 backdrop-blur-md">
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
           <input

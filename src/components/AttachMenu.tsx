@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Mic, Image, Link, BarChart2, Camera, DollarSign, X, FileText, Film, MapPin } from 'lucide-react';
+import { Mic, Link, BarChart2, Camera, DollarSign, X, FileText, Film, MapPin } from 'lucide-react';
 
 export type AttachOption =
   | 'file'
@@ -19,7 +19,7 @@ type Props = {
 };
 
 const OPTIONS: { key: AttachOption; icon: React.ReactNode; label: string; color: string }[] = [
-  { key: 'file',      icon: <Image size={20} />,      label: 'Photo',         color: 'bg-blue-500' },
+  { key: 'file',      icon: <FileText size={20} />,   label: 'File',          color: 'bg-blue-500' },
   { key: 'voice',     icon: <Mic size={20} />,        label: 'Voice Memo',    color: 'bg-red-500' },
   { key: 'iframe',    icon: <Link size={20} />,       label: 'Embed / Link',  color: 'bg-purple-500' },
   { key: 'poll',      icon: <BarChart2 size={20} />,  label: 'Poll',          color: 'bg-orange-500' },

@@ -266,8 +266,8 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
       <div className="w-full max-w-[420px] relative z-10 my-auto py-6">
         {/* Heading — Bubble logo + text */}
         <div className={`flex flex-col items-center transition-all duration-200 ${activeField ? 'mb-4' : 'mb-10'}`}>
-          <img src="/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg" alt="Bubble logo" className={`shadow-xl shadow-sky-500/25 transition-all duration-200 ${activeField ? 'w-14 h-14 rounded-2xl mb-2' : 'w-[96px] h-[96px] rounded-[28px] mb-4'}`} />
-          <h1 className="text-[28px] font-bold text-white tracking-tight">Bubble</h1>
+          <img src="/assets/images/bubble_combined.png" alt="Bubble logo" className={`shadow-xl shadow-sky-500/25 transition-all duration-200 ${activeField ? 'w-14 h-14 rounded-2xl mb-2' : 'w-[96px] h-[96px] rounded-[28px] mb-4'}`} />
+          <h1 className="text-[28px] font-bold text-slate-950 dark:text-white tracking-tight">Bubble</h1>
           <p className="text-slate-500 mt-1 text-[14px]">
             {screen === 'signin' && 'Welcome back'}
             {screen === 'signup' && 'Create your account'}

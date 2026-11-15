@@ -1802,8 +1802,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   </div>
 
                   {/* Bubble */}
-                  {(() => { const isMedia = msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'iframe' || msg.message_type === 'code' || msg.message_type === 'location'; return (
-                  <div className={`flex flex-col ${isMedia ? 'max-w-[min(100%,calc(100vw-5rem))]' : 'max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
+                  {(() => { const isMedia = msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'file' || msg.message_type === 'iframe' || msg.message_type === 'code' || msg.message_type === 'location'; return (
+                  <div className={`flex flex-col ${isMedia ? 'w-full' : 'max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
                     {!isMe && conversation.is_group && isFirst && (
                       <button onClick={() => msg.sender && setShowProfile(msg.sender as Profile)} className="text-[11px] text-slate-500 font-medium mb-1 ml-1 hover:text-sky-500 transition-colors">{getSenderName(msg)}</button>
                     )}
@@ -1873,11 +1873,20 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         <p className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
                       )}
                       {msg.message_type === 'gif' && msg.gif_url && (
-                        <GifMedia src={msg.gif_url} alt="GIF" className="w-full max-w-[min(640px,calc(100vw-4rem))] max-h-[460px] object-contain rounded-2xl" />
+                        <GifMedia src={msg.gif_url} alt="GIF" className="w-full max-h-[460px] object-contain rounded-2xl" />
                       )}
 
                       {msg.message_type === 'image' && msg.media_url && (
-                        <img src={msg.media_url} alt="Image" className="w-full max-w-[min(640px,calc(100vw-4rem))] max-h-[520px] object-contain rounded-2xl" />
+                        <img src={msg.media_url} alt="Image" className="w-full max-h-[520px] object-contain rounded-2xl" />
+                      )}
+
+                      {msg.message_type === 'file' && msg.media_url && (['application/pdf', 'text/html'].includes(msg.file_mime ?? '') || /\.(pdf|html?)$/i.test(msg.file_name ?? '')) && (
+                        <iframe
+                          src={msg.media_url}
+                          title={msg.file_name ?? 'Attached file'}
+                          sandbox="allow-scripts"
+                          className="w-full h-[420px] border-0 bg-white"
+                        />
                       )}
 
                       {msg.message_type === 'file' && msg.media_url && (
@@ -1885,7 +1894,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                           href={msg.media_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`flex items-center gap-3 px-4 py-3 min-w-[180px] ${isMe ? '' : ''}`}
+                          className={`flex items-center gap-3 px-4 py-3 w-full min-w-[180px] ${isMe ? '' : ''}`}
                           onClick={e => e.stopPropagation()}
                         >
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -2914,7 +2923,7 @@ function EmbedFrame({ url, file_name }: { url: string; file_name: string | null 
 
   if (activated || !info.isVideo) {
     return (
-      <div className="p-1.5 space-y-1.5 w-full max-w-[min(720px,calc(100vw-4rem))]">
+      <div className="p-1.5 space-y-1.5 w-full">
         <div className="flex items-center gap-2 px-1.5">
           <ExternalLink size={13} className="text-purple-400 flex-shrink-0" />
           <p className="opacity-70 text-[11px] truncate">{file_name || url}</p>
@@ -2943,7 +2952,7 @@ function EmbedFrame({ url, file_name }: { url: string; file_name: string | null 
 
   // Click-to-play thumbnail for video embeds
   return (
-    <div className="p-1.5 space-y-1.5 w-full max-w-[min(720px,calc(100vw-4rem))]">
+    <div className="p-1.5 space-y-1.5 w-full">
       <div className="flex items-center gap-2 px-1.5">
         <ExternalLink size={13} className="text-purple-400 flex-shrink-0" />
         <p className="opacity-70 text-[11px] truncate">{file_name || url}</p>

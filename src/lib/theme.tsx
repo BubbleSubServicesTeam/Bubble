@@ -28,7 +28,6 @@ function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
   if (stored === 'light' || stored === 'dark' || stored === 'auto') return stored;
-  // Default to dark mode; light only when the user explicitly chooses it
   return 'dark';
 }
 
@@ -49,9 +48,9 @@ function applyThemeToDocument(resolved: ResolvedTheme) {
   }
 }
 
-function updateFavicon(resolved: ResolvedTheme) {
-  const icon = resolved === 'dark' ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83 copy copy copy.jpg' : '/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png';
-  const iconType = resolved === 'dark' ? 'image/jpeg' : 'image/png';
+function updateFavicon(_resolved: ResolvedTheme) {
+  const icon = '/assets/images/bubble_combined.png';
+  const iconType = 'image/png';
 
   const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (favicon) {
@@ -69,6 +68,10 @@ function updateFavicon(resolved: ResolvedTheme) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(getInitialTheme()));
+  const [showThemeChoice, setShowThemeChoice] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem(STORAGE_KEY);
+  });
 
   useEffect(() => {
     const resolved = resolveTheme(theme);
@@ -109,9 +112,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const chooseTheme = (next: Theme) => {
+    setTheme(next);
+    setShowThemeChoice(false);
+  };
+
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, toggleTheme, setTheme }}>
       {children}
+      {showThemeChoice && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/70 p-5 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-7 text-center shadow-2xl dark:border-white/10 dark:bg-slate-900">
+            <img src="/assets/images/bubble_combined.png" alt="Bubble" className="mx-auto mb-5 h-24 w-24 rounded-3xl object-cover shadow-xl" />
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Choose your Bubble theme</h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">You can change this anytime in Settings.</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button onClick={() => chooseTheme('light')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-900 transition hover:border-sky-400 hover:bg-sky-50">Light</button>
+              <button onClick={() => chooseTheme('dark')} className="rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-700">Dark</button>
+            </div>
+          </div>
+        </div>
+      )}
     </ThemeContext.Provider>
   );
 }
@@ -122,6 +143,6 @@ export function useTheme() {
   return ctx;
 }
 
-export function getLogoUrl(theme: ResolvedTheme): string {
-  return theme === 'dark' ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83 copy copy copy.jpg' : '/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png';
+export function getLogoUrl(_theme: ResolvedTheme): string {
+  return '/assets/images/bubble_combined.png';
 }
