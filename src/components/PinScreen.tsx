@@ -330,7 +330,7 @@ export default function PinScreen({
             <p className="text-amber-300/80 text-[12px] mt-1">Try again in {Math.ceil(lockRemaining / 60000)} minute{Math.ceil(lockRemaining / 60000) === 1 ? '' : 's'}.</p>
           </div>
         )}
-        {loading && <BubbleLoader size={28} />}
+        {loading && <BubbleLoader size={28} className="pin-loader" />}
 
         {/* ──── PASSWORD MODE: keypad hidden, full password UI ──── */}
         {showPasswordInput && !loading ? (
@@ -357,7 +357,7 @@ export default function PinScreen({
               disabled={passwordLoading || passwordRemaining > 0 || !password.trim()}
               className="w-full py-3.5 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 text-white font-semibold text-[15px] rounded-xl transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2"
             >
-              {passwordLoading ? <BubbleLoader size={22} /> : 'Unlock'}
+              {passwordLoading ? <BubbleLoader size={22} className="pin-loader" /> : 'Unlock'}
             </button>
             <button
               onClick={() => { setShowPasswordInput(false); setPassword(''); setPasswordError(''); }}

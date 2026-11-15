@@ -99,7 +99,7 @@ export function BubbleKey({ value, onPress, delay = 0, size = 68 }: BubbleKeyPro
 
       {/* The key itself — white glass with colored accents */}
       <span
-        className="absolute inset-0 rounded-full transition-all duration-150"
+        className="bubble-key-surface absolute inset-0 rounded-full transition-all duration-150"
         style={{
           transform: pressed ? 'scale(0.9)' : 'scale(1)',
           background: pressed
