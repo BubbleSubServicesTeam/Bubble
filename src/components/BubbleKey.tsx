@@ -97,35 +97,31 @@ export function BubbleKey({ value, onPress, delay = 0, size = 68 }: BubbleKeyPro
         />
       ))}
 
-      {/* The key itself — white glass with colored accents */}
+      {/* The key itself — glass surface with colored accents */}
       <span
         className="bubble-key-surface absolute inset-0 rounded-full transition-all duration-150"
         style={{
           transform: pressed ? 'scale(0.9)' : 'scale(1)',
-          background: pressed
-            ? `linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,245,249,0.85))`
-            : 'linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,250,252,0.7))',
           boxShadow: pressed
             ? `inset 0 3px 8px rgba(0,0,0,0.08), inset 0 -2px 6px rgba(0,0,0,0.04), 0 0 24px ${colors.glow}, 0 2px 8px rgba(0,0,0,0.1)`
-            : 'inset 0 1px 2px rgba(255,255,255,0.7), inset 0 -1px 2px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)',
-          border: pressed
-            ? `2px solid ${colors.ripple}`
-            : '2px solid rgba(255,255,255,0.5)',
+            : undefined,
+          border: pressed ? `2px solid ${colors.ripple}` : undefined,
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-        }}
+        } as React.CSSProperties}
       >
         {/* Number */}
         <span
-          className="absolute inset-0 flex items-center justify-center font-bold transition-all duration-200"
+          className="bubble-key-label absolute inset-0 flex items-center justify-center font-bold transition-all duration-200"
           style={{
             fontSize: size * 0.36,
-            color: pressed ? colors.pressedText : colors.text,
-            textShadow: pressed
-              ? `0 0 12px ${colors.glow}`
-              : '0 1px 2px rgba(0,0,0,0.08)',
+            ['--key-text' as any]: colors.text,
+            ['--key-pressed-text' as any]: colors.pressedText,
+            ['--key-glow' as any]: colors.glow,
+            color: pressed ? colors.pressedText : undefined,
+            textShadow: pressed ? `0 0 12px ${colors.glow}` : '0 1px 2px rgba(0,0,0,0.08)',
             transform: pressed ? 'scale(0.85)' : 'scale(1)',
-          }}
+          } as React.CSSProperties}
         >
           {value}
         </span>

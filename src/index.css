@@ -245,48 +245,269 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* ──────────────────────────────────────────────────────────────
+     LIGHT THEME TOKEN SYSTEM
+     Overrides Tailwind slate utilities in light mode only.
+     Dark mode is untouched — every rule is scoped to html:not(.dark).
+     Hierarchy: page (cool off-white) → surface (white card) → control (cool gray)
+     ────────────────────────────────────────────────────────────── */
+
   html:not(.dark) body {
-    background: #eef2f6;
+    background: #e6eaf0;
+    color: #0f172a;
   }
 
+  /* Page / app background — cool off-white, not flat gray */
   html:not(.dark) .bg-slate-50 {
-    background-color: #eef2f6 !important;
+    background-color: #e6eaf0 !important;
   }
 
+  /* Secondary surfaces: input fields, tab tracks, subtle panels */
   html:not(.dark) .bg-slate-100 {
-    background-color: #e5ebf1 !important;
+    background-color: #dde4ec !important;
   }
 
+  /* Hover surfaces — clearly visible */
+  html:not(.dark) .bg-slate-200 {
+    background-color: #cbd5e1 !important;
+  }
+
+  html:not(.dark) .bg-slate-300 {
+    background-color: #94a3b8 !important;
+  }
+
+  /* Cards / panels — pure white so they lift off the page */
   html:not(.dark) .bg-white {
-    background-color: #fbfcfe !important;
+    background-color: #ffffff !important;
   }
 
+  /* Semi-transparent white surfaces (backdrop, overlays) */
   html:not(.dark) [class*="bg-white/"] {
-    background-color: rgb(251 252 254 / 0.94) !important;
+    background-color: rgb(255 255 255 / 0.96) !important;
   }
 
+  /* Borders — clearly visible, not whisper-thin */
   html:not(.dark) .border-slate-200 {
+    border-color: #c5cdd9 !important;
+  }
+
+  html:not(.dark) .border-slate-300 {
+    border-color: #94a3b8 !important;
+  }
+
+  html:not(.dark) .border-slate-100 {
     border-color: #d8e0e8 !important;
   }
 
+  /* Dividers (bg-slate-200 used as hr) */
+  html:not(.dark) .bg-slate-200\/60,
+  html:not(.dark) .bg-slate-200\/80 {
+    background-color: rgb(148 163 184 / 0.3) !important;
+  }
+
+  /* Text — primary: near-black for maximum readability */
   html:not(.dark) .text-slate-900 {
-    color: #172231 !important;
+    color: #0f172a !important;
+  }
+
+  html:not(.dark) .text-slate-800 {
+    color: #1e293b !important;
+  }
+
+  html:not(.dark) .text-slate-700 {
+    color: #334155 !important;
+  }
+
+  /* Text — secondary: medium gray, WCAG AA on white/off-white */
+  html:not(.dark) .text-slate-600 {
+    color: #475569 !important;
   }
 
   html:not(.dark) .text-slate-500 {
-    color: #647286 !important;
+    color: #475569 !important;
   }
 
+  /* Text — muted: still readable, not disappearing */
+  html:not(.dark) .text-slate-400 {
+    color: #64748b !important;
+  }
+
+  html:not(.dark) .text-slate-300 {
+    color: #94a3b8 !important;
+  }
+
+  html:not(.dark) .text-slate-200 {
+    color: #64748b !important;
+  }
+
+  html:not(.dark) .text-slate-100 {
+    color: #475569 !important;
+  }
+
+  /* Placeholders */
+  html:not(.dark) .placeholder-slate-400 {
+    color: #64748b !important;
+  }
+
+  html:not(.dark) .placeholder-slate-300 {
+    color: #94a3b8 !important;
+  }
+
+  /* Hover states — visible feedback */
+  html:not(.dark) .hover\:bg-slate-50:hover {
+    background-color: #dde4ec !important;
+  }
+
+  html:not(.dark) .hover\:bg-slate-100:hover {
+    background-color: #d0d9e3 !important;
+  }
+
+  html:not(.dark) .hover\:bg-slate-200:hover {
+    background-color: #cbd5e1 !important;
+  }
+
+  html:not(.dark) .hover\:bg-slate-200\/60:hover {
+    background-color: rgb(148 163 184 / 0.25) !important;
+  }
+
+  html:not(.dark) .hover\:text-slate-700:hover {
+    color: #334155 !important;
+  }
+
+  html:not(.dark) .hover\:text-slate-900:hover {
+    color: #0f172a !important;
+  }
+
+  html:not(.dark) .hover\:text-slate-300:hover {
+    color: #334155 !important;
+  }
+
+  html:not(.dark) .hover\:text-slate-200:hover {
+    color: #334155 !important;
+  }
+
+  html:not(.dark) .hover\:border-slate-300:hover {
+    border-color: #94a3b8 !important;
+  }
+
+  /* Custom PIN keyboard keys — light mode: defined surface with real border */
   html:not(.dark) .bubble-key-surface {
-    background: linear-gradient(145deg, #f8fafc, #dce4ec) !important;
-    border-color: #cbd5e1 !important;
-    box-shadow: inset 0 1px 2px rgb(255 255 255 / 0.9), inset 0 -2px 5px rgb(100 116 139 / 0.12), 0 5px 14px rgb(51 65 85 / 0.14), 0 1px 3px rgb(51 65 85 / 0.1) !important;
+    background: linear-gradient(145deg, #ffffff, #e2e8f0) !important;
+    border-color: #b0bcc9 !important;
+    box-shadow:
+      inset 0 1px 2px rgb(255 255 255 / 0.95),
+      inset 0 -2px 5px rgb(100 116 139 / 0.1),
+      0 4px 12px rgb(51 65 85 / 0.12),
+      0 1px 3px rgb(51 65 85 / 0.08) !important;
   }
 
+  /* Key label in light mode — use the CSS var set by inline style, fallback to near-black */
+  html:not(.dark) .bubble-key-label {
+    color: var(--key-text, #0f172a) !important;
+  }
+
+  /* Dark mode defaults for the key surface (replaces removed inline styles) */
+  html.dark .bubble-key-surface {
+    background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,250,252,0.7));
+    border: 2px solid rgba(255,255,255,0.5);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.7), inset 0 -1px 2px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  html.dark .bubble-key-label {
+    color: var(--key-text, #0f172a);
+  }
+
+  /* Custom keyboard — function keys (backspace, shift, etc.) */
+  html:not(.dark) .bg-slate-300\/80 {
+    background-color: rgb(148 163 184 / 0.85) !important;
+  }
+
+  html:not(.dark) .hover\:bg-slate-400\/80:hover {
+    background-color: rgb(100 116 139 / 0.85) !important;
+  }
+
+  /* Keyboard key backgrounds — white with visible border in light mode */
+  html:not(.dark) .bg-white\/90 {
+    background-color: #ffffff !important;
+    box-shadow: 0 1px 2px rgb(51 65 85 / 0.1), inset 0 0 0 1px rgb(203 213 225 / 0.6) !important;
+  }
+
+  /* On-screen keyboard container — slightly darker than page for separation */
+  html:not(.dark) .bg-slate-50 {
+    background-color: #e6eaf0 !important;
+  }
+
+  /* PIN/loading bubbles — blue and visible */
   html:not(.dark) .pin-loader .bubble-loader-bounce-dot {
     background: radial-gradient(circle at 32% 28%, #38bdf8 0%, #0ea5e9 42%, #0284c7 100%) !important;
     border-color: rgb(2 132 199 / 0.35) !important;
     box-shadow: inset 0 1px 3px rgb(255 255 255 / 0.75), 0 2px 6px rgb(2 132 199 / 0.28) !important;
+  }
+
+  /* Floating bubble loader — dark mode defaults (replaces removed inline styles) */
+  html.dark .bubble-loader-dot {
+    background: radial-gradient(circle at 32% 28%,
+      rgba(255,255,255,0.98) 0%,
+      rgba(255,255,255,0.5) 22%,
+      rgba(255,255,255,0.12) 50%,
+      rgba(255,255,255,0.03) 100%);
+    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow:
+      inset 0 1px 3px rgba(255,255,255,0.7),
+      inset 0 -1px 3px rgba(255,255,255,0.1),
+      0 0 6px rgba(186,230,253,0.25),
+      0 2px 5px rgba(0,0,0,0.05);
+  }
+
+  /* Floating bubble loader (used on dark auth screens) — visible in light mode */
+  html:not(.dark) .bubble-loader-dot {
+    background: radial-gradient(circle at 32% 28%,
+      rgba(56,189,248,0.98) 0%,
+      rgba(14,165,233,0.5) 22%,
+      rgba(2,132,199,0.12) 50%,
+      rgba(2,132,199,0.03) 100%) !important;
+    border: 1px solid rgba(2,132,199,0.4) !important;
+    box-shadow:
+      inset 0 1px 3px rgba(255,255,255,0.5),
+      inset 0 -1px 3px rgba(2,132,199,0.1),
+      0 0 6px rgba(56,189,248,0.3),
+      0 2px 5px rgba(0,0,0,0.08) !important;
+  }
+
+  /* Bouncing bubble loader dots — dark mode defaults (replaces removed inline styles) */
+  html.dark .bubble-loader-bounce-dot {
+    background: radial-gradient(circle at 32% 28%,
+      rgba(255,255,255,0.98) 0%,
+      rgba(255,255,255,0.5) 22%,
+      rgba(255,255,255,0.12) 50%,
+      rgba(255,255,255,0.03) 100%);
+    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow:
+      inset 0 1px 3px rgba(255,255,255,0.7),
+      inset 0 -1px 3px rgba(255,255,255,0.1),
+      0 2px 6px rgba(0,0,0,0.06),
+      0 0 8px rgba(186,230,253,0.18);
+  }
+
+  /* Bouncing bubble loader dots — visible in light mode */
+  html:not(.dark) .bubble-loader-bounce-dot {
+    background: radial-gradient(circle at 32% 28%, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%) !important;
+    border: 1px solid rgba(2,132,199,0.3) !important;
+    box-shadow:
+      inset 0 1px 3px rgba(255,255,255,0.6),
+      inset 0 -1px 3px rgba(2,132,199,0.1),
+      0 2px 6px rgba(0,0,0,0.08) !important;
+  }
+
+  /* Scrollbar in light mode */
+  html:not(.dark) .scrollbar-thin {
+    scrollbar-color: rgba(100,116,139,0.3) transparent;
+  }
+  html:not(.dark) .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(100,116,139,0.3);
+  }
+  html:not(.dark) .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100,116,139,0.5);
   }
 }
 

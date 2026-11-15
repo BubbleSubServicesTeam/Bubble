@@ -25,11 +25,6 @@ export default function BubbleLoader({ size = 40, className = '' }: Props) {
               height: dotSize,
               left: `calc(50% + ${offset}px)`,
               marginLeft: -dotSize / 2,
-              background:
-                'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.5) 22%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.03) 100%)',
-              border: '1px solid rgba(255,255,255,0.55)',
-              boxShadow:
-                'inset 0 1px 3px rgba(255,255,255,0.7), inset 0 -1px 3px rgba(255,255,255,0.1), 0 2px 6px rgba(0,0,0,0.06), 0 0 8px rgba(186,230,253,0.18)',
               ['--lift' as any]: `${maxLift}px`,
               animationDelay: `${i * 0.13}s`,
             } as React.CSSProperties}
