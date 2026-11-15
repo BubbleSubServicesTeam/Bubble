@@ -14,6 +14,7 @@ import PinScreen from './components/PinScreen';
 import OAuthAuthorizePage from './components/OAuthAuthorizePage';
 import MaintenanceScreen from './components/MaintenanceScreen';
 import ProfileLoadError from './components/ProfileLoadError';
+import ActiveTabGuard from './components/ActiveTabGuard';
 import { useMaintenanceStatus } from './lib/maintenance';
 import { ROUTES, UNLOCK_RETURN_KEY, currentPath } from './lib/routes';
 
@@ -134,19 +135,19 @@ function AppInner() {
 
   if (path === ROUTES.oauthAuthorize) {
     return (
-      <>
+      <ActiveTabGuard userId={user.id}>
         <OAuthAuthorizePage />
         {pinOverlay}
-      </>
+      </ActiveTabGuard>
     );
   }
 
   return (
-    <>
+    <ActiveTabGuard userId={user.id}>
       {profile?.is_suspended && <SuspendedNotice />}
       {chatApp}
       {pinOverlay}
-    </>
+    </ActiveTabGuard>
   );
 }
 

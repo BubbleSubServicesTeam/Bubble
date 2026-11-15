@@ -286,7 +286,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
           {screen === 'signin' && (
             <div className="p-7">
               <div className="flex bg-slate-100 dark:bg-white/[0.04] rounded-2xl p-1 mb-7 gap-1">
-                <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-white text-slate-900 shadow-sm">Sign In</button>
+                <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm">Sign In</button>
                 <button onClick={() => { setScreen('signup'); setSiError(''); setActiveField(null); }}
                   className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
                   Create Account
@@ -310,12 +310,12 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
           {/* ──── SIGN UP ──── */}
           {screen === 'signup' && (
             <div className="p-7 overflow-y-auto">
-              <div className="flex bg-white/[0.04] rounded-2xl p-1 mb-7 gap-1">
+              <div className="flex bg-slate-100 dark:bg-white/[0.04] rounded-2xl p-1 mb-7 gap-1">
                 <button onClick={() => { setScreen('signin'); setSuError(''); setActiveField('siEmail'); }}
                   className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
                   Sign In
                 </button>
-                <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold bg-white dark:bg-white text-slate-900 shadow-sm">Create Account</button>
+                <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm">Create Account</button>
               </div>
               <form onSubmit={handleSignUp} className="space-y-4">
                 {/* Avatar picker */}
@@ -441,7 +441,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                       onClick={() => setRecoveryMethod(key)}
                       className={`rounded-lg py-2 text-[13px] font-medium transition-all ${
                         recoveryMethod === key
-                          ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
                           : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                       }`}
                     >
