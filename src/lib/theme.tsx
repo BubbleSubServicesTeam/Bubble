@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useAuth } from './auth';
 
 type Theme = 'light' | 'dark' | 'auto';
 type ResolvedTheme = 'light' | 'dark';
@@ -49,10 +50,8 @@ function applyThemeToDocument(resolved: ResolvedTheme) {
 }
 
 function updateFavicon(resolved: ResolvedTheme) {
-  const icon = resolved === 'light'
-    ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg'
-    : '/image.png';
-  const iconType = resolved === 'light' ? 'image/jpeg' : 'image/png';
+  const icon = resolved === 'light' ? '/image copy 3.png' : '/image copy 2.png';
+  const iconType = 'image/png';
 
   const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (favicon) {
@@ -68,6 +67,7 @@ function updateFavicon(resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(getInitialTheme()));
   const [showThemeChoice, setShowThemeChoice] = useState(() => {
@@ -122,7 +122,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, toggleTheme, setTheme }}>
       {children}
-      {showThemeChoice && (
+      {showThemeChoice && !authLoading && !user && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/70 p-5 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-7 text-center shadow-2xl dark:border-white/10 dark:bg-slate-900">
             <img src={getLogoUrl(resolvedTheme)} alt="Bubble" className="mx-auto mb-5 h-24 w-24 rounded-3xl object-cover shadow-xl" />
@@ -135,7 +135,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 ['auto', 'Auto'],
               ] as const).map(([value, label]) => (
                 <button key={value} onClick={() => chooseTheme(value)} className="rounded-2xl border border-slate-200 bg-slate-50 p-2 font-semibold text-slate-900 transition hover:border-sky-400 hover:bg-sky-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
-                  <img src={value === 'light' ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg' : value === 'dark' ? '/image.png' : '/assets/images/bubble_combined copy.png'} alt={`${label} theme`} className="mb-2 h-16 w-full rounded-xl object-cover" />
+                  <img src={value === 'light' ? '/image copy 3.png' : value === 'dark' ? '/image copy 2.png' : '/image copy.png'} alt={`${label} theme`} className="mb-2 h-16 w-full rounded-xl object-cover" />
                   <span className="text-xs">{label}</span>
                 </button>
               ))}
@@ -154,7 +154,5 @@ export function useTheme() {
 }
 
 export function getLogoUrl(theme: ResolvedTheme): string {
-  return theme === 'light'
-    ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg'
-    : '/image.png';
+  return theme === 'light' ? '/image copy 3.png' : '/image copy 2.png';
 }

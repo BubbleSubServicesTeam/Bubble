@@ -174,13 +174,13 @@ function LoadingScreen() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
         <AppLanguageProvider>
           <UiTranslator />
           <AppInner />
         </AppLanguageProvider>
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
