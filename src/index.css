@@ -244,4 +244,37 @@
   .pb-safe-area {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  html:not(.dark) body {
+    background: #eef2f6;
+  }
+
+  html:not(.dark) .bg-slate-50 {
+    background-color: #eef2f6 !important;
+  }
+
+  html:not(.dark) .bg-slate-100 {
+    background-color: #e5ebf1 !important;
+  }
+
+  html:not(.dark) .bg-white {
+    background-color: #fbfcfe !important;
+  }
+
+  html:not(.dark) [class*="bg-white/"] {
+    background-color: rgb(251 252 254 / 0.94) !important;
+  }
+
+  html:not(.dark) .border-slate-200 {
+    border-color: #d8e0e8 !important;
+  }
+
+  html:not(.dark) .text-slate-900 {
+    color: #172231 !important;
+  }
+
+  html:not(.dark) .text-slate-500 {
+    color: #647286 !important;
+  }
 }
+
