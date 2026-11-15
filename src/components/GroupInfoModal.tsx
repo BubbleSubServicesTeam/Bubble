@@ -21,6 +21,7 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [suggestedProfiles, setSuggestedProfiles] = useState<Profile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -44,6 +45,21 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
   }, [conversation.id]);
 
   useEffect(() => { loadMembers(); }, [loadMembers]);
+
+  useEffect(() => {
+    if (!showAdd || !user) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, user_id, display_name, first_name, last_name, avatar_url, status, status_message, last_seen, created_at')
+        .neq('user_id', user.id)
+        .order('last_seen', { ascending: false, nullsFirst: false })
+        .limit(10);
+      if (!cancelled && !error) setSuggestedProfiles((data as Profile[]) ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [showAdd, user]);
 
   useEffect(() => {
     if (!search.trim()) { setSearchResults([]); setSearchLoading(false); return; }
@@ -80,6 +96,7 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
       onMembersChanged();
       setSearch('');
       setSearchResults([]);
+      setSuggestedProfiles(prev => prev.filter(profile => profile.user_id !== p.user_id));
     } catch (err: any) {
       setError(err?.message ?? 'Failed to add member');
     }
@@ -105,6 +122,8 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
 
   async function changeOwnershipMode(mode: OwnershipMode) {
     if (mode === ownershipMode) return;
+    const previousMode = ownershipMode;
+    setOwnershipMode(mode);
     setSavingMode(true);
     setError('');
     try {
@@ -113,8 +132,8 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
         p_mode: mode,
       });
       if (rpcError) throw rpcError;
-      setOwnershipMode(mode);
     } catch (err: any) {
+      setOwnershipMode(previousMode);
       setError(err?.message ?? 'Failed to change ownership mode');
     } finally {
       setSavingMode(false);
@@ -224,7 +243,7 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
                       <button
                         key={opt.value}
                         onClick={() => changeOwnershipMode(opt.value)}
-                        disabled={savingMode}
+                        disabled={savingMode && ownershipMode !== opt.value}
                         className={`flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all ${
                           ownershipMode === opt.value
                             ? 'bg-sky-500 text-white shadow-sm'
@@ -261,7 +280,7 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
               <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5">
                 <div className="flex items-center gap-2 mb-3">
                   <button
-                    onClick={() => { setShowAdd(false); setSearch(''); setSearchResults([]); setError(''); }}
+                    onClick={() => { setShowAdd(false); setSearch(''); setSearchResults([]); setSuggestedProfiles([]); setError(''); }}
                     className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
                   >
                     <X size={16} />
@@ -283,6 +302,9 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
 
               {/* Search results */}
               <div className="px-3 py-2">
+                {!search.trim() && suggestedProfiles.length > 0 && (
+                  <p className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Suggested people</p>
+                )}
                 {searchLoading ? (
                   <div className="flex justify-center py-6">
                     <BubbleLoader size={32} />
@@ -290,7 +312,7 @@ export default function GroupInfoModal({ conversation, onClose, onMembersChanged
                 ) : search && searchResults.length === 0 ? (
                   <p className="text-center text-slate-500 text-sm py-6">No users found</p>
                 ) : (
-                  searchResults.map(p => {
+                  (search.trim() ? searchResults : suggestedProfiles).map(p => {
                     const alreadyMember = memberIds.has(p.user_id);
                     return (
                       <div

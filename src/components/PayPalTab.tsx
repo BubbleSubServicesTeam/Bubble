@@ -205,7 +205,7 @@ export default function PayPalTab({ userId }: Props) {
           <div className="w-full max-w-sm bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-xl bg-[#0070ba] flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-lg italic">P</span>
+                <img src={`${import.meta.env.BASE_URL}image.png`} alt="PayPal" className="w-full h-full object-contain p-1" />
               </div>
               <div>
                 <p className="text-slate-900 dark:text-white font-semibold text-[15px]">PayPal</p>

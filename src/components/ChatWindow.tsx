@@ -2291,8 +2291,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
       {/* Input area */}
       <div
-        className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5 transition-[padding] duration-150"
-        style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined }}
+        className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5 transition-[margin] duration-150"
+        style={{ marginBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined }}
       >
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
