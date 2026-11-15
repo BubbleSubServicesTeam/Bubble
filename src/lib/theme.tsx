@@ -48,9 +48,11 @@ function applyThemeToDocument(resolved: ResolvedTheme) {
   }
 }
 
-function updateFavicon(_resolved: ResolvedTheme) {
-  const icon = '/assets/images/bubble_combined.png';
-  const iconType = 'image/png';
+function updateFavicon(resolved: ResolvedTheme) {
+  const icon = resolved === 'light'
+    ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg'
+    : '/image.png';
+  const iconType = resolved === 'light' ? 'image/jpeg' : 'image/png';
 
   const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (favicon) {
@@ -123,12 +125,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       {showThemeChoice && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/70 p-5 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-7 text-center shadow-2xl dark:border-white/10 dark:bg-slate-900">
-            <img src="/assets/images/bubble_combined.png" alt="Bubble" className="mx-auto mb-5 h-24 w-24 rounded-3xl object-cover shadow-xl" />
+            <img src={getLogoUrl(resolvedTheme)} alt="Bubble" className="mx-auto mb-5 h-24 w-24 rounded-3xl object-cover shadow-xl" />
             <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Choose your Bubble theme</h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">You can change this anytime in Settings.</p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button onClick={() => chooseTheme('light')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-900 transition hover:border-sky-400 hover:bg-sky-50">Light</button>
-              <button onClick={() => chooseTheme('dark')} className="rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-700">Dark</button>
+            <div className="mt-6 grid grid-cols-3 gap-2">
+              {([
+                ['light', 'Light'],
+                ['dark', 'Dark'],
+                ['auto', 'Auto'],
+              ] as const).map(([value, label]) => (
+                <button key={value} onClick={() => chooseTheme(value)} className="rounded-2xl border border-slate-200 bg-slate-50 p-2 font-semibold text-slate-900 transition hover:border-sky-400 hover:bg-sky-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
+                  <img src={value === 'light' ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg' : value === 'dark' ? '/image.png' : '/assets/images/bubble_combined copy.png'} alt={`${label} theme`} className="mb-2 h-16 w-full rounded-xl object-cover" />
+                  <span className="text-xs">{label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -143,6 +153,8 @@ export function useTheme() {
   return ctx;
 }
 
-export function getLogoUrl(_theme: ResolvedTheme): string {
-  return '/assets/images/bubble_combined.png';
+export function getLogoUrl(theme: ResolvedTheme): string {
+  return theme === 'light'
+    ? '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83_copy_copy_copy.jpg'
+    : '/image.png';
 }
