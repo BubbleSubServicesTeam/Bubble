@@ -125,7 +125,15 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       case 'voicemail': return `${prefix}Left a voicemail`;
       case 'call_started': return `${prefix}Call`;
       case 'call_ended': return 'Call ended';
-      default: return `${prefix}${msg.content ?? ''}`;
+      default: {
+        const content = msg.content ?? '';
+        if (content) return `${prefix}${content}`;
+        // Encrypted (vaulted) text messages have no plaintext content server-side;
+        // decrypt locally so the preview shows the real text.
+        if ((msg as any).vault && decrypted[conv.id] === undefined) return `${prefix}Encrypted message`;
+        if ((msg as any).vault) return `${prefix}${decrypted[conv.id]}`;
+        return `${prefix}${content}`;
+      }
     }
   }
 

@@ -1263,7 +1263,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                 <p className="text-slate-500 dark:text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">Message keyboard</p>
                 <p className="text-[12px] text-slate-500 dark:text-slate-400 mb-3">Choose the keyboard used when typing messages on this device. Sign-in and PIN screens always use the Bubble keyboard.</p>
                 <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.04]">
-                  {([['system', 'Phone keyboard'], ['bubble', 'Bubble keyboard']] as const).map(([value, label]) => (
+                  {([['system', 'Default Keyboard'], ['bubble', 'Bubble keyboard']] as const).map(([value, label]) => (
                     <button
                       key={value}
                       onClick={() => setMessageKeyboard(value)}

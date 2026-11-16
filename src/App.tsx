@@ -121,7 +121,7 @@ function AppInner() {
   );
 
   const pinOverlay = pinLockActive ? (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 20000 }}>
       <PinScreen
         onUnlock={unlockWithPin}
         onUsePassword={unlockWithPassword}

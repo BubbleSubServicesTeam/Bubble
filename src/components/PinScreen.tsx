@@ -39,7 +39,7 @@ export default function PinScreen({
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
-  const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(true);
+  const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [pinRemaining, setPinRemaining] = useState(0);

@@ -117,7 +117,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
   const [rpDone, setRpDone] = useState(false);
 
   // Track which keyboard field is active (only one keyboard visible at a time)
-  const [activeField, setActiveField] = useState<string | null>('siEmail');
+  const [activeField, setActiveField] = useState<string | null>(null);
 
   function moveAuthField(shiftKey: boolean) {
     const fields: Record<string, string[]> = {
