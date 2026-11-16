@@ -7,6 +7,7 @@ import Avatar from './Avatar';
 import { Plus, Search, Settings, LogOut, MessageCircle, Trash2, Smile, Camera, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import { ContactPriorityMap, conversationPriority, priorityRank } from '../lib/contactPriority';
+import { revealMessage } from '../lib/messageVault';
 
 type Props = {
   conversations: Conversation[];
@@ -36,6 +37,27 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
     try { return (localStorage.getItem('bubble-chat-sort') as 'recent' | 'active' | 'unread' | 'name') || 'recent'; } catch { return 'recent'; }
   });
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+  const [decrypted, setDecrypted] = useState<Record<string, string>>({});
+
+  // Encrypted (vaulted) last messages have no plaintext server-side — decrypt
+  // each conversation's latest text locally so previews show real content.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      for (const conv of conversations) {
+        const msg = conv.last_message as (Message & { vault?: unknown }) | undefined;
+        if (!msg || msg.deleted_at || msg.content || !msg.vault) continue;
+        if (decrypted[conv.id] !== undefined) continue;
+        const revealed = await revealMessage(user.id, msg as Message);
+        if (cancelled) return;
+        if (revealed.content) {
+          setDecrypted(prev => ({ ...prev, [conv.id]: revealed.content! }));
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, conversations, decrypted]);
 
   async function permanentlyDeleteConv(conv: Conversation) {
     if (!profile) return;

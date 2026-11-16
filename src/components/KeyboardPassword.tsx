@@ -268,6 +268,10 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
   function handleKeyDown(e: KeyboardEvent) {
     if (!active) return;
+    // Native inputs (e.g. the composer textarea) handle their own key events —
+    // otherwise Enter/characters fire twice.
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) return;
     if (e.metaKey || e.ctrlKey) return;
     if (e.key === 'Tab') { e.preventDefault(); onTab?.(e.shiftKey); }
     else if (e.key === 'Backspace') { e.preventDefault(); handleBackspace(false); }
