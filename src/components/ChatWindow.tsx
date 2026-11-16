@@ -1598,7 +1598,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   return (
     <div
       className="flex flex-col h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-950 relative transition-colors duration-300"
-      style={{ height: keyboardHeight > 0 ? `calc(100% - ${keyboardHeight}px)` : '100%' }}
       onClick={(e) => {
         const t = e.target as HTMLElement;
         if (t.closest('button, a, input, textarea, select, [role="dialog"], [contenteditable]')) return;
@@ -2302,6 +2301,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       {/* Input area */}
       <div
         className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5 transition-[margin] duration-150"
+        style={{ marginBottom: messageKeyboard === 'system' && keyboardHeight > 0 ? `${keyboardHeight}px` : undefined }}
       >
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
