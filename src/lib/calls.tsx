@@ -57,7 +57,7 @@ const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun2.l.google.com:19302' },
 ];
 
-const VIDEO_CALL_BASE = 'https://bubblesubserviceteam.github.io/ZXYsupernova/';
+const VIDEO_CALL_BASE = 'https://bubblesubservicesteam.github.io/ZXYsupernova/';
 
 function generateVideoCallId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
