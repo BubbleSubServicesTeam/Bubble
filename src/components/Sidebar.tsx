@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase, Conversation, Profile, Message, smartName, getDisplayName } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
@@ -38,9 +38,11 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
   });
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
   const [decrypted, setDecrypted] = useState<Record<string, string>>({});
+  const decryptAttemptedRef = useRef<Set<string>>(new Set());
 
   // Encrypted (vaulted) last messages have no plaintext server-side — decrypt
   // each conversation's latest text locally so previews show real content.
+  // Attempt each message at most once; results are kept in `decrypted`.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -48,7 +50,8 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       for (const conv of conversations) {
         const msg = conv.last_message as (Message & { vault?: unknown }) | undefined;
         if (!msg || msg.deleted_at || msg.content || !msg.vault) continue;
-        if (decrypted[conv.id] !== undefined) continue;
+        if (decryptAttemptedRef.current.has(conv.id)) continue;
+        decryptAttemptedRef.current.add(conv.id);
         const revealed = await revealMessage(user.id, msg as Message);
         if (cancelled) return;
         if (revealed.content) {
@@ -57,7 +60,7 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       }
     })();
     return () => { cancelled = true; };
-  }, [user, conversations, decrypted]);
+  }, [user, conversations]);
 
   async function permanentlyDeleteConv(conv: Conversation) {
     if (!profile) return;
