@@ -47,6 +47,7 @@ import { getWallpaperCss } from '../lib/wallpapers';
 import { LocationMap, LocationPicker } from './LocationMap';
 import { detectContactInfo, hasNewInfo } from '../lib/contactAutofill';
 import { fetchContactDetails, saveContactDetails, CONTACT_DETAIL_FIELDS, type ContactDetails } from '../lib/contactDetails';
+import { fetchImportMeta, fetchImportState, type ImportMeta, type ImportState } from '../lib/whatsappImport';
 
 type Props = {
   conversation: Conversation;
@@ -191,6 +192,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [openPositionLoaded, setOpenPositionLoaded] = useState(false);
   const [wallpaper, setWallpaper] = useState('none');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [importMetaMap, setImportMetaMap] = useState<Map<string, ImportMeta>>(new Map());
+  const [importState, setImportState] = useState<ImportState | null>(null);
   const [autofillSuggestion, setAutofillSuggestion] = useState<{
     senderId: string;
     senderName: string;
@@ -740,6 +743,20 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [loadingMessages, setLoadingMessages] = useState(() => {
     try { return !localStorage.getItem(`bubble-msgs-${conversation.id}`); } catch { return true; }
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [meta, state] = await Promise.all([
+        fetchImportMeta(conversation.id),
+        fetchImportState(conversation.id),
+      ]);
+      if (cancelled) return;
+      setImportMetaMap(new Map(meta.map(m => [m.message_id, m])));
+      setImportState(state);
+    })();
+    return () => { cancelled = true; };
+  }, [conversation.id]);
 
   async function loadMessages() {
     const cacheKey = `bubble-msgs-${conversation.id}`;
@@ -1767,6 +1784,16 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           ...(lensActive ? { touchAction: 'none' } : {}),
         }}
       >
+        {importState?.status === 'pending' && importState.is_importer && (
+          <div className="mb-2 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+            <Check size={14} className="flex-shrink-0 text-emerald-500" />
+            <p className="text-[12px] text-emerald-700 dark:text-emerald-300">
+              {importState.other_name
+                ? `Chat imported. ${importState.other_name} can continue this conversation when they join Bubble with the same phone number.`
+                : 'Chat imported. The other person can continue this conversation when they join Bubble with the same phone number.'}
+            </p>
+          </div>
+        )}
         {grouped.map(group => (
           <div key={group.date}>
             <div className="flex items-center gap-3 my-4">
@@ -1776,7 +1803,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             </div>
             {group.items.map(({ msg, isFirst, showAvatar }) => {
               if (showSavedOnly && !savedMsgIds.has(msg.id)) return null;
-              const isMe = msg.sender_id === user?.id;
+              const importMeta = importMetaMap.get(msg.id);
+              const isMe = importMeta ? importMeta.from_me : msg.sender_id === user?.id;
+              const originalSender = importMeta && !importMeta.from_me ? importMeta.original_sender : null;
               const reactions = msg.reactions ?? {};
               const replyTarget = msg.reply_to ? messages.find(m => m.id === msg.reply_to) : null;
               const isHovered = hoveredId === msg.id || touchMsgId === msg.id;
@@ -1806,6 +1835,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   <div className={`flex flex-col ${isMedia ? 'w-full' : 'max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
                     {!isMe && conversation.is_group && isFirst && (
                       <button onClick={() => msg.sender && setShowProfile(msg.sender as Profile)} className="text-[11px] text-slate-500 font-medium mb-1 ml-1 hover:text-sky-500 transition-colors">{getSenderName(msg)}</button>
+                    )}
+                    {originalSender && isFirst && (
+                      <span className="text-[11px] text-slate-500 font-medium mb-1 ml-1">{originalSender} <span className="opacity-60">(from WhatsApp)</span></span>
                     )}
 
                     {replyTarget && (
