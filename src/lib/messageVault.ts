@@ -9,6 +9,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 type Identity = { deviceId: string; privateKey: CryptoKey; publicKey: JsonWebKey };
+type VaultDevice = { device_id: string; public_key: JsonWebKey };
 type SealedBytes = { envelope: VaultEnvelope; ciphertext: Uint8Array };
 
 function openVaultDb(): Promise<IDBDatabase> {
@@ -90,46 +91,44 @@ function fromBase64(value: string): Uint8Array {
   return Uint8Array.from(atob(value), char => char.charCodeAt(0));
 }
 
+async function sealBytesForDevices(plain: Uint8Array, devices: VaultDevice[]): Promise<SealedBytes> {
+  const ephemeral = await crypto.subtle.generateKey(ECDH_PARAMS, false, ['deriveKey']);
+  const messageKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  const rawMessageKey = await crypto.subtle.exportKey('raw', messageKey);
+  const bodyIv = crypto.getRandomValues(new Uint8Array(12));
+  const body = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: bodyIv }, messageKey, plain);
+  const keys = await Promise.all(devices.map(async device => {
+    const recipientKey = await crypto.subtle.importKey('jwk', device.public_key, ECDH_PARAMS, false, []);
+    const wrapKey = await crypto.subtle.deriveKey(
+      { name: 'ECDH', public: recipientKey },
+      ephemeral.privateKey,
+      WRAP_PARAMS,
+      false,
+      ['encrypt'],
+    );
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, rawMessageKey);
+    return { d: device.device_id, iv: toBase64(iv), k: toBase64(new Uint8Array(wrapped)) };
+  }));
+  return {
+    envelope: {
+      eph: await crypto.subtle.exportKey('jwk', ephemeral.publicKey),
+      body: { iv: toBase64(bodyIv), c: '' },
+      keys,
+    },
+    ciphertext: new Uint8Array(body),
+  };
+}
+
 async function sealBytes(userId: string, conversationId: string, plain: Uint8Array): Promise<SealedBytes | null> {
   try {
     const identity = await loadOrCreateIdentity(userId);
     await registerDevice(userId, identity);
-
     const { data: devices, error } = await supabase.rpc('get_conversation_vault_devices', {
       p_conversation_id: conversationId,
     });
     if (error || !devices || devices.length === 0) return null;
-
-    const ephemeral = await crypto.subtle.generateKey(ECDH_PARAMS, false, ['deriveKey']);
-    const messageKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
-    const rawMessageKey = await crypto.subtle.exportKey('raw', messageKey);
-    const bodyIv = crypto.getRandomValues(new Uint8Array(12));
-    const body = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: bodyIv }, messageKey, plain);
-
-    const keys = await Promise.all(
-      (devices as { device_id: string; public_key: JsonWebKey }[]).map(async device => {
-        const recipientKey = await crypto.subtle.importKey('jwk', device.public_key, ECDH_PARAMS, false, []);
-        const wrapKey = await crypto.subtle.deriveKey(
-          { name: 'ECDH', public: recipientKey },
-          ephemeral.privateKey,
-          WRAP_PARAMS,
-          false,
-          ['encrypt'],
-        );
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, rawMessageKey);
-        return { d: device.device_id, iv: toBase64(iv), k: toBase64(new Uint8Array(wrapped)) };
-      }),
-    );
-
-    return {
-      envelope: {
-        eph: await crypto.subtle.exportKey('jwk', ephemeral.publicKey),
-        body: { iv: toBase64(bodyIv), c: '' },
-        keys,
-      },
-      ciphertext: new Uint8Array(body),
-    };
+    return sealBytesForDevices(plain, devices as VaultDevice[]);
   } catch (err) {
     console.error('Failed to encrypt message', err);
     return null;
@@ -235,78 +234,36 @@ async function revealMedia(userId: string, message: Message, vault: VaultEnvelop
   }
 }
 
-export async function shareVaultKeysWithNewDevices(userId: string, conversationId: string): Promise<void> {
+export async function repairOwnVaultMessages(userId: string, conversationId: string): Promise<void> {
   try {
     const identity = await currentIdentity(userId);
     if (!identity) return;
-
-    const { data: devices, error } = await supabase.rpc('get_conversation_vault_devices', {
+    const { data: devices, error: devicesError } = await supabase.rpc('get_conversation_vault_devices', {
       p_conversation_id: conversationId,
     });
-    if (error || !devices) return;
-
-    const { data: sealed, error: sealedError } = await supabase
+    if (devicesError || !devices || devices.length === 0) return;
+    const { data: sealed, error: messagesError } = await supabase
       .from('messages')
-      .select('id, vault')
+      .select('id, vault, media_url')
       .eq('conversation_id', conversationId)
       .eq('sender_id', userId)
+      .is('media_url', null)
       .not('vault', 'is', null);
-    if (sealedError || !sealed) return;
-
-    type DeviceRow = { device_id: string; public_key: JsonWebKey };
-    const allDevices = devices as DeviceRow[];
+    if (messagesError || !sealed) return;
 
     for (const row of sealed as { id: string; vault: VaultEnvelope }[]) {
-      const envelope = row.vault;
-      if (!envelope?.keys) continue;
-      const missing = allDevices.filter(device => {
-        const entry = envelope.keys.find(key => key.d === device.device_id);
-        return !entry && device.device_id !== identity.deviceId;
+      const plain = await openBytes(userId, row.vault, fromBase64(row.vault.body.c));
+      if (!plain) continue;
+      const sealedAgain = await sealBytesForDevices(plain, devices as VaultDevice[]);
+      sealedAgain.envelope.body.c = toBase64(sealedAgain.ciphertext);
+      const { error } = await supabase.rpc('replace_message_vault', {
+        p_message_id: row.id,
+        p_vault: sealedAgain.envelope,
       });
-      if (missing.length === 0) continue;
-
-      const ownEntry = envelope.keys.find(key => key.d === identity.deviceId);
-      if (!ownEntry) continue;
-
-      const ephemeralPublic = await crypto.subtle.importKey('jwk', envelope.eph, ECDH_PARAMS, false, []);
-      const unwrapKey = await crypto.subtle.deriveKey(
-        { name: 'ECDH', public: ephemeralPublic },
-        identity.privateKey,
-        WRAP_PARAMS,
-        false,
-        ['decrypt'],
-      );
-      const rawMessageKey = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: fromBase64(ownEntry.iv) },
-        unwrapKey,
-        fromBase64(ownEntry.k),
-      );
-
-      for (const device of missing) {
-        try {
-          const recipientKey = await crypto.subtle.importKey('jwk', device.public_key, ECDH_PARAMS, false, []);
-          const wrapKey = await crypto.subtle.deriveKey(
-            { name: 'ECDH', public: recipientKey },
-            ephemeralPublic,
-            WRAP_PARAMS,
-            false,
-            ['encrypt'],
-          );
-          const iv = crypto.getRandomValues(new Uint8Array(12));
-          const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, rawMessageKey);
-          await supabase.rpc('grant_message_key_to_device', {
-            p_message_id: row.id,
-            p_device_id: device.device_id,
-            p_iv: toBase64(iv),
-            p_key: toBase64(new Uint8Array(wrapped)),
-          });
-        } catch (err) {
-          console.error('Failed to share message key with device', err);
-        }
-      }
+      if (error) console.error('Failed to repair encrypted message', error);
     }
   } catch (err) {
-    console.error('Failed to share vault keys', err);
+    console.error('Failed to repair encrypted messages', err);
   }
 }
 
