@@ -16,6 +16,7 @@ import AdminPanel from './AdminPanel';
 import DeveloperSettings from './DeveloperSettings';
 import LocationPrivacySettings from './LocationPrivacySettings';
 import TrustedPeopleSettings from './TrustedPeopleSettings';
+import WhatsAppImportCard from './WhatsAppImportCard';
 import SelfSuspensionSection from './SelfSuspensionSection';
 import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
