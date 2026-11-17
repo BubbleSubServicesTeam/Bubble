@@ -56,6 +56,18 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
         if (cancelled) return;
         if (revealed.content) {
           setDecrypted(prev => ({ ...prev, [conv.id]: revealed.content! }));
+          continue;
+        }
+        // The message may have been restored server-side since this list was
+        // fetched; pick up the current plaintext if it exists.
+        const { data: fresh } = await supabase
+          .from('messages')
+          .select('content')
+          .eq('id', (msg as Message).id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (fresh?.content) {
+          setDecrypted(prev => ({ ...prev, [conv.id]: fresh.content! }));
         }
       }
     })();
