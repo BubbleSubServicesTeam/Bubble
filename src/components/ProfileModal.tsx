@@ -32,6 +32,7 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
     country: string | null;
   }>({ phone_number: profile.phone_number ?? null, address: null, city: null, state: null, postal_code: null, country: null });
   const [isCloseFriend, setIsCloseFriend] = useState(false);
+  const [visibleEmail, setVisibleEmail] = useState<string | null>(profile.email ?? null);
 
   const isMe = user?.id === profile.user_id;
   const status = effectiveStatus(profile);
@@ -51,6 +52,16 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
         setContactInfo({ phone_number: row.phone_number, address: row.address, city: row.city, state: row.state, postal_code: row.postal_code, country: row.country });
       });
   }, [profile.user_id]);
+
+  useEffect(() => {
+    if (!user || isMe || !profile.user_id) return;
+    supabase
+      .rpc('get_visible_profile_email', { p_user_id: profile.user_id })
+      .then(({ data }) => {
+        const email = Array.isArray(data) ? data[0] : data;
+        setVisibleEmail(typeof email === 'string' ? email : null);
+      });
+  }, [user, profile.user_id, isMe]);
 
   useEffect(() => {
     if (!user || !profile.user_id || isMe) return;
@@ -192,13 +203,20 @@ export default function ProfileModal({ profile, conversationId, onClose, onStart
 
           {/* Details */}
           <div className="space-y-2.5 pt-2 border-t border-slate-200 dark:border-white/5">
-            {profile.email && (
+            {!isMe && !visibleEmail && (
               <div className="flex items-center gap-3 text-sm">
                 <Mail size={15} className="text-slate-600 flex-shrink-0" />
                 <span className="text-slate-500 dark:text-slate-400">Email</span>
-                <span className="text-slate-700 dark:text-slate-200 truncate ml-auto text-[13px]">{profile.email}</span>
+                <span className="text-slate-400 dark:text-slate-600 ml-auto text-[13px] italic">Not available</span>
+              </div>
+            )}
+            {visibleEmail && (
+              <div className="flex items-center gap-3 text-sm">
+                <Mail size={15} className="text-slate-600 flex-shrink-0" />
+                <span className="text-slate-500 dark:text-slate-400">Email</span>
+                <span className="text-slate-700 dark:text-slate-200 truncate ml-auto text-[13px]">{visibleEmail}</span>
                 <button
-                  onClick={() => copyToClipboard(profile.email!, 'email')}
+                  onClick={() => copyToClipboard(visibleEmail!, 'email')}
                   className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-200 transition-all"
                   title="Copy email"
                 >
