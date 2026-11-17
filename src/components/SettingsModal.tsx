@@ -17,6 +17,7 @@ import DeveloperSettings from './DeveloperSettings';
 import LocationPrivacySettings from './LocationPrivacySettings';
 import TrustedPeopleSettings from './TrustedPeopleSettings';
 import WhatsAppImportCard from './WhatsAppImportCard';
+import WhatsAppImportCard from './WhatsAppImportCard';
 import SelfSuspensionSection from './SelfSuspensionSection';
 import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
@@ -82,6 +83,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   const [avatarError, setAvatarError] = useState('');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const phoneNumberInputRef = useRef<HTMLInputElement>(null);
 
   // PIN setup flow
   const [showPinSetup, setShowPinSetup] = useState(initialSub === 'pin');
@@ -1214,7 +1216,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                             {regionsByCountry[country].map(option => <option key={option} value={option}>{option}</option>)}
                           </select>
                         ) : (
-                          <input id={inputId} type="text" value={value as string} onChange={e => update(e.target.value)} autoComplete={fieldLabel === 'City' ? 'address-level2' : fieldLabel === 'Postal / ZIP' ? 'postal-code' : 'street-address'} inputMode={fieldLabel === 'Postal / ZIP' ? 'numeric' : 'text'} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                          <input id={inputId} ref={fieldLabel === 'Phone number' ? phoneNumberInputRef : undefined} type="text" value={value as string} onChange={e => update(e.target.value)} autoComplete={fieldLabel === 'City' ? 'address-level2' : fieldLabel === 'Postal / ZIP' ? 'postal-code' : 'street-address'} inputMode={fieldLabel === 'Postal / ZIP' ? 'numeric' : 'text'} className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] focus:border-sky-500/60 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
                         )}
                         {fieldLabel === 'Postal / ZIP' && postalError && <p className="text-[11px] text-red-400">{postalError}</p>}
                       </div>
@@ -1227,6 +1229,11 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                   <ContactVisibilityPicker label="Address" value={addressVisibility} onChange={setAddressVisibility} />
                 </div>
               </div>
+
+              <WhatsAppImportCard
+                onOpenProfile={() => phoneNumberInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                onImported={() => setSaved(true)}
+              />
 
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-slate-500 dark:text-slate-400">This device's name</label>

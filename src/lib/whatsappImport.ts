@@ -127,6 +127,37 @@ function normalizePhone(p: string): string {
   return p.replace(/[^0-9+]/g, '').replace(/^0+/, '');
 }
 
+export type ImportMeta = { message_id: string; from_me: boolean; original_sender: string | null };
+export type ImportState = { status: 'pending' | 'claimed'; other_name: string | null; other_phone: string; is_importer: boolean };
+
+export async function fetchImportMeta(conversationId: string): Promise<ImportMeta[]> {
+  const { data, error } = await supabase.rpc('get_whatsapp_import_meta', { p_conversation_id: conversationId });
+  if (error) return [];
+  return (data ?? []) as ImportMeta[];
+}
+
+export async function fetchImportState(conversationId: string): Promise<ImportState | null> {
+  const { data, error } = await supabase.rpc('get_my_import_state', { p_conversation_id: conversationId });
+  if (error) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? (row as ImportState) : null;
+}
+
+export async function claimMyImports(): Promise<number> {
+  const { data, error } = await supabase.rpc('claim_whatsapp_imports');
+  if (error) return 0;
+  return typeof data === 'number' ? data : Number(data ?? 0);
+}
+
+export async function fetchPendingImportsForMe(): Promise<{ conversationId: string; importerName: string | null }[]> {
+  const { data, error } = await supabase.rpc('get_pending_imports_for_me');
+  if (error) return [];
+  return ((data ?? []) as { conversation_id: string; importer_name: string | null }[]).map(r => ({
+    conversationId: r.conversation_id,
+    importerName: r.importer_name,
+  }));
+}
+
 export async function runImport(parsed: ParsedExport): Promise<{ conversationId: string } | { error: string }> {
   if (!parsed.otherPhone) {
     return { error: "Couldn't find a phone number in this export, so the chat can't be matched later. Make sure the chat contains the person's phone number." };

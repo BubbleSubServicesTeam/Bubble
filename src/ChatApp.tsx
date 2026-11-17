@@ -12,6 +12,7 @@ import NewChatModal from './components/NewChatModal';
 import SettingsModal from './components/SettingsModal';
 import PeopleDrawer from './components/PeopleDrawer';
 import FaceFilterModal from './components/FaceFilterModal';
+import WhatsAppClaimBanner from './components/WhatsAppClaimBanner';
 import { ROUTES, parseAppRoute, currentPath } from './lib/routes';
 import { MessageCircle, StickyNote, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
@@ -515,6 +516,12 @@ export default function ChatApp() {
 
       {/* Sidebar: hidden on mobile when a chat is selected */}
       <div className={`${selected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-auto flex-shrink-0`}>
+        {!selected && (
+          <WhatsAppClaimBanner onOpenChat={id => {
+            const conv = conversations.find(c => c.id === id);
+            if (conv) handleSelectConv(conv);
+          }} />
+        )}
         <Sidebar
           conversations={conversations}
           contactPriorities={contactPriorities}
