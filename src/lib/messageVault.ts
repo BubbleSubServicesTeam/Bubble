@@ -65,6 +65,21 @@ async function registerDevice(userId: string, identity: Identity) {
   if (error) throw error;
 }
 
+async function currentIdentity(userId: string): Promise<Identity | null> {
+  try {
+    const identity = await loadOrCreateIdentity(userId);
+    await registerDevice(userId, identity);
+    return identity;
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureDeviceRegistered(userId: string): Promise<string | null> {
+  const identity = await currentIdentity(userId);
+  return identity?.deviceId ?? null;
+}
+
 function toBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -217,6 +232,81 @@ async function revealMedia(userId: string, message: Message, vault: VaultEnvelop
     };
   } catch {
     return locked;
+  }
+}
+
+export async function shareVaultKeysWithNewDevices(userId: string, conversationId: string): Promise<void> {
+  try {
+    const identity = await currentIdentity(userId);
+    if (!identity) return;
+
+    const { data: devices, error } = await supabase.rpc('get_conversation_vault_devices', {
+      p_conversation_id: conversationId,
+    });
+    if (error || !devices) return;
+
+    const { data: sealed, error: sealedError } = await supabase
+      .from('messages')
+      .select('id, vault')
+      .eq('conversation_id', conversationId)
+      .eq('sender_id', userId)
+      .not('vault', 'is', null);
+    if (sealedError || !sealed) return;
+
+    type DeviceRow = { device_id: string; public_key: JsonWebKey };
+    const allDevices = devices as DeviceRow[];
+
+    for (const row of sealed as { id: string; vault: VaultEnvelope }[]) {
+      const envelope = row.vault;
+      if (!envelope?.keys) continue;
+      const missing = allDevices.filter(device => {
+        const entry = envelope.keys.find(key => key.d === device.device_id);
+        return !entry && device.device_id !== identity.deviceId;
+      });
+      if (missing.length === 0) continue;
+
+      const ownEntry = envelope.keys.find(key => key.d === identity.deviceId);
+      if (!ownEntry) continue;
+
+      const ephemeralPublic = await crypto.subtle.importKey('jwk', envelope.eph, ECDH_PARAMS, false, []);
+      const unwrapKey = await crypto.subtle.deriveKey(
+        { name: 'ECDH', public: ephemeralPublic },
+        identity.privateKey,
+        WRAP_PARAMS,
+        false,
+        ['decrypt'],
+      );
+      const rawMessageKey = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: fromBase64(ownEntry.iv) },
+        unwrapKey,
+        fromBase64(ownEntry.k),
+      );
+
+      for (const device of missing) {
+        try {
+          const recipientKey = await crypto.subtle.importKey('jwk', device.public_key, ECDH_PARAMS, false, []);
+          const wrapKey = await crypto.subtle.deriveKey(
+            { name: 'ECDH', public: recipientKey },
+            ephemeralPublic,
+            WRAP_PARAMS,
+            false,
+            ['encrypt'],
+          );
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, rawMessageKey);
+          await supabase.rpc('grant_message_key_to_device', {
+            p_message_id: row.id,
+            p_device_id: device.device_id,
+            p_iv: toBase64(iv),
+            p_key: toBase64(new Uint8Array(wrapped)),
+          });
+        } catch (err) {
+          console.error('Failed to share message key with device', err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to share vault keys', err);
   }
 }
 
