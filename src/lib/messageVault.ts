@@ -175,6 +175,21 @@ export async function sealTextForConversation(
 
 const MEDIA_HEADER_BYTES = 4;
 
+export async function uploadMedia(
+  userId: string,
+  folder: string,
+  file: Blob,
+  meta: { file_name: string; file_mime: string },
+): Promise<{ media_url: string; file_name: string; file_mime: string; file_size: number }> {
+  const path = `${folder}/${userId}/${Date.now()}-${crypto.randomUUID()}-${meta.file_name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const { error } = await supabase.storage
+    .from('media')
+    .upload(path, file, { contentType: meta.file_mime || 'application/octet-stream', upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('media').getPublicUrl(path);
+  return { media_url: data.publicUrl, file_name: meta.file_name, file_mime: meta.file_mime, file_size: file.size };
+}
+
 export async function uploadSealedMedia(
   userId: string,
   conversationId: string,
@@ -234,36 +249,61 @@ async function revealMedia(userId: string, message: Message, vault: VaultEnvelop
   }
 }
 
-export async function repairOwnVaultMessages(userId: string, conversationId: string): Promise<void> {
+export async function restoreOwnVaultMessages(userId: string, conversationId: string): Promise<void> {
   try {
     const identity = await currentIdentity(userId);
     if (!identity) return;
-    const { data: devices, error: devicesError } = await supabase.rpc('get_conversation_vault_devices', {
-      p_conversation_id: conversationId,
-    });
-    if (devicesError || !devices || devices.length === 0) return;
-    const { data: sealed, error: messagesError } = await supabase
+    const { data: vaulted, error } = await supabase
       .from('messages')
-      .select('id, vault, media_url')
+      .select('id, message_type, vault, media_url, file_name, file_mime, file_size')
       .eq('conversation_id', conversationId)
       .eq('sender_id', userId)
-      .is('media_url', null)
       .not('vault', 'is', null);
-    if (messagesError || !sealed) return;
+    if (error || !vaulted) return;
 
-    for (const row of sealed as { id: string; vault: VaultEnvelope }[]) {
-      const plain = await openBytes(userId, row.vault, fromBase64(row.vault.body.c));
-      if (!plain) continue;
-      const sealedAgain = await sealBytesForDevices(plain, devices as VaultDevice[]);
-      sealedAgain.envelope.body.c = toBase64(sealedAgain.ciphertext);
-      const { error } = await supabase.rpc('replace_message_vault', {
-        p_message_id: row.id,
-        p_vault: sealedAgain.envelope,
-      });
-      if (error) console.error('Failed to repair encrypted message', error);
+    for (const row of vaulted as Array<{
+      id: string;
+      message_type: Message['message_type'];
+      vault: VaultEnvelope;
+      media_url: string | null;
+      file_name: string | null;
+      file_mime: string | null;
+      file_size: number | null;
+    }>) {
+      if (!row.media_url) {
+        const plain = await openBytes(userId, row.vault, fromBase64(row.vault.body.c));
+        if (!plain) continue;
+        const { error: updateError } = await supabase
+          .from('messages')
+          .update({ content: decoder.decode(plain), vault: null })
+          .eq('id', row.id)
+          .eq('sender_id', userId);
+        if (updateError) console.error('Failed to restore message', updateError);
+        continue;
+      }
+
+      try {
+        const response = await fetch(row.media_url);
+        if (!response.ok) continue;
+        const ciphertext = new Uint8Array(await response.arrayBuffer());
+        const plain = await openBytes(userId, row.vault, ciphertext);
+        if (!plain || plain.byteLength < MEDIA_HEADER_BYTES) continue;
+        const headerLength = new DataView(plain.buffer, plain.byteOffset).getUint32(0);
+        const meta = JSON.parse(decoder.decode(plain.subarray(MEDIA_HEADER_BYTES, MEDIA_HEADER_BYTES + headerLength))) as { file_name: string; file_mime: string };
+        const fileBytes = plain.subarray(MEDIA_HEADER_BYTES + headerLength);
+        const restored = await uploadMedia(userId, 'restored', new Blob([fileBytes], { type: meta.file_mime }), meta);
+        const { error: updateError } = await supabase
+          .from('messages')
+          .update({ media_url: restored.media_url, file_name: restored.file_name, file_mime: restored.file_mime, file_size: restored.file_size, vault: null })
+          .eq('id', row.id)
+          .eq('sender_id', userId);
+        if (updateError) console.error('Failed to restore attachment', updateError);
+      } catch (restoreError) {
+        console.error('Failed to restore attachment', restoreError);
+      }
     }
-  } catch (err) {
-    console.error('Failed to repair encrypted messages', err);
+  } catch (restoreError) {
+    console.error('Failed to restore vaulted messages', restoreError);
   }
 }
 

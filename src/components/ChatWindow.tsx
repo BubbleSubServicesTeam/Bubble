@@ -7,7 +7,7 @@ import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, S
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
-import { revealMessage, revealMessages, sealTextForConversation, uploadSealedMedia, ensureDeviceRegistered, repairOwnVaultMessages } from '../lib/messageVault';
+import { revealMessage, revealMessages, uploadMedia, restoreOwnVaultMessages } from '../lib/messageVault';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -628,8 +628,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     // the message as locked forever.
     if (user) {
       (async () => {
-        await ensureDeviceRegistered(user.id);
-        await repairOwnVaultMessages(user.id, conversation.id);
+        await restoreOwnVaultMessages(user.id, conversation.id);
       })();
     }
     const channel = supabase
@@ -880,10 +879,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     setSending(true);
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const sealable = ['text', 'code', 'location', 'iframe'].includes(type);
     const displayContent = type === 'text' ? text.trim() : (extra.content ?? null);
-    const vault = sealable && displayContent ? await sealTextForConversation(user.id, conversation.id, displayContent) : null;
-    if (sealable && displayContent && !vault) return;
+    const vault = null;
     const payload: any = {
       conversation_id: conversation.id,
       sender_id: user.id,
@@ -1014,15 +1011,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function handleSendIframe(url: string, title: string, message: string) {
     setShowIframeModal(false);
     if (message) {
-      const vault = await sealTextForConversation(user!.id, conversation.id, message);
-      if (!vault) return;
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const textPayload: any = {
         conversation_id: conversation.id,
         sender_id: user!.id,
         message_type: 'text',
-        content: null,
-        vault,
+        content: message,
+        vault: null,
         sender_language: profile?.native_language ?? null,
         reply_to: replyTo?.id ?? null,
         reply_excerpt: null,
@@ -1096,11 +1091,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     extra: Partial<Message>,
   ) {
     if (!user) return;
-    const uploaded = await uploadSealedMedia(user.id, conversation.id, folder, blob, meta);
-    if (!uploaded) throw new Error('Could not encrypt this file.');
+    const uploaded = await uploadMedia(user.id, folder, blob, meta);
     await sendMessage(
       type,
-      { ...extra, media_url: uploaded.media_url, vault: uploaded.vault, file_name: null, file_mime: null, file_size: null },
+      { ...extra, media_url: uploaded.media_url, vault: null, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
       { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
     );
   }
@@ -1171,11 +1165,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     const previousContent = message.content ?? '';
     const nextContent = editText.trim();
     if (!user || message.vault_locked) return;
-    const vault = await sealTextForConversation(user.id, conversation.id, nextContent);
-    if (!vault) return;
     const { error } = await supabase.from('messages').update({
-      content: null,
-      vault,
+      content: nextContent,
+      vault: null,
       edited_at: new Date().toISOString(),
     }).eq('id', editingId);
     if (error) return;
@@ -1190,14 +1182,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function undoEditMessage() {
     if (!undoEdit) return;
     clearTimeout(undoEdit.timer);
-    const vault = user ? await sealTextForConversation(user.id, conversation.id, undoEdit.previousContent) : null;
-    const { error } = vault
+    const { error } = user
       ? await supabase.from('messages').update({
-          content: null,
-          vault,
+          content: undoEdit.previousContent,
+          vault: null,
           edited_at: null,
         }).eq('id', undoEdit.messageId)
-      : { error: new Error('Could not encrypt message') };
+      : { error: new Error('Not signed in') };
     if (!error) {
       setMessages(prev => prev.map(m => m.id === undoEdit.messageId ? { ...m, content: undoEdit.previousContent, edited_at: null } : m));
     }
