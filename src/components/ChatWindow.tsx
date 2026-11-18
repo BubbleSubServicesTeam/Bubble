@@ -151,7 +151,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [editAvatarUrl, setEditAvatarUrl] = useState(conversation.avatar_url ?? '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [, setKeyboardHeight] = useState(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [touchMsgId, setTouchMsgId] = useState<string | null>(null);
@@ -2365,10 +2365,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       )}
 
       {/* Input area */}
-      <div
-        className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5 transition-[margin] duration-150"
-        style={{ marginBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined }}
-      >
+      <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5">
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
             <Reply size={13} className="text-sky-400 flex-shrink-0 mt-0.5" />
