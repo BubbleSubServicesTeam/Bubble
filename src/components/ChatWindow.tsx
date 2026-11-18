@@ -30,7 +30,7 @@ import ConversationSummaryModal from './ConversationSummaryModal';
 import {
   Send, Smile, Mic, Phone, Video,
   X, Edit2, Trash2, Reply, Play, Pause,
-  ChevronDown, Check, Users, ArrowLeft,
+  ChevronDown, Check, Users, User, ArrowLeft,
   MoreVertical, Trash, LogOut, Ban, Camera,
   Paperclip, Copy, Download, FileText,
   DollarSign, Link, BarChart2, ExternalLink, Eye,
@@ -157,6 +157,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [touchMsgId, setTouchMsgId] = useState<string | null>(null);
   const touchStartedAtRef = useRef(0);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [showFormCreator, setShowFormCreator] = useState(false);
@@ -1425,6 +1426,20 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       .eq('user_id', user.id);
   }
 
+  function deleteConversation() {
+    if (!user) return;
+    setShowMenu(false);
+    setShowDeleteConfirm(true);
+  }
+
+  async function confirmDelete() {
+    if (!user) return;
+    setShowDeleteConfirm(false);
+    onLeave?.(conversation.id);
+    onBack?.();
+    await supabase.rpc('delete_conversation', { p_conversation_id: conversation.id });
+  }
+
   async function handleNudge() {
     if (!user || !otherProfile || nudged) return;
     setShowMenu(false);
@@ -1632,7 +1647,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           className="flex-shrink-0 cursor-pointer"
           onClick={() => {
             if (conversation.is_self_chat) { if (canEditInfo) setShowEditInfo(true); }
-            else setShowGroupInfo(true);
+            else if (conversation.is_group) setShowGroupInfo(true);
+            else if (otherProfile) setShowProfile(otherProfile as Profile);
           }}
 >
           {conversation.is_group ? (
@@ -1651,7 +1667,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           className="flex-1 min-w-0 cursor-pointer"
           onClick={() => {
             if (conversation.is_self_chat) { if (canEditInfo) setShowEditInfo(true); }
-            else setShowGroupInfo(true);
+            else if (conversation.is_group) setShowGroupInfo(true);
+            else if (otherProfile) setShowProfile(otherProfile as Profile);
           }}
 >
           <div className="flex items-center gap-2 min-w-0">
@@ -1711,9 +1728,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
             <>
               <div className="fixed inset-0 z-[90]" onPointerDown={() => setShowMenu(false)} />
               <div className="absolute right-0 top-11 z-[210] pointer-events-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl py-1.5 w-56 overflow-hidden max-h-[70vh] overflow-y-auto">
-                {!conversation.is_self_chat && (
+                {!conversation.is_self_chat && conversation.is_group && (
                   <MenuItem icon={<Users size={14} />} onClick={() => { setShowMenu(false); setShowGroupInfo(true); }}>
                     Chat info & invite
+                  </MenuItem>
+                )}
+                {!conversation.is_self_chat && !conversation.is_group && otherProfile && (
+                  <MenuItem icon={<User size={14} />} onClick={() => { setShowMenu(false); setShowProfile(otherProfile as Profile); }}>
+                    View profile
                   </MenuItem>
                 )}
                 {canEditInfo && (
@@ -1740,6 +1762,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 <MenuItem icon={<Trash size={14} />} onClick={() => { setShowMenu(false); trashConversation(); }}>
                     {t('trashAction')}
                   </MenuItem>
+                <MenuItem icon={<Trash2 size={14} />} onClick={deleteConversation} danger>
+                  Delete chat for everyone
+                </MenuItem>
                 {!conversation.is_self_chat && (
                   <MenuItem icon={<LogOut size={14} />} onClick={() => { setShowMenu(false); leaveConversation(); }} danger>
                     {t('leaveChat')}
@@ -2554,6 +2579,37 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 className="flex-1 py-3 bg-red-500 hover:bg-red-400 text-white font-semibold text-[14px] rounded-xl transition-all shadow-lg shadow-red-500/20"
               >
                 Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete chat confirmation modal — removes the conversation for everyone */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="px-6 pt-6 pb-2 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={24} className="text-red-400" />
+              </div>
+              <h2 className="text-slate-900 dark:text-white font-bold text-lg mb-2">Delete chat for everyone?</h2>
+              <p className="text-slate-400 text-[14px] leading-relaxed">
+                This permanently deletes the conversation, every message in it, and all shared photos and files for you and everyone else. This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3 p-6 pt-4">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-3 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.10] text-slate-900 dark:text-white font-semibold text-[14px] rounded-xl transition-all border border-slate-200 dark:border-white/[0.06]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-400 text-white font-semibold text-[14px] rounded-xl transition-all shadow-lg shadow-red-500/20"
+              >
+                Delete
               </button>
             </div>
           </div>

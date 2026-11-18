@@ -393,7 +393,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!p) return;
     if (p.pin_hash && p.pin_voluntary) {
       setPinLocked(true);
-    } else if (p.fingerprint_enabled && p.unlock_preference === 'fingerprint') {
+    } else if (p.fingerprint_enabled && (p.unlock_preference === 'fingerprint' || p.unlock_preference === 'both')) {
       setPinLocked(true);
     }
   }
