@@ -17,28 +17,6 @@ const SCREEN_ROUTES: Partial<Record<Screen, string>> = {
   forgot: ROUTES.forgotPassword,
 };
 
-function InputField({
-  label, type = 'text', value, onChange, placeholder, autoFocus = false, children,
-}: {
-  label: string; type?: string; value: string;
-  onChange: (v: string) => void; placeholder?: string;
-  autoFocus?: boolean; children?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-[13px] font-medium text-slate-400">{label}</label>
-      <div className="relative">
-        <input
-          type={type} value={value} onChange={e => onChange(e.target.value)}
-          placeholder={placeholder} autoFocus={autoFocus}
-          className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-4 py-3 text-slate-900 dark:text-white text-[15px] placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
-        />
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function ErrorBox({ msg }: { msg: string }) {
   return (
     <div className="flex items-start gap-2.5 bg-red-500/[0.08] border border-red-500/[0.18] rounded-xl px-4 py-3">
@@ -102,6 +80,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpKeyboardOpen, setOtpKeyboardOpen] = useState(false);
 
   // Forgot password
   const [fpEmail, setFpEmail] = useState('');
@@ -122,7 +101,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
   function moveAuthField(shiftKey: boolean) {
     const fields: Record<string, string[]> = {
       signin: ['siEmail', 'siPassword'],
-      signup: ['suEmail', 'suPassword', 'suConfirm'],
+      signup: ['suFirstName', 'suLastName', 'suEmail', 'suPassword', 'suConfirm'],
       forgot: ['fpEmail'],
       reset: ['rpPassword', 'rpConfirm'],
     };
@@ -130,6 +109,10 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
     const index = Math.max(0, order.indexOf(activeField ?? order[0]));
     const next = (index + (shiftKey ? -1 : 1) + order.length) % order.length;
     setActiveField(order[next] ?? null);
+  }
+
+  function handleVerifyOTPWrapper() {
+    handleVerifyOTP({ preventDefault: () => {} } as unknown as React.FormEvent);
   }
 
   function handleAvatarPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -341,8 +324,8 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <InputField label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" />
-                  <InputField label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" />
+                  <KeyboardPassword label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" plaintext active={activeField === 'suFirstName'} onActivate={() => setActiveField('suFirstName')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                  <KeyboardPassword label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" plaintext active={activeField === 'suLastName'} onActivate={() => setActiveField('suLastName')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 </div>
                 <div className="space-y-1.5">
                   <label htmlFor="su-language" className="block text-[13px] font-medium text-slate-400">Your language</label>
@@ -391,16 +374,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
               <form onSubmit={handleVerifyOTP} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-[13px] font-medium text-slate-400">Verification Code</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
-                    autoFocus
-                    className="w-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-white/[0.14] focus:border-sky-500/60 rounded-xl px-4 py-3.5 text-slate-900 dark:text-white text-[22px] font-mono tracking-[0.3em] text-center placeholder-slate-300 dark:placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition-all"
-                  />
+                  <KeyboardPassword label="" value={otpCode} onChange={v => setOtpCode(v.replace(/\D/g, '').slice(0, 6))} placeholder="123456" numeric showField={false} active={otpKeyboardOpen} onActivate={() => setOtpKeyboardOpen(true)} onDismiss={() => setOtpKeyboardOpen(false)} onSubmit={handleVerifyOTPWrapper} />
                 </div>
                 {otpError && <ErrorBox msg={otpError} />}
                 <PrimaryButton type="submit" loading={otpLoading}>

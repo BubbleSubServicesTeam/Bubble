@@ -19,6 +19,8 @@ type Props = {
   onTab?: (shiftKey: boolean) => void;
   cursorAtEnd?: boolean;
   showField?: boolean;
+  plaintext?: boolean;
+  numeric?: boolean;
   composer?: boolean;
   textEffect?: TextEffect | null;
   onTextEffectChange?: (effect: TextEffect | null, range: TextRange | null) => void;
@@ -73,13 +75,13 @@ const PRESSED_KEY_CLASS = 'bg-white dark:bg-white text-slate-900 scale-95 shadow
 
 const BLINK_STYLE: React.CSSProperties = { animation: 'cursorBlink 1.1s steps(2) infinite' };
 
-export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true, composer = false, textEffect = null, onTextEffectChange, selection = null, onPanelHeightChange }: Props) {
+export default function KeyboardPassword({ label, value, onChange, placeholder, onSubmit, isEmail, active = true, onActivate, onDismiss, onTab, cursorAtEnd = false, showField = true, composer = false, textEffect = null, onTextEffectChange, selection = null, onPanelHeightChange, plaintext = false, numeric = false }: Props) {
   const [show, setShow] = useState(false);
   const [effectsOpen, setEffectsOpen] = useState(false);
   const [previewEffect, setPreviewEffect] = useState<TextEffect | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [shift, setShift] = useState(false);
-  const [mode, setMode] = useState<KeyMode>('letters');
+  const [mode, setMode] = useState<KeyMode>(numeric ? 'numbers' : 'letters');
   const [capsLock, setCapsLock] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [accentPopup, setAccentPopup] = useState<{ key: string; x: number; y: number } | null>(null);
@@ -453,7 +455,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     if (!swipeRef.current) swipeStartRef.current = null;
   }
 
-  const displayValue = (isEmail || show) ? value : '•'.repeat(value.length);
+  const displayValue = (isEmail || plaintext || show) ? value : '•'.repeat(value.length);
 
   const upper = shift || capsLock;
   const letterRow1 = upper ? ROW1.map(k => k.toUpperCase()) : ROW1;
@@ -704,7 +706,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
           )}
         </div>
         <div className="flex items-center gap-2 absolute right-3.5 top-1/2 -translate-y-1/2" onPointerDown={(e) => e.stopPropagation()}>
-          {!isEmail && (
+          {!isEmail && !plaintext && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setShow(s => !s); }}

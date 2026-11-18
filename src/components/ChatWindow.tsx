@@ -298,6 +298,12 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messageKeyboard = useMessageKeyboard();
   const [bubbleKeyboardOpen, setBubbleKeyboardOpen] = useState(false);
+  const bubbleKbdHeight = useBubbleKeyboardHeight(messageKeyboard === 'bubble' && bubbleKeyboardOpen);
+  // When the Bubble keyboard opens, the app shrinks — keep the newest message
+  // pinned directly above the keyboard instead of scrolling out of view.
+  useEffect(() => {
+    if (bubbleKbdHeight > 0) requestAnimationFrame(() => scrollToBottom('auto', true));
+  }, [bubbleKbdHeight]);
   const [textEffect, setTextEffect] = useState<TextEffect | null>(null);
   const [textEffectSpans, setTextEffectSpans] = useState<TextEffectSpan[]>([]);
   const [selection, setSelection] = useState<TextRange | null>(null);
