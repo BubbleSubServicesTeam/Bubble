@@ -7,7 +7,7 @@ import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, S
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
-import { revealMessage, revealMessages, uploadMedia, restoreOwnVaultMessages } from '../lib/messageVault';
+import { revealMessage, revealMessages, uploadMedia, uploadSealedMedia, sealTextForConversation } from '../lib/messageVault';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -627,14 +627,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   useEffect(() => {
     loadMessages();
-    // Register this device, then hand message keys to any device that
-    // registered after a message was sent — otherwise the recipient sees
-    // the message as locked forever.
-    if (user) {
-      (async () => {
-        await restoreOwnVaultMessages(user.id, conversation.id);
-      })();
-    }
     const channel = supabase
       .channel(`messages_${conversation.id}`)
       .on('postgres_changes', {
@@ -898,7 +890,12 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setSending(true);
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const displayContent = type === 'text' ? text.trim() : (extra.content ?? null);
-    const vault = null;
+    let vault: VaultEnvelope | null = null;
+    // Encrypt text-bearing payloads (text, code, location) for every vault
+    // member; falls back to plaintext when the vault is unavailable.
+    if (displayContent !== null && (type === 'text' || type === 'code' || type === 'location')) {
+      vault = await sealTextForConversation(user.id, conversation.id, String(displayContent));
+    }
     const payload: any = {
       conversation_id: conversation.id,
       sender_id: user.id,
@@ -1030,12 +1027,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setShowIframeModal(false);
     if (message) {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const sealedCaption = await sealTextForConversation(user!.id, conversation.id, message);
       const textPayload: any = {
         conversation_id: conversation.id,
         sender_id: user!.id,
         message_type: 'text',
-        content: message,
-        vault: null,
+        content: sealedCaption ? null : message,
+        vault: sealedCaption,
         sender_language: profile?.native_language ?? null,
         reply_to: replyTo?.id ?? null,
         reply_excerpt: null,
@@ -1109,10 +1107,21 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     extra: Partial<Message>,
   ) {
     if (!user) return;
-    const uploaded = await uploadMedia(user.id, folder, blob, meta);
+    // Encrypt the attachment for every vault member; falls back to plaintext
+    // when the vault is unavailable.
+    const sealed = await uploadSealedMedia(user.id, conversation.id, folder, blob, meta);
+    if (!sealed) {
+      const uploaded = await uploadMedia(user.id, folder, blob, meta);
+      await sendMessage(
+        type,
+        { ...extra, media_url: uploaded.media_url, vault: null, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
+        { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
+      );
+      return;
+    }
     await sendMessage(
       type,
-      { ...extra, media_url: uploaded.media_url, vault: null, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
+      { ...extra, media_url: sealed.media_url, vault: sealed.vault, file_name: null, file_mime: null, file_size: null },
       { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
     );
   }

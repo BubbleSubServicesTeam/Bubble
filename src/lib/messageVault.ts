@@ -1,84 +1,25 @@
 import { supabase } from './supabase';
 import type { Message, VaultEnvelope } from './supabase';
 
-const DB_NAME = 'bubble-vault';
-const STORE_NAME = 'identities';
 const ECDH_PARAMS: EcKeyGenParams = { name: 'ECDH', namedCurve: 'P-256' };
 const WRAP_PARAMS: AesDerivedKeyParams = { name: 'AES-GCM', length: 256 };
+const PBKDF2_ITERATIONS = 310000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-type Identity = { deviceId: string; privateKey: CryptoKey; publicKey: JsonWebKey };
-type VaultDevice = { device_id: string; public_key: JsonWebKey };
+type VaultIdentity = { privateKey: CryptoKey; publicKey: JsonWebKey };
+type VaultMember = { user_id: string; public_key: JsonWebKey };
+type WrappedKey = { iv: string; c: string; salt: string };
 type SealedBytes = { envelope: VaultEnvelope; ciphertext: Uint8Array };
 
-function openVaultDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
+// The unlocked private key for the signed-in account, held for the session
+// only. It never leaves this module except through crypto operations.
+let sessionIdentity: { userId: string; privateKey: CryptoKey } | null = null;
 
-async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const db = await openVaultDb();
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, mode);
-      const request = run(tx.objectStore(STORE_NAME));
-      tx.oncomplete = () => resolve(request.result);
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
-  }
-}
+export type VaultUnlockResult = 'unlocked' | 'created' | 'wrong_password' | 'unavailable';
 
-function identityKey(userId: string) {
-  return `identity:${userId}`;
-}
-
-async function loadOrCreateIdentity(userId: string): Promise<Identity> {
-  const existing = await withStore<Identity | undefined>('readonly', store => store.get(identityKey(userId)));
-  if (existing) return existing;
-  const pair = await crypto.subtle.generateKey(ECDH_PARAMS, false, ['deriveKey']);
-  const identity: Identity = {
-    deviceId: crypto.randomUUID(),
-    privateKey: pair.privateKey,
-    publicKey: await crypto.subtle.exportKey('jwk', pair.publicKey),
-  };
-  await withStore('readwrite', store => store.put(identity, identityKey(userId)));
-  return identity;
-}
-
-async function registerDevice(userId: string, identity: Identity) {
-  const { error } = await supabase.from('vault_devices').upsert(
-    {
-      user_id: userId,
-      device_id: identity.deviceId,
-      public_key: identity.publicKey,
-      last_seen_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id,device_id' },
-  );
-  if (error) throw error;
-}
-
-async function currentIdentity(userId: string): Promise<Identity | null> {
-  try {
-    const identity = await loadOrCreateIdentity(userId);
-    await registerDevice(userId, identity);
-    return identity;
-  } catch {
-    return null;
-  }
-}
-
-export async function ensureDeviceRegistered(userId: string): Promise<string | null> {
-  const identity = await currentIdentity(userId);
-  return identity?.deviceId ?? null;
+export function isVaultUnlocked(userId: string): boolean {
+  return sessionIdentity?.userId === userId;
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -91,14 +32,107 @@ function fromBase64(value: string): Uint8Array {
   return Uint8Array.from(atob(value), char => char.charCodeAt(0));
 }
 
-async function sealBytesForDevices(plain: Uint8Array, devices: VaultDevice[]): Promise<SealedBytes> {
+async function deriveWrapKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  const base = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt as BufferSource, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    base,
+    WRAP_PARAMS,
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+async function wrapPrivateKey(privateKey: CryptoKey, password: string): Promise<WrappedKey> {
+  const raw = await crypto.subtle.exportKey('pkcs8', privateKey);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const wrapKey = await deriveWrapKey(password, salt);
+  const sealed = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, raw);
+  return { iv: toBase64(iv), c: toBase64(new Uint8Array(sealed)), salt: toBase64(salt) };
+}
+
+async function unwrapPrivateKey(wrapped: WrappedKey, password: string): Promise<CryptoKey | null> {
+  try {
+    const wrapKey = await deriveWrapKey(password, fromBase64(wrapped.salt));
+    const raw = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromBase64(wrapped.iv) },
+      wrapKey,
+      fromBase64(wrapped.c),
+    );
+    return await crypto.subtle.importKey('pkcs8', raw, ECDH_PARAMS, false, ['deriveKey']);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Unlocks (or creates) the account's vault identity using the sign-in
+ * password. Members of a chat can always read its messages once unlocked;
+ * the database only ever holds the private key wrapped under the password,
+ * so a database leak reveals nothing.
+ */
+export async function unlockVault(userId: string, password: string): Promise<VaultUnlockResult> {
+  try {
+    const { data: row, error } = await supabase
+      .from('vault_identities')
+      .select('public_key, wrapped_private_key')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) return 'unavailable';
+
+    if (row) {
+      const privateKey = await unwrapPrivateKey(row.wrapped_private_key as WrappedKey, password);
+      if (!privateKey) return 'wrong_password';
+      sessionIdentity = { userId, privateKey };
+      return 'unlocked';
+    }
+
+    const pair = await crypto.subtle.generateKey(ECDH_PARAMS, false, ['deriveKey']);
+    const wrapped = await wrapPrivateKey(pair.privateKey, password);
+    const { error: insertError } = await supabase.from('vault_identities').insert({
+      user_id: userId,
+      public_key: await crypto.subtle.exportKey('jwk', pair.publicKey),
+      wrapped_private_key: wrapped,
+    });
+    if (insertError) return 'unavailable';
+    sessionIdentity = { userId, privateKey: pair.privateKey };
+    return 'created';
+  } catch {
+    return 'unavailable';
+  }
+}
+
+/**
+ * Re-wraps the account's private key under a new password after a password
+ * change. Best-effort: if the vault is locked (e.g. signed in via QR), the
+ * old wrapping is left in place and the next password sign-in re-wraps.
+ */
+export async function rewrapVaultKey(userId: string, newPassword: string): Promise<void> {
+  if (!isVaultUnlocked(userId)) return;
+  try {
+    const privateKey = sessionIdentity!.privateKey;
+    const wrapped = await wrapPrivateKey(privateKey, newPassword);
+    // The identity must already exist — it was unlocked this session.
+    await supabase
+      .from('vault_identities')
+      .update({ wrapped_private_key: wrapped, updated_at: new Date().toISOString() })
+      .eq('user_id', userId);
+  } catch { /* best effort */ }
+}
+
+export function lockVault(): void {
+  sessionIdentity = null;
+}
+
+async function sealBytesForMembers(plain: Uint8Array, members: VaultMember[]): Promise<SealedBytes> {
   const ephemeral = await crypto.subtle.generateKey(ECDH_PARAMS, false, ['deriveKey']);
   const messageKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   const rawMessageKey = await crypto.subtle.exportKey('raw', messageKey);
   const bodyIv = crypto.getRandomValues(new Uint8Array(12));
   const body = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: bodyIv }, messageKey, plain);
-  const keys = await Promise.all(devices.map(async device => {
-    const recipientKey = await crypto.subtle.importKey('jwk', device.public_key, ECDH_PARAMS, false, []);
+  const keys = await Promise.all(members.map(async member => {
+    const recipientKey = await crypto.subtle.importKey('jwk', member.public_key, ECDH_PARAMS, false, []);
     const wrapKey = await crypto.subtle.deriveKey(
       { name: 'ECDH', public: recipientKey },
       ephemeral.privateKey,
@@ -108,7 +142,7 @@ async function sealBytesForDevices(plain: Uint8Array, devices: VaultDevice[]): P
     );
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const wrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, rawMessageKey);
-    return { d: device.device_id, iv: toBase64(iv), k: toBase64(new Uint8Array(wrapped)) };
+    return { d: member.user_id, iv: toBase64(iv), k: toBase64(new Uint8Array(wrapped)) };
   }));
   return {
     envelope: {
@@ -122,13 +156,12 @@ async function sealBytesForDevices(plain: Uint8Array, devices: VaultDevice[]): P
 
 async function sealBytes(userId: string, conversationId: string, plain: Uint8Array): Promise<SealedBytes | null> {
   try {
-    const identity = await loadOrCreateIdentity(userId);
-    await registerDevice(userId, identity);
-    const { data: devices, error } = await supabase.rpc('get_conversation_vault_devices', {
+    if (!isVaultUnlocked(userId)) return null;
+    const { data: members, error } = await supabase.rpc('get_conversation_vault_identities', {
       p_conversation_id: conversationId,
     });
-    if (error || !devices || devices.length === 0) return null;
-    return sealBytesForDevices(plain, devices as VaultDevice[]);
+    if (error || !members || members.length === 0) return null;
+    return sealBytesForMembers(plain, members as VaultMember[]);
   } catch (err) {
     console.error('Failed to encrypt message', err);
     return null;
@@ -137,15 +170,14 @@ async function sealBytes(userId: string, conversationId: string, plain: Uint8Arr
 
 async function openBytes(userId: string, vault: VaultEnvelope, ciphertext: Uint8Array): Promise<Uint8Array | null> {
   try {
-    const identity = await withStore<Identity | undefined>('readonly', store => store.get(identityKey(userId)));
-    if (!identity) return null;
-    const entry = vault.keys.find(key => key.d === identity.deviceId);
+    if (!isVaultUnlocked(userId)) return null;
+    const entry = vault.keys.find(key => key.d === userId);
     if (!entry) return null;
 
     const ephemeralPublic = await crypto.subtle.importKey('jwk', vault.eph, ECDH_PARAMS, false, []);
     const unwrapKey = await crypto.subtle.deriveKey(
       { name: 'ECDH', public: ephemeralPublic },
-      identity.privateKey,
+      sessionIdentity!.privateKey,
       WRAP_PARAMS,
       false,
       ['decrypt'],
@@ -249,64 +281,6 @@ async function revealMedia(userId: string, message: Message, vault: VaultEnvelop
   }
 }
 
-export async function restoreOwnVaultMessages(userId: string, conversationId: string): Promise<void> {
-  try {
-    const identity = await currentIdentity(userId);
-    if (!identity) return;
-    const { data: vaulted, error } = await supabase
-      .from('messages')
-      .select('id, message_type, vault, media_url, file_name, file_mime, file_size')
-      .eq('conversation_id', conversationId)
-      .eq('sender_id', userId)
-      .not('vault', 'is', null);
-    if (error || !vaulted) return;
-
-    for (const row of vaulted as Array<{
-      id: string;
-      message_type: Message['message_type'];
-      vault: VaultEnvelope;
-      media_url: string | null;
-      file_name: string | null;
-      file_mime: string | null;
-      file_size: number | null;
-    }>) {
-      if (!row.media_url) {
-        const plain = await openBytes(userId, row.vault, fromBase64(row.vault.body.c));
-        if (!plain) continue;
-        const { error: updateError } = await supabase
-          .from('messages')
-          .update({ content: decoder.decode(plain), vault: null })
-          .eq('id', row.id)
-          .eq('sender_id', userId);
-        if (updateError) console.error('Failed to restore message', updateError);
-        continue;
-      }
-
-      try {
-        const response = await fetch(row.media_url);
-        if (!response.ok) continue;
-        const ciphertext = new Uint8Array(await response.arrayBuffer());
-        const plain = await openBytes(userId, row.vault, ciphertext);
-        if (!plain || plain.byteLength < MEDIA_HEADER_BYTES) continue;
-        const headerLength = new DataView(plain.buffer, plain.byteOffset).getUint32(0);
-        const meta = JSON.parse(decoder.decode(plain.subarray(MEDIA_HEADER_BYTES, MEDIA_HEADER_BYTES + headerLength))) as { file_name: string; file_mime: string };
-        const fileBytes = plain.subarray(MEDIA_HEADER_BYTES + headerLength);
-        const restored = await uploadMedia(userId, 'restored', new Blob([fileBytes], { type: meta.file_mime }), meta);
-        const { error: updateError } = await supabase
-          .from('messages')
-          .update({ media_url: restored.media_url, file_name: restored.file_name, file_mime: restored.file_mime, file_size: restored.file_size, vault: null })
-          .eq('id', row.id)
-          .eq('sender_id', userId);
-        if (updateError) console.error('Failed to restore attachment', updateError);
-      } catch (restoreError) {
-        console.error('Failed to restore attachment', restoreError);
-      }
-    }
-  } catch (restoreError) {
-    console.error('Failed to restore vaulted messages', restoreError);
-  }
-}
-
 export async function revealMessage(userId: string, message: Message): Promise<Message> {
   if (!message.vault) return message;
   return message.media_url
@@ -316,4 +290,87 @@ export async function revealMessage(userId: string, message: Message): Promise<M
 
 export function revealMessages(userId: string, messages: Message[]): Promise<Message[]> {
   return Promise.all(messages.map(message => revealMessage(userId, message)));
+}
+
+/**
+ * One-time upgrade: messages sealed under the retired per-device vault are
+ * re-sealed under the account's key, so they become readable on every device
+ * the account signs in on. Runs silently after a successful vault unlock;
+ * messages whose old device key is gone are left untouched.
+ */
+export async function rekeyLegacyVaultMessages(userId: string): Promise<void> {
+  if (!isVaultUnlocked(userId)) return;
+  try {
+    const { data: rows, error } = await supabase
+      .from('messages')
+      .select('id, conversation_id, message_type, vault, media_url, file_name, file_mime, file_size')
+      .eq('sender_id', userId)
+      .not('vault', 'is', null)
+      .limit(500);
+    if (error || !rows || rows.length === 0) return;
+
+    for (const row of rows as Array<{
+      id: string;
+      conversation_id: string;
+      message_type: Message['message_type'];
+      vault: VaultEnvelope;
+      media_url: string | null;
+      file_name: string | null;
+      file_mime: string | null;
+      file_size: number | null;
+    }>) {
+      // Already user-scoped when a key entry names a member account.
+      if (row.vault.keys.some(k => k.d === userId)) continue;
+
+      const { data: members, error: membersError } = await supabase.rpc('get_conversation_vault_identities', {
+        p_conversation_id: row.conversation_id,
+      });
+      if (membersError || !members || members.length === 0) continue;
+
+      if (row.media_url) {
+        try {
+          const response = await fetch(row.media_url);
+          if (!response.ok) continue;
+          const ciphertext = new Uint8Array(await response.arrayBuffer());
+          const plain = await openBytes(userId, row.vault, ciphertext);
+          if (!plain || plain.byteLength < MEDIA_HEADER_BYTES) continue;
+          const headerLength = new DataView(plain.buffer, plain.byteOffset).getUint32(0);
+          const meta = JSON.parse(decoder.decode(plain.subarray(MEDIA_HEADER_BYTES, MEDIA_HEADER_BYTES + headerLength))) as {
+            file_name: string;
+            file_mime: string;
+          };
+          const fileBytes = plain.subarray(MEDIA_HEADER_BYTES + headerLength);
+          const sealed = await sealBytesForMembers(plain, members as VaultMember[]);
+          const path = `restored/${userId}/${Date.now()}-${crypto.randomUUID()}.bin`;
+          const { error: uploadError } = await supabase.storage
+            .from('media')
+            .upload(path, new Blob([sealed.ciphertext]), { contentType: 'application/octet-stream', upsert: false });
+          if (uploadError) continue;
+          const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
+          await supabase
+            .from('messages')
+            .update({
+              media_url: urlData.publicUrl,
+              file_name: meta.file_name,
+              file_mime: meta.file_mime,
+              file_size: fileBytes.byteLength,
+              vault: sealed.envelope,
+            })
+            .eq('id', row.id)
+            .eq('sender_id', userId);
+        } catch { /* skip this attachment */ }
+      } else {
+        const plain = await openBytes(userId, row.vault, fromBase64(row.vault.body.c));
+        if (!plain) continue;
+        const sealed = await sealBytesForMembers(plain, members as VaultMember[]);
+        await supabase
+          .from('messages')
+          .update({ vault: { ...sealed.envelope, body: { iv: sealed.envelope.body.iv, c: toBase64(sealed.ciphertext) } } })
+          .eq('id', row.id)
+          .eq('sender_id', userId);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to rekey legacy vault messages', err);
+  }
 }
