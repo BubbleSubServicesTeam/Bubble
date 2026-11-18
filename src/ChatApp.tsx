@@ -15,7 +15,7 @@ import FaceFilterModal from './components/FaceFilterModal';
 import WhatsAppClaimBanner from './components/WhatsAppClaimBanner';
 import { ROUTES, parseAppRoute, currentPath } from './lib/routes';
 import { MessageCircle, StickyNote, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useMessageKeyboard } from './lib/messageKeyboard';
+import { useMessageKeyboard, useBubbleKeyboardHeight, getScaledPageStyle } from './lib/messageKeyboard';
 
 export default function ChatApp() {
   const { t } = useAppLang();
@@ -45,25 +45,7 @@ export default function ChatApp() {
     };
   }, [messageKeyboard]);
 
-  const [bubbleKbdHeight, setBubbleKbdHeight] = useState(0);
-  useEffect(() => {
-    if (messageKeyboard !== 'bubble') {
-      setBubbleKbdHeight(0);
-      return;
-    }
-    const root = document.documentElement;
-    const read = () => {
-      const h = parseFloat(root.style.getPropertyValue('--kbd-h')) || 0;
-      setBubbleKbdHeight(h);
-    };
-    read();
-    const observer = new MutationObserver(read);
-    observer.observe(root, { attributes: true, attributeFilter: ['style'] });
-    return () => {
-      observer.disconnect();
-      setBubbleKbdHeight(0);
-    };
-  }, [messageKeyboard]);
+  const bubbleKbdHeight = useBubbleKeyboardHeight(messageKeyboard === 'bubble');
 
   useEffect(() => {
     if (!user) return;
@@ -539,22 +521,10 @@ export default function ChatApp() {
   // Bubble keyboard: scale the whole app down (like a shrunken iframe) so it fits
   // in the space above the keyboard and nothing gets cut off.
   // System keyboard: standard behavior — shrink the app to the visible viewport.
-  let appStyle: React.CSSProperties = { height: '100dvh' };
-  if (messageKeyboard === 'system') {
-    if (viewportState) appStyle = { height: `${viewportState.height}px` };
-  } else if (bubbleKbdHeight > 0) {
-    const fullHeight = window.innerHeight;
-    const available = fullHeight - bubbleKbdHeight;
-    if (available > 0) {
-      const scale = available / fullHeight;
-      appStyle = {
-        height: `${fullHeight}px`,
-        width: `${Math.round(window.innerWidth / scale)}px`,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-      };
-    }
-  }
+  const scaled = getScaledPageStyle(bubbleKbdHeight, window.innerHeight);
+  const appStyle: React.CSSProperties = messageKeyboard === 'system'
+    ? (viewportState ? { height: `${viewportState.height}px` } : { height: '100dvh' })
+    : (scaled ?? { height: '100dvh' });
 
   return (
     <div

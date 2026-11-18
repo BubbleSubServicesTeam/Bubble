@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Delete, Fingerprint, ArrowLeft, KeyRound, LogOut } from 'lucide-react';
+import { useBubbleKeyboardHeight, getScaledPageStyle } from '../lib/messageKeyboard';
 import BubbleLoader from './BubbleLoader';
 import { BubbleKey } from './BubbleKey';
 import KeyboardPassword from './KeyboardPassword';
@@ -176,6 +177,8 @@ export default function PinScreen({
   const keys = ['1','2','3','4','5','6','7','8','9','','0','del'];
 
   const captureHidden = useCaptureShield(3000);
+  const bubbleKbdHeight = useBubbleKeyboardHeight(true);
+  const scaledStyle = getScaledPageStyle(bubbleKbdHeight, window.innerHeight);
   const compact = showPasswordInput && passwordKeyboardOpen;
   const avatarSize = compact ? 'w-14 h-14' : 'w-20 h-20';
   const displayTitle = title ?? (setupMode ? 'Create a PIN' : 'Enter your PIN');
@@ -184,7 +187,10 @@ export default function PinScreen({
     : 'Enter your PIN to continue');
 
   return (
-    <div className="flex flex-col items-center p-6 bg-slate-50 dark:bg-[#080c14] relative overflow-y-auto overscroll-contain" style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 'calc(100dvh - var(--kbd-h, 0px))', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none', scrollPaddingBottom: 24 }}>
+    <div
+      className="flex flex-col items-center p-6 bg-slate-50 dark:bg-[#080c14] relative overflow-y-auto overscroll-contain"
+      style={scaledStyle ?? { position: 'fixed', left: 0, right: 0, top: 0, height: 'calc(100dvh - var(--kbd-h, 0px))', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'none', scrollPaddingBottom: 24 }}
+    >
       {/* Ambient glow — pulsing orbs */}
       <div
         className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[420px] h-[420px] bg-sky-500/10 rounded-full blur-3xl pointer-events-none"
