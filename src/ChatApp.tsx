@@ -45,6 +45,26 @@ export default function ChatApp() {
     };
   }, [messageKeyboard]);
 
+  const [bubbleKbdHeight, setBubbleKbdHeight] = useState(0);
+  useEffect(() => {
+    if (messageKeyboard !== 'bubble') {
+      setBubbleKbdHeight(0);
+      return;
+    }
+    const root = document.documentElement;
+    const read = () => {
+      const h = parseFloat(root.style.getPropertyValue('--kbd-h')) || 0;
+      setBubbleKbdHeight(h);
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ['style'] });
+    return () => {
+      observer.disconnect();
+      setBubbleKbdHeight(0);
+    };
+  }, [messageKeyboard]);
+
   useEffect(() => {
     if (!user) return;
     const key = `bubble-location-prompted:${user.id}`;
@@ -516,27 +536,29 @@ export default function ChatApp() {
     }
   }, [conversations, contactPriorities, user?.id, profile?.unread_badge_enabled]);
 
-  // When the device keyboard opens, shrink the whole app uniformly (like a scaled
-  // iframe) and slide it above the keyboard so nothing gets hidden or cut off.
-  const layoutHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
-  const keyboardVisible = messageKeyboard === 'system'
-    && viewportState !== null
-    && layoutHeight > 0
-    && viewportState.height < layoutHeight - 120;
+  // Bubble keyboard: scale the whole app down (like a shrunken iframe) so it fits
+  // in the space above the keyboard and nothing gets cut off.
+  // System keyboard: standard behavior — shrink the app to the visible viewport.
   let appStyle: React.CSSProperties = { height: '100dvh' };
-  if (keyboardVisible && viewportState) {
-    const scale = viewportState.height / layoutHeight;
-    appStyle = {
-      height: `${layoutHeight}px`,
-      width: `${window.innerWidth / scale}px`,
-      transform: `translateY(${viewportState.offsetTop}px) scale(${scale})`,
-      transformOrigin: 'top left',
-    };
+  if (messageKeyboard === 'system') {
+    if (viewportState) appStyle = { height: `${viewportState.height}px` };
+  } else if (bubbleKbdHeight > 0) {
+    const fullHeight = window.innerHeight;
+    const available = fullHeight - bubbleKbdHeight;
+    if (available > 0) {
+      const scale = available / fullHeight;
+      appStyle = {
+        height: `${fullHeight}px`,
+        width: `${Math.round(window.innerWidth / scale)}px`,
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+      };
+    }
   }
 
   return (
     <div
-      className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-transform duration-200 ease-out"
+      className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-all duration-200 ease-out"
       style={appStyle}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
