@@ -15,12 +15,35 @@ import FaceFilterModal from './components/FaceFilterModal';
 import WhatsAppClaimBanner from './components/WhatsAppClaimBanner';
 import { ROUTES, parseAppRoute, currentPath } from './lib/routes';
 import { MessageCircle, StickyNote, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useMessageKeyboard } from './lib/messageKeyboard';
 
 export default function ChatApp() {
   const { t } = useAppLang();
   const { user, profile } = useAuth();
   const { theme, resolvedTheme } = useTheme();
+  const messageKeyboard = useMessageKeyboard();
+  const [visibleViewportHeight, setVisibleViewportHeight] = useState<number | null>(null);
   const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
+
+  useEffect(() => {
+    if (messageKeyboard !== 'system') {
+      setVisibleViewportHeight(null);
+      return;
+    }
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateViewportHeight = () => {
+      setVisibleViewportHeight(Math.max(0, Math.round(viewport.height)));
+    };
+    updateViewportHeight();
+    viewport.addEventListener('resize', updateViewportHeight);
+    viewport.addEventListener('scroll', updateViewportHeight);
+    return () => {
+      viewport.removeEventListener('resize', updateViewportHeight);
+      viewport.removeEventListener('scroll', updateViewportHeight);
+      setVisibleViewportHeight(null);
+    };
+  }, [messageKeyboard]);
 
   useEffect(() => {
     if (!user) return;
@@ -496,7 +519,11 @@ export default function ChatApp() {
   return (
     <div
       className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-[height] duration-200 ease-out"
-      style={{ height: 'calc(100dvh - var(--kbd-h, 0px))' }}
+      style={{
+        height: messageKeyboard === 'system' && visibleViewportHeight !== null
+          ? `${visibleViewportHeight}px`
+          : 'calc(100dvh - var(--kbd-h, 0px))',
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

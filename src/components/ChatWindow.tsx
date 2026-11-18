@@ -151,7 +151,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [editAvatarUrl, setEditAvatarUrl] = useState(conversation.avatar_url ?? '');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [, setKeyboardHeight] = useState(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [touchMsgId, setTouchMsgId] = useState<string | null>(null);
@@ -520,24 +519,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     : conversation.is_group
     ? (conversation.name ?? 'Group Chat')
     : smartName(otherProfile, allPeers);
-
-  // Lift the composer above the system keyboard (Bubble keyboard reports its own height)
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv || messageKeyboard !== 'system') return;
-    const update = () => {
-      const kh = window.innerHeight - vv.height - vv.offsetTop;
-      setKeyboardHeight(kh > 0 ? kh : 0);
-    };
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-      setKeyboardHeight(0);
-    };
-  }, [messageKeyboard]);
 
   // Check block status
   useEffect(() => {
@@ -2447,7 +2428,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 selection={selection}
                 onTextEffectChange={applyComposerEffect}
                 onDismiss={() => setBubbleKeyboardOpen(false)}
-                onPanelHeightChange={setKeyboardHeight}
                 cursorAtEnd
                 showField={false}
               />

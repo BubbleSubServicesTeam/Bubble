@@ -158,7 +158,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
     const fit = () => {
       const h = el.offsetHeight;
       document.documentElement.style.setProperty('--kbd-h', `${h}px`);
-      containerRef.current?.scrollIntoView({ block: composer ? 'center' : 'end', behavior: 'smooth' });
+      if (!composer) containerRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
     };
     fit();
     const observer = new ResizeObserver(fit);
