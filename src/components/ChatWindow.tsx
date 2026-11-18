@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import KeyboardPassword from './KeyboardPassword';
-import { useMessageKeyboard } from '../lib/messageKeyboard';
+import { useMessageKeyboard, useBubbleKeyboardHeight } from '../lib/messageKeyboard';
 import TextEffectText from './TextEffectText';
 import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEffectSpan, type TextRange } from '../lib/textEffects';
 import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS, type VaultEnvelope } from '../lib/supabase';
