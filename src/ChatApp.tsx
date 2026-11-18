@@ -22,18 +22,18 @@ export default function ChatApp() {
   const { user, profile } = useAuth();
   const { theme, resolvedTheme } = useTheme();
   const messageKeyboard = useMessageKeyboard();
-  const [visibleViewportHeight, setVisibleViewportHeight] = useState<number | null>(null);
+  const [viewportState, setViewportState] = useState<{ height: number; offsetTop: number } | null>(null);
   const [contactPriorities, setContactPriorities] = useState<ContactPriorityMap>({});
 
   useEffect(() => {
     if (messageKeyboard !== 'system') {
-      setVisibleViewportHeight(null);
+      setViewportState(null);
       return;
     }
     const viewport = window.visualViewport;
     if (!viewport) return;
     const updateViewportHeight = () => {
-      setVisibleViewportHeight(Math.max(0, Math.round(viewport.height)));
+      setViewportState({ height: Math.round(viewport.height), offsetTop: Math.round(viewport.offsetTop) });
     };
     updateViewportHeight();
     viewport.addEventListener('resize', updateViewportHeight);
@@ -41,7 +41,7 @@ export default function ChatApp() {
     return () => {
       viewport.removeEventListener('resize', updateViewportHeight);
       viewport.removeEventListener('scroll', updateViewportHeight);
-      setVisibleViewportHeight(null);
+      setViewportState(null);
     };
   }, [messageKeyboard]);
 
@@ -516,14 +516,28 @@ export default function ChatApp() {
     }
   }, [conversations, contactPriorities, user?.id, profile?.unread_badge_enabled]);
 
+  // When the device keyboard opens, shrink the whole app uniformly (like a scaled
+  // iframe) and slide it above the keyboard so nothing gets hidden or cut off.
+  const layoutHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+  const keyboardVisible = messageKeyboard === 'system'
+    && viewportState !== null
+    && layoutHeight > 0
+    && viewportState.height < layoutHeight - 120;
+  let appStyle: React.CSSProperties = { height: '100dvh' };
+  if (keyboardVisible && viewportState) {
+    const scale = viewportState.height / layoutHeight;
+    appStyle = {
+      height: `${layoutHeight}px`,
+      width: `${window.innerWidth / scale}px`,
+      transform: `translateY(${viewportState.offsetTop}px) scale(${scale})`,
+      transformOrigin: 'top left',
+    };
+  }
+
   return (
     <div
-      className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-[height] duration-200 ease-out"
-      style={{
-        height: messageKeyboard === 'system' && visibleViewportHeight !== null
-          ? `${visibleViewportHeight}px`
-          : 'calc(100dvh - var(--kbd-h, 0px))',
-      }}
+      className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-transform duration-200 ease-out"
+      style={appStyle}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
