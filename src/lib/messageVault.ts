@@ -85,10 +85,11 @@ export async function unlockVault(userId: string, password: string): Promise<Vau
       const privateKey = await unwrapPrivateKey(row.wrapped_private_key as WrappedKey, password);
       if (!privateKey) return 'wrong_password';
       sessionIdentity = { userId, privateKey };
+      cacheKey(userId, privateKey);
       return 'unlocked';
     }
 
-    const pair = await crypto.subtle.generateKey(ECDH_PARAMS, false, ['deriveKey']);
+    const pair = await crypto.subtle.generateKey(ECDH_PARAMS, true, ['deriveKey']);
     const wrapped = await wrapPrivateKey(pair.privateKey, password);
     const { error: insertError } = await supabase.from('vault_identities').insert({
       user_id: userId,
@@ -97,6 +98,7 @@ export async function unlockVault(userId: string, password: string): Promise<Vau
     });
     if (insertError) return 'unavailable';
     sessionIdentity = { userId, privateKey: pair.privateKey };
+    cacheKey(userId, pair.privateKey);
     return 'created';
   } catch {
     return 'unavailable';
@@ -121,7 +123,34 @@ export async function rewrapVaultKey(userId: string, newPassword: string): Promi
   } catch { /* best effort */ }
 }
 
+function cacheKey(userId: string, privateKey: CryptoKey): void {
+  crypto.subtle.exportKey('pkcs8', privateKey).then(raw => {
+    try { sessionStorage.setItem(`bubble-vault-key-${userId}`, toBase64(new Uint8Array(raw))); } catch { /* ignore */ }
+  }).catch(() => {});
+}
+
+/**
+ * Restores the unlocked vault after a page reload within the same tab.
+ * The cached key lives in sessionStorage only — it is wiped when the tab
+ * closes and never reaches the database.
+ */
+export async function restoreVaultSession(userId: string): Promise<boolean> {
+  if (isVaultUnlocked(userId)) return true;
+  try {
+    const cached = sessionStorage.getItem(`bubble-vault-key-${userId}`);
+    if (!cached) return false;
+    const privateKey = await crypto.subtle.importKey('pkcs8', fromBase64(cached), ECDH_PARAMS, true, ['deriveKey']);
+    sessionIdentity = { userId, privateKey };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function lockVault(): void {
+  if (sessionIdentity) {
+    try { sessionStorage.removeItem(`bubble-vault-key-${sessionIdentity.userId}`); } catch { /* ignore */ }
+  }
   sessionIdentity = null;
 }
 

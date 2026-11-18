@@ -3,7 +3,7 @@ import KeyboardPassword from './KeyboardPassword';
 import { useMessageKeyboard } from '../lib/messageKeyboard';
 import TextEffectText from './TextEffectText';
 import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEffectSpan, type TextRange } from '../lib/textEffects';
-import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
+import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS, type VaultEnvelope } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
@@ -2367,7 +2367,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       {/* Input area */}
       <div
         className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5 transition-[margin] duration-150"
-        style={{ marginBottom: messageKeyboard === 'system' && keyboardHeight > 0 ? `${keyboardHeight}px` : undefined }}
+        style={{ marginBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined }}
       >
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
