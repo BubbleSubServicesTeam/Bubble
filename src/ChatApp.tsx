@@ -521,9 +521,11 @@ export default function ChatApp() {
   // Bubble keyboard: keep the top bar (menu, profile, search) pinned and shrink the
   // middle to fit above the keyboard — no zooming or scaling.
   // System keyboard: shrink the app to the visible viewport.
+  // Otherwise stretch to the true bottom edge (bottom: 0) so the footer background
+  // fills the rounded home-indicator corners instead of showing the page background.
   const appStyle: React.CSSProperties = messageKeyboard === 'system'
-    ? (viewportState ? { height: `${viewportState.height}px` } : { height: '100dvh' })
-    : (bubbleKbdHeight > 0 ? { height: `${window.innerHeight - bubbleKbdHeight}px` } : { height: '100dvh' });
+    ? (viewportState ? { height: `${viewportState.height}px` } : { top: 0, bottom: 0 })
+    : (bubbleKbdHeight > 0 ? { height: `${window.innerHeight - bubbleKbdHeight}px` } : { top: 0, bottom: 0 });
 
   return (
     <div
