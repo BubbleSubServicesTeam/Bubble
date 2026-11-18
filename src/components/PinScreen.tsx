@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Delete, Fingerprint, ArrowLeft, KeyRound, LogOut } from 'lucide-react';
+import { Fingerprint, ArrowLeft, KeyRound, LogOut } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
-import { BubbleKey } from './BubbleKey';
 import KeyboardPassword from './KeyboardPassword';
 import { useCaptureShield } from '../lib/captureShield';
 import FingerprintScanner from './FingerprintScanner';
@@ -40,6 +39,7 @@ export default function PinScreen({
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
   const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(false);
+  const [pinKeyboardOpen, setPinKeyboardOpen] = useState(true);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [pinRemaining, setPinRemaining] = useState(0);
@@ -93,37 +93,38 @@ export default function PinScreen({
     setTimeout(() => setShake(false), 500);
   }
 
-  async function addDigit(d: string) {
-    if (loading || lockRemaining > 0 || digits.length >= pinLength) return;
-    setError('');
-    const next = [...digits, d];
-    setDigits(next);
-
-    if (next.length === pinLength) {
-      setLoading(true);
-      if (setupMode && onSetupComplete) {
-        await onSetupComplete(next.join(''), pinLength);
-        setSuccess(true);
-        setLoading(false);
+  async function submitPin(pin: string) {
+    setLoading(true);
+    if (setupMode && onSetupComplete) {
+      await onSetupComplete(pin, pinLength);
+      setSuccess(true);
+      setLoading(false);
+    } else {
+      const ok = await onUnlock(pin);
+      if (ok) {
+        onConfirmUnlock();
+        return;
       } else {
-        const ok = await onUnlock(next.join(''));
-        if (ok) {
-          onConfirmUnlock();
-          return;
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        triggerShake();
+        setDigits([]);
+        if (newAttempts >= 5) {
+          setError('Bubble is temporarily locked after too many incorrect attempts.');
         } else {
-          const newAttempts = attempts + 1;
-          setAttempts(newAttempts);
-          triggerShake();
-          setDigits([]);
-          if (newAttempts >= 5) {
-            setError('Bubble is temporarily locked after too many incorrect attempts.');
-          } else {
-            setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
-          }
+          setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
         }
-        setLoading(false);
       }
+      setLoading(false);
     }
+  }
+
+  function handlePinChange(v: string) {
+    if (loading || lockRemaining > 0) return;
+    const nums = v.replace(/\D/g, '').slice(0, pinLength);
+    setDigits(nums.split(''));
+    setError('');
+    if (nums.length === pinLength) submitPin(nums.join(''));
   }
 
   async function handlePasswordUnlock() {
@@ -158,22 +159,22 @@ export default function PinScreen({
     }
   }, [showPasswordInput, showFingerprint]);
 
+  // The Bubble keyboard handles physical keys itself while open; only fall
+  // back to this handler when it's dismissed.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (showPasswordInput || showFingerprint) return;
+      if (showPasswordInput || showFingerprint || pinKeyboardOpen) return;
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
         e.stopPropagation();
-        addDigit(e.key);
+        handlePinChange(digits.join('') + e.key);
       }
-      else if (e.key === 'Backspace') { e.preventDefault(); deleteDigit(); }
+      else if (e.key === 'Backspace') { e.preventDefault(); setDigits(d => d.slice(0, -1)); setError(''); }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPasswordInput, showFingerprint, digits.length, pinLength, loading, attempts]);
-
-  const keys = ['1','2','3','4','5','6','7','8','9','','0','del'];
+  }, [showPasswordInput, showFingerprint, pinKeyboardOpen, digits.length, pinLength, loading, attempts]);
 
   const captureHidden = useCaptureShield(3000);
   const compact = showPasswordInput && passwordKeyboardOpen;
@@ -369,35 +370,21 @@ export default function PinScreen({
           </div>
         ) : null}
 
-        {/* ──── PIN MODE: circular keypad ──── */}
+        {/* ──── PIN MODE: Bubble keyboard (same as sign in / sign up / password) ──── */}
         {!showPasswordInput && !showFingerprint && !loading && (
           <>
-            {/* Soft glow behind keypad */}
-            <div className="relative w-full">
-              <div className="absolute inset-0 -inset-x-4 -inset-y-2 bg-sky-500/5 dark:bg-sky-500/[0.06] rounded-[2rem] blur-xl pointer-events-none" />
-              <div className="relative grid grid-cols-3 gap-x-5 gap-y-4 w-full justify-items-center py-3">
-                {keys.map((key, idx) => {
-                  if (key === '') return <div key={idx} className="w-[68px] h-[68px]" />;
-                  if (key === 'del') return (
-                    <button
-                      key={idx}
-                      onClick={deleteDigit}
-                      className="w-[68px] h-[68px] rounded-full flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-200/60 dark:hover:bg-white/[0.06] active:scale-90 transition-all"
-                    >
-                      <Delete size={22} />
-                    </button>
-                  );
-                  return (
-                    <BubbleKey
-                      key={idx}
-                      value={key}
-                      onPress={() => addDigit(key)}
-                      delay={idx * 0.15}
-                      size={68}
-                    />
-                  );
-                })}
-              </div>
+            <div className="w-full">
+              <KeyboardPassword
+                label="PIN"
+                value={digits.join('')}
+                onChange={handlePinChange}
+                placeholder={`${pinLength} digits`}
+                numeric
+                showField={false}
+                active={pinKeyboardOpen}
+                onActivate={() => setPinKeyboardOpen(true)}
+                onDismiss={() => setPinKeyboardOpen(false)}
+              />
             </div>
 
             {/* Unlock options: fingerprint + password + log out */}
