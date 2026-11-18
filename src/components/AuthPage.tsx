@@ -8,7 +8,6 @@ import KeyboardPassword from './KeyboardPassword';
 import TrustedRecoveryPanel from './TrustedRecoveryPanel';
 import { LANGUAGES } from '../lib/translate';
 import { getLogoUrl, useTheme } from '../lib/theme';
-import { useBubbleKeyboardHeight, getScaledPageStyle } from '../lib/messageKeyboard';
 
 type Screen = 'signin' | 'signup' | 'verify' | 'forgot' | 'forgot_sent' | 'reset';
 
@@ -119,8 +118,6 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
 
   // Track which keyboard field is active (only one keyboard visible at a time)
   const [activeField, setActiveField] = useState<string | null>(null);
-  const bubbleKbdHeight = useBubbleKeyboardHeight(true);
-  const scaledStyle = getScaledPageStyle(bubbleKbdHeight, window.innerHeight);
 
   function moveAuthField(shiftKey: boolean) {
     const fields: Record<string, string[]> = {
@@ -266,10 +263,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
   }
 
   return (
-    <div
-      className="fixed inset-x-0 top-0 flex flex-col items-center p-4 bg-slate-50 dark:bg-[#080c14] overflow-y-auto overscroll-contain transition-colors duration-300"
-      style={scaledStyle ?? { height: 'calc(100dvh - var(--kbd-h, 0px))', scrollPaddingBottom: 24 }}
-    >
+    <div className="fixed inset-x-0 top-0 flex flex-col items-center p-4 bg-slate-50 dark:bg-[#080c14] overflow-y-auto overscroll-contain transition-colors duration-300" style={{ height: 'calc(100dvh - var(--kbd-h, 0px))', scrollPaddingBottom: 24 }}>
 
       <div className="w-full max-w-[420px] relative z-10 my-auto py-6">
         {/* Heading — Bubble logo + text */}

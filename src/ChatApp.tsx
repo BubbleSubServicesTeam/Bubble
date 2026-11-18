@@ -15,7 +15,7 @@ import FaceFilterModal from './components/FaceFilterModal';
 import WhatsAppClaimBanner from './components/WhatsAppClaimBanner';
 import { ROUTES, parseAppRoute, currentPath } from './lib/routes';
 import { MessageCircle, StickyNote, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useMessageKeyboard, useBubbleKeyboardHeight, getScaledPageStyle } from './lib/messageKeyboard';
+import { useMessageKeyboard, useBubbleKeyboardHeight } from './lib/messageKeyboard';
 
 export default function ChatApp() {
   const { t } = useAppLang();
@@ -518,17 +518,16 @@ export default function ChatApp() {
     }
   }, [conversations, contactPriorities, user?.id, profile?.unread_badge_enabled]);
 
-  // Bubble keyboard: scale the whole app down (like a shrunken iframe) so it fits
-  // in the space above the keyboard and nothing gets cut off.
-  // System keyboard: standard behavior — shrink the app to the visible viewport.
-  const scaled = getScaledPageStyle(bubbleKbdHeight, window.innerHeight);
+  // Bubble keyboard: keep the top bar (menu, profile, search) pinned and shrink the
+  // middle to fit above the keyboard — no zooming or scaling.
+  // System keyboard: shrink the app to the visible viewport.
   const appStyle: React.CSSProperties = messageKeyboard === 'system'
     ? (viewportState ? { height: `${viewportState.height}px` } : { height: '100dvh' })
-    : (scaled ?? { height: '100dvh' });
+    : (bubbleKbdHeight > 0 ? { height: `${window.innerHeight - bubbleKbdHeight}px` } : { height: '100dvh' });
 
   return (
     <div
-      className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-all duration-200 ease-out"
+      className="fixed left-0 right-0 top-0 flex bg-slate-50 dark:bg-slate-950 overflow-hidden transition-[height] duration-200 ease-out"
       style={appStyle}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
