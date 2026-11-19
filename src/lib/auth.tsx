@@ -375,13 +375,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (pinLockedUntil && new Date(pinLockedUntil) > new Date()) return false;
     const hashed = await hashPin(pin);
     if (hashed === profile.pin_hash) {
-      await supabase.rpc('clear_pin_failures');
+      // PIN is verified locally — don't let a network hiccup on the
+      // failure-clear RPC block the unlock.
+      try { await supabase.rpc('clear_pin_failures'); } catch { /* ignore */ }
       setPinLockedUntil(null);
       return true;
     }
-    const { data } = await supabase.rpc('record_pin_failure');
-    const row = Array.isArray(data) ? data[0] : data;
-    if (row?.is_locked) setPinLockedUntil(row.locked_until);
+    try {
+      const { data } = await supabase.rpc('record_pin_failure');
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.is_locked) setPinLockedUntil(row.locked_until);
+    } catch { /* ignore — wrong PIN is still wrong even if RPC fails */ }
     return false;
   }
 
@@ -410,13 +414,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ),
     ]);
     if (result.error) {
-      const { data } = await supabase.rpc('record_password_failure');
-      const row = Array.isArray(data) ? data[0] : data;
-      if (row?.is_locked) setPasswordLockedUntil(row.locked_until);
+      try {
+        const { data } = await supabase.rpc('record_password_failure');
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.is_locked) setPasswordLockedUntil(row.locked_until);
+      } catch { /* ignore */ }
       return false;
     }
-    await supabase.rpc('clear_password_failures');
-    await supabase.rpc('clear_pin_failures');
+    try { await supabase.rpc('clear_password_failures'); } catch { /* ignore */ }
+    try { await supabase.rpc('clear_pin_failures'); } catch { /* ignore */ }
     setPasswordLockedUntil(null);
     setPinLockedUntil(null);
     return true;
