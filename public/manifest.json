@@ -10,21 +10,15 @@
   "icons": [
     {
       "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png",
-      "sizes": "any",
+      "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83 copy copy copy.jpg",
-      "sizes": "any",
-      "type": "image/jpeg",
       "purpose": "any"
     },
     {
       "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "categories": ["social", "messaging", "communication"],
@@ -34,7 +28,7 @@
       "short_name": "New",
       "description": "Start a new conversation",
       "url": "/?action=new",
-      "icons": [{ "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png", "sizes": "any", "type": "image/png" }]
+      "icons": [{ "src": "/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {

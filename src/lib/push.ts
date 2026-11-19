@@ -137,7 +137,7 @@ export async function showPushNotification(title: string, body: string, tag?: st
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, {
         body,
-        icon: '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83.jpg',
+        icon: '/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png',
         badge: '/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png',
         tag: tag ?? 'bubble',
         renotify: true,
@@ -146,7 +146,7 @@ export async function showPushNotification(title: string, body: string, tag?: st
     } else {
       new Notification(title, {
         body,
-        icon: '/3f47fddf-ea91-42a1-bb1d-b9ce5c6d6c83.jpg',
+        icon: '/grok-image-f587b157-0d4d-493c-95b9-11f95f3e5929.png',
         tag: tag ?? 'bubble',
       });
     }
