@@ -432,7 +432,7 @@ export default function PinScreen({
                   type="button"
                   onClick={() => addDigit(d)}
                   disabled={loading || lockRemaining > 0}
-                  className="pin-key h-[72px] w-[72px] mx-auto aspect-square rounded-full bg-white dark:bg-[#071a33] shadow-lg shadow-black/10 dark:shadow-[#071a33]/25 text-slate-900 dark:text-white text-[26px] font-semibold active:scale-95 active:shadow-[0_0_0_12px_rgba(7,26,51,0.12)] dark:active:shadow-[0_0_0_12px_rgba(7,26,51,0.18)] active:bg-slate-100 dark:active:bg-[#102d52] hover:bg-slate-50 dark:hover:bg-[#102d52] transition-all disabled:opacity-40 border border-slate-200 dark:border-[#1d416d]"
+                  className="pin-key h-[72px] w-[72px] mx-auto aspect-square rounded-full bg-[#071a33] dark:bg-white shadow-lg shadow-[#071a33]/25 dark:shadow-black/10 text-white dark:text-slate-900 text-[26px] font-semibold active:scale-95 active:shadow-[0_0_0_12px_rgba(7,26,51,0.18)] dark:active:shadow-[0_0_0_12px_rgba(0,0,0,0.12)] active:bg-[#102d52] dark:active:bg-slate-100 hover:bg-[#102d52] dark:hover:bg-slate-50 transition-all disabled:opacity-40 border border-[#1d416d] dark:border-slate-200"
                 >
                   {d}
                 </button>
@@ -442,7 +442,7 @@ export default function PinScreen({
                 type="button"
                 onClick={() => addDigit('0')}
                 disabled={loading || lockRemaining > 0}
-                className="pin-key h-[72px] w-[72px] mx-auto aspect-square rounded-full bg-white dark:bg-[#071a33] shadow-lg shadow-black/10 dark:shadow-[#071a33]/25 text-slate-900 dark:text-white text-[26px] font-semibold active:scale-95 active:shadow-[0_0_0_12px_rgba(7,26,51,0.12)] dark:active:shadow-[0_0_0_12px_rgba(7,26,51,0.18)] active:bg-slate-100 dark:active:bg-[#102d52] hover:bg-slate-50 dark:hover:bg-[#102d52] transition-all disabled:opacity-40 border border-slate-200 dark:border-[#1d416d]"
+                className="pin-key h-[72px] w-[72px] mx-auto aspect-square rounded-full bg-[#071a33] dark:bg-white shadow-lg shadow-[#071a33]/25 dark:shadow-black/10 text-white dark:text-slate-900 text-[26px] font-semibold active:scale-95 active:shadow-[0_0_0_12px_rgba(7,26,51,0.18)] dark:active:shadow-[0_0_0_12px_rgba(0,0,0,0.12)] active:bg-[#102d52] dark:active:bg-slate-100 hover:bg-[#102d52] dark:hover:bg-slate-50 transition-all disabled:opacity-40 border border-[#1d416d] dark:border-slate-200"
               >
                 0
               </button>
@@ -450,7 +450,7 @@ export default function PinScreen({
                 type="button"
                 onClick={deleteDigit}
                 disabled={loading || lockRemaining > 0}
-                className="pin-key h-[72px] w-[72px] mx-auto aspect-square rounded-full flex items-center justify-center bg-white dark:bg-[#071a33] text-slate-500 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#102d52] hover:text-slate-700 dark:hover:text-white active:scale-95 active:shadow-[0_0_0_12px_rgba(7,26,51,0.12)] dark:active:shadow-[0_0_0_12px_rgba(7,26,51,0.18)] transition-all disabled:opacity-40 border border-slate-200 dark:border-[#1d416d] shadow-lg shadow-black/10 dark:shadow-[#071a33]/25"
+                className="pin-key h-[72px] w-[72px] mx-auto aspect-square rounded-full flex items-center justify-center bg-[#071a33] dark:bg-white text-slate-200 dark:text-slate-500 hover:bg-[#102d52] dark:hover:bg-slate-50 hover:text-white dark:hover:text-slate-700 active:scale-95 active:shadow-[0_0_0_12px_rgba(7,26,51,0.18)] dark:active:shadow-[0_0_0_12px_rgba(0,0,0,0.12)] transition-all disabled:opacity-40 border border-[#1d416d] dark:border-slate-200 shadow-lg shadow-[#071a33]/25 dark:shadow-black/10"
                 title="Delete"
               >
                 <Delete size={24} />
