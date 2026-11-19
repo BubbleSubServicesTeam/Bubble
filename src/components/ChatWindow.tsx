@@ -664,7 +664,14 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         if (updated.deleted_at) {
           setMessages(prev => prev.filter(m => m.id !== updated.id));
         } else {
-          setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m));
+          // An undone delete arrives as an update for a message already
+          // removed from the list — re-insert it in time order.
+          setMessages(prev => {
+            if (!prev.some(m => m.id === updated.id)) {
+              return [...prev, updated].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            }
+            return prev.map(m => m.id === updated.id ? { ...m, ...updated } : m);
+          });
         }
       })
       .subscribe();
