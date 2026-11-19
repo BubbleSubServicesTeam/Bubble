@@ -377,14 +377,6 @@ export default function ChatApp() {
     if (selected?.id === convId) goHome();
   }
 
-  // Trashing keeps the chat in the list (flagged trashed_at) so it appears in
-  // the Trash view live; only leaving removes it outright.
-  function handleTrash(convId: string) {
-    if (selected?.id === convId) goHome();
-    loadInProgress.current = false;
-    loadConversations();
-  }
-
   // Mobile touch: swipe left/right for navigation arrows
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -595,7 +587,7 @@ export default function ChatApp() {
             onOpenGifStudio={() => !profile?.is_suspended && go(ROUTES.gifs)}
             onBack={goHome}
             onLeave={handleLeaveOrTrash}
-            onTrash={handleTrash}
+            onTrash={handleLeaveOrTrash}
             onMembersChanged={loadConversations}
           />
         ) : (
