@@ -90,7 +90,7 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
             <p className="text-center text-slate-500 dark:text-slate-500 text-xs mt-1">Choose the icon you want to appear when you add Bubble to your Home Screen.</p>
         </div>
 
-        {/* iPhone / iOS — Safari + Add to Home Screen with copyable link */
+        {/* iPhone / iOS — Safari + Add to Home Screen with copyable link */}
         {isIOS && (
           <>
             {isChromeOnIOS && (
