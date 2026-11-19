@@ -348,13 +348,13 @@ export async function rekeyLegacyVaultMessages(userId: string): Promise<void> {
       file_mime: string | null;
       file_size: number | null;
     }>) {
-      // Already user-scoped when a key entry names a member account.
-      if (row.vault.keys.some(k => k.d === userId)) continue;
-
       const { data: members, error: membersError } = await supabase.rpc('get_conversation_vault_identities', {
         p_conversation_id: row.conversation_id,
       });
       if (membersError || !members || members.length === 0) continue;
+      const memberIds = new Set((members as VaultMember[]).map(member => member.user_id));
+      const hasEveryMemberKey = row.vault.keys.every(key => memberIds.has(key.d));
+      if (row.vault.keys.some(key => key.d === userId) && hasEveryMemberKey) continue;
 
       if (row.media_url) {
         try {

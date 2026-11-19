@@ -7,7 +7,7 @@ import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, S
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
-import { revealMessage, revealMessages, uploadMedia, uploadSealedMedia, sealTextForConversation } from '../lib/messageVault';
+import { revealMessage, revealMessages, uploadMedia, uploadSealedMedia, sealTextForConversation, rekeyLegacyVaultMessages } from '../lib/messageVault';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -777,6 +777,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       try { localStorage.setItem(cacheKey, JSON.stringify(msgs)); } catch { /* ignore */ }
     }
     setLoadingMessages(false);
+    if (user) void rekeyLegacyVaultMessages(user.id);
     setTimeout(() => inputRef.current?.focus(), 200);
   }
 
