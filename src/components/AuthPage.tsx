@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { AUTH_ROUTES, ROUTES, currentPath } from '../lib/routes';
-import { ArrowLeft, Mail, CheckCircle, Camera } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Camera, Keyboard, Eye, EyeOff } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 import TrustedRecoveryPanel from './TrustedRecoveryPanel';
@@ -38,6 +38,61 @@ function PrimaryButton({ children, loading, onClick, type = 'button', disabled }
       {loading
         ? <BubbleLoader size={26} />
         : children}
+    </button>
+  );
+}
+
+function SecureInput({ label, value, onChange, placeholder, onSubmit, type = 'text', show, onToggleShow }: {
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; onSubmit?: () => void; type?: string;
+  show?: boolean; onToggleShow?: () => void;
+}) {
+  const isPassword = type === 'password';
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-[13px] font-medium text-slate-400">{label}</label>
+      <div className="relative">
+        <input
+          type={isPassword ? (show ? 'text' : 'password') : type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && onSubmit) onSubmit(); }}
+          placeholder={placeholder}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize={isPassword ? 'off' : undefined}
+          spellCheck={false}
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-form-type="off"
+          className="w-full h-[54px] bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 text-slate-900 dark:text-white text-[15px] focus:outline-none focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/20 transition-all"
+          style={isPassword && onToggleShow ? { paddingRight: '2.75rem' } : undefined}
+        />
+        {isPassword && onToggleShow && (
+          <button
+            type="button"
+            onClick={onToggleShow}
+            tabIndex={-1}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+            title={show ? 'Hide' : 'Show'}
+          >
+            {show ? <EyeOff size={17} /> : <Eye size={17} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NativeKeyboardToggle({ useNative, onToggle }: { useNative: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-center gap-1.5 text-[13px] text-sky-500 hover:text-sky-400 transition-colors pt-1"
+    >
+      <Keyboard size={14} />
+      {useNative ? 'Use Bubble keyboard' : 'Use phone keyboard'}
     </button>
   );
 }
@@ -97,6 +152,8 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
 
   // Track which keyboard field is active (only one keyboard visible at a time)
   const [activeField, setActiveField] = useState<string | null>(null);
+  const [useNativeKeyboard, setUseNativeKeyboard] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
 
   function moveAuthField(shiftKey: boolean) {
     const fields: Record<string, string[]> = {
@@ -276,10 +333,20 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                 </button>
               </div>
               <form onSubmit={handleSignIn} className="space-y-4">
-                <KeyboardPassword label="Email" value={siEmail} onChange={setSiEmail} placeholder="you@example.com" isEmail active={activeField === 'siEmail'} onActivate={() => setActiveField('siEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                <KeyboardPassword label="Password" value={siPassword} onChange={setSiPassword} onSubmit={() => handleSignIn({ preventDefault: () => {} } as any)} active={activeField === 'siPassword'} onActivate={() => setActiveField('siPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                {useNativeKeyboard ? (
+                  <>
+                    <SecureInput label="Email" value={siEmail} onChange={setSiEmail} placeholder="you@example.com" type="email" />
+                    <SecureInput label="Password" value={siPassword} onChange={setSiPassword} placeholder="Enter your password" type="password" show={showPasswords} onToggleShow={() => setShowPasswords(s => !s)} onSubmit={() => handleSignIn({ preventDefault: () => {} } as any)} />
+                  </>
+                ) : (
+                  <>
+                    <KeyboardPassword label="Email" value={siEmail} onChange={setSiEmail} placeholder="you@example.com" isEmail active={activeField === 'siEmail'} onActivate={() => setActiveField('siEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                    <KeyboardPassword label="Password" value={siPassword} onChange={setSiPassword} onSubmit={() => handleSignIn({ preventDefault: () => {} } as any)} active={activeField === 'siPassword'} onActivate={() => setActiveField('siPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                  </>
+                )}
                 {siError && <ErrorBox msg={siError} />}
                 <PrimaryButton type="submit" loading={siLoading}>Sign In</PrimaryButton>
+                <NativeKeyboardToggle useNative={useNativeKeyboard} onToggle={() => setUseNativeKeyboard(v => !v)} />
                 <button type="button" onClick={() => { setScreen('forgot'); setFpEmail(siEmail); setFpError(''); }}
                   className="w-full text-center text-[13px] text-slate-500 hover:text-slate-300 transition-colors pt-1">
                   Forgot password?
@@ -323,10 +390,27 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                   <p className="text-[11px] text-slate-500 dark:text-slate-600">Optional profile picture</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <KeyboardPassword label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" plaintext active={activeField === 'suFirstName'} onActivate={() => setActiveField('suFirstName')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                  <KeyboardPassword label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" plaintext active={activeField === 'suLastName'} onActivate={() => setActiveField('suLastName')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                </div>
+                {useNativeKeyboard ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <SecureInput label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" type="text" />
+                      <SecureInput label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" type="text" />
+                    </div>
+                    <SecureInput label="Email" value={suEmail} onChange={setSuEmail} placeholder="you@example.com" type="email" />
+                    <SecureInput label="Password" value={suPassword} onChange={setSuPassword} placeholder="At least 6 characters" type="password" show={showPasswords} onToggleShow={() => setShowPasswords(s => !s)} />
+                    <SecureInput label="Confirm Password" value={suConfirm} onChange={setSuConfirm} placeholder="Re-enter password" type="password" show={showPasswords} onToggleShow={() => setShowPasswords(s => !s)} />
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <KeyboardPassword label="First Name" value={suFirstName} onChange={setSuFirstName} placeholder="Alex" plaintext active={activeField === 'suFirstName'} onActivate={() => setActiveField('suFirstName')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                      <KeyboardPassword label="Last Name" value={suLastName} onChange={setSuLastName} placeholder="Johnson" plaintext active={activeField === 'suLastName'} onActivate={() => setActiveField('suLastName')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                    </div>
+                    <KeyboardPassword label="Email" value={suEmail} onChange={setSuEmail} placeholder="you@example.com" isEmail active={activeField === 'suEmail'} onActivate={() => setActiveField('suEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                    <KeyboardPassword label="Password" value={suPassword} onChange={setSuPassword} placeholder="At least 6 characters" onSubmit={() => handleSignUp({ preventDefault: () => {} } as any)} active={activeField === 'suPassword'} onActivate={() => setActiveField('suPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                    <KeyboardPassword label="Confirm Password" value={suConfirm} onChange={setSuConfirm} active={activeField === 'suConfirm'} onActivate={() => setActiveField('suConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                  </>
+                )}
                 <div className="space-y-1.5">
                   <label htmlFor="su-language" className="block text-[13px] font-medium text-slate-400">Your language</label>
                   <select
@@ -342,14 +426,12 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                   </select>
                   <p className="text-[11px] text-slate-500 dark:text-slate-600">Messages from others will be translated into this language.</p>
                 </div>
-                <KeyboardPassword label="Email" value={suEmail} onChange={setSuEmail} placeholder="you@example.com" isEmail active={activeField === 'suEmail'} onActivate={() => setActiveField('suEmail')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                <KeyboardPassword label="Password" value={suPassword} onChange={setSuPassword} placeholder="At least 6 characters" onSubmit={() => handleSignUp({ preventDefault: () => {} } as any)} active={activeField === 'suPassword'} onActivate={() => setActiveField('suPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                <KeyboardPassword label="Confirm Password" value={suConfirm} onChange={setSuConfirm} active={activeField === 'suConfirm'} onActivate={() => setActiveField('suConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
                 {suError && <ErrorBox msg={suError} />}
                 <PrimaryButton type="submit" loading={suLoading || uploadingAvatar}>
                   {uploadingAvatar && <BubbleLoader size={22} />}
                   Create Account
                 </PrimaryButton>
+                <NativeKeyboardToggle useNative={useNativeKeyboard} onToggle={() => setUseNativeKeyboard(v => !v)} />
                 <p className="text-[12px] text-slate-500 dark:text-slate-600 text-center pt-1">
                   A verification code will be sent to your email
                 </p>
@@ -467,10 +549,20 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
                   <h2 className="text-slate-900 dark:text-white font-bold text-[18px] mb-1">Set a new password</h2>
                   <p className="text-slate-500 dark:text-slate-500 text-[13px] mb-6">Enter your new password below.</p>
                   <form onSubmit={handleResetPassword} className="space-y-4">
-                    <KeyboardPassword label="New Password" value={rpPassword} onChange={setRpPassword} placeholder="At least 6 characters" active={activeField === 'rpPassword'} onActivate={() => setActiveField('rpPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
-                    <KeyboardPassword label="Confirm Password" value={rpConfirm} onChange={setRpConfirm} active={activeField === 'rpConfirm'} onActivate={() => setActiveField('rpConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                    {useNativeKeyboard ? (
+                      <>
+                        <SecureInput label="New Password" value={rpPassword} onChange={setRpPassword} placeholder="At least 6 characters" type="password" show={showPasswords} onToggleShow={() => setShowPasswords(s => !s)} />
+                        <SecureInput label="Confirm Password" value={rpConfirm} onChange={setRpConfirm} placeholder="Re-enter password" type="password" show={showPasswords} onToggleShow={() => setShowPasswords(s => !s)} />
+                      </>
+                    ) : (
+                      <>
+                        <KeyboardPassword label="New Password" value={rpPassword} onChange={setRpPassword} placeholder="At least 6 characters" active={activeField === 'rpPassword'} onActivate={() => setActiveField('rpPassword')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                        <KeyboardPassword label="Confirm Password" value={rpConfirm} onChange={setRpConfirm} active={activeField === 'rpConfirm'} onActivate={() => setActiveField('rpConfirm')} onDismiss={() => setActiveField(null)} onTab={moveAuthField} />
+                      </>
+                    )}
                     {rpError && <ErrorBox msg={rpError} />}
                     <PrimaryButton type="submit" loading={rpLoading}>Update Password</PrimaryButton>
+                    <NativeKeyboardToggle useNative={useNativeKeyboard} onToggle={() => setUseNativeKeyboard(v => !v)} />
                   </form>
                 </>
               )}
