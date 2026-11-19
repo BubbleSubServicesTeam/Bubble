@@ -386,8 +386,8 @@ export default function PinScreen({
                   key={d}
                   type="button"
                   onClick={() => addDigit(d)}
-                  disabled={lockRemaining > 0}
-                  className="h-16 rounded-2xl bg-white dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] shadow-sm text-slate-900 dark:text-white text-[22px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+                  disabled={loading || lockRemaining > 0}
+                  className="h-16 rounded-full bg-white shadow-md text-slate-900 text-[22px] font-semibold active:scale-95 active:bg-slate-100 transition-all disabled:opacity-40 border border-slate-200/60"
                 >
                   {d}
                 </button>
@@ -396,16 +396,16 @@ export default function PinScreen({
               <button
                 type="button"
                 onClick={() => addDigit('0')}
-                disabled={lockRemaining > 0}
-                className="h-16 rounded-2xl bg-white dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] shadow-sm text-slate-900 dark:text-white text-[22px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+                disabled={loading || lockRemaining > 0}
+                className="h-16 rounded-full bg-white shadow-md text-slate-900 text-[22px] font-semibold active:scale-95 active:bg-slate-100 transition-all disabled:opacity-40 border border-slate-200/60"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={deleteDigit}
-                disabled={lockRemaining > 0}
-                className="h-16 rounded-2xl flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition-all disabled:opacity-40"
+                disabled={loading || lockRemaining > 0}
+                className="h-16 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 active:scale-95 transition-all disabled:opacity-40"
                 title="Delete"
               >
                 <Delete size={22} />

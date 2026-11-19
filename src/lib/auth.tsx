@@ -387,10 +387,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (pinLockedUntil && new Date(pinLockedUntil) > new Date()) return false;
     const hashed = await hashPin(pin);
     if (hashed === profile.pin_hash) {
-      // PIN is verified locally — don't let a network hiccup on the
-      // failure-clear RPC block the unlock.
-      try { await supabase.rpc('clear_pin_failures'); } catch { /* ignore */ }
+      // PIN is verified locally — clear failure state in the background without blocking unlock.
       setPinLockedUntil(null);
+      supabase.rpc('clear_pin_failures').then(() => {}).catch(() => {});
       return true;
     }
     try {

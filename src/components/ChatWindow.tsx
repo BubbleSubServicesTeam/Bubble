@@ -25,7 +25,6 @@ import SendMoneyModal from './SendMoneyModal';
 import VoiceRecorder from './VoiceRecorder';
 import PollMessage from './PollMessage';
 import FormMessage from './FormMessage';
-import DraftPanel from './DraftPanel';
 import ConversationSummaryModal from './ConversationSummaryModal';
 import {
   Send, Smile, Mic, Phone, Video,
@@ -177,8 +176,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [fullscreenCode, setFullscreenCode] = useState<{ code: string; language: string; note: string | null } | null>(null);
   const [myPayPalEmail, setMyPayPalEmail] = useState<string | null>(null);
   const [recipientPayPalEmail, setRecipientPayPalEmail] = useState<string | null>(null);
-  const [ffLeagueId, setFfLeagueId] = useState<string | null>(null);
-  const [showDraftPanel, setShowDraftPanel] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [lastReadAt, setLastReadAt] = useState<string | null>(null);
   const [lastReadLoaded, setLastReadLoaded] = useState(false);
@@ -413,17 +410,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         setRecipientPayPalEmail(row?.paypal_email ?? null);
       });
   }, [otherProfile?.user_id]);
-
-  // Check if this conversation is linked to a fantasy football league
-  useEffect(() => {
-    if (!conversation.id) return;
-    supabase
-      .from('ff_leagues')
-      .select('id')
-      .eq('conversation_id', conversation.id)
-      .maybeSingle()
-      .then(({ data }) => { setFfLeagueId(data?.id ?? null); });
-  }, [conversation.id]);
 
   // Fetch last_read_at for the summary "what you missed" feature
   useEffect(() => {
@@ -1691,30 +1677,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           </div>
         )}
 
-        {/* Fantasy football chat/league toggle */}
-        {ffLeagueId && (
-          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/5 rounded-lg p-0.5">
-            <button
-              onClick={() => setShowDraftPanel(false)}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                !showDraftPanel ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <MessageCircle size={13} />
-              <span className="hidden sm:inline">Chat</span>
-            </button>
-            <button
-              onClick={() => setShowDraftPanel(true)}
-              className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                showDraftPanel ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <Trophy size={13} />
-              <span className="hidden sm:inline">Fantasy</span>
-            </button>
-          </div>
-        )}
-
         {/* More menu */}
         <div className="relative z-[200]">
           <HeaderBtn title="More options" onClick={() => setShowMenu(s => !s)}>
@@ -1782,10 +1744,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         </div>
       </div>
 
-      {/* Messages OR Draft Panel */}
-      {showDraftPanel && ffLeagueId ? (
-        <DraftPanel leagueId={ffLeagueId} />
-      ) : (
       <>
       <div className="relative flex-1 min-h-0 flex flex-col">
       {/* Messages */}
