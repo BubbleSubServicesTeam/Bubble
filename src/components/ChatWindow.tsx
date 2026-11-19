@@ -7,7 +7,7 @@ import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, S
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
-import { revealMessage, revealMessages, uploadMedia, uploadSealedMedia, sealTextForConversation, rekeyLegacyVaultMessages, unlockVault, isVaultUnlocked } from '../lib/messageVault';
+import { revealMessage, revealMessages, uploadMedia, rekeyLegacyVaultMessages } from '../lib/messageVault';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
@@ -294,29 +294,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messageKeyboard = useMessageKeyboard();
   const [bubbleKeyboardOpen, setBubbleKeyboardOpen] = useState(false);
-
-  // Vault lock — when encrypted messages can't be opened on this session,
-  // offer an in-chat unlock using the account password.
-  const [showVaultUnlock, setShowVaultUnlock] = useState(false);
-  const [vaultPassword, setVaultPassword] = useState('');
-  const [vaultUnlockError, setVaultUnlockError] = useState('');
-  const [vaultUnlocking, setVaultUnlocking] = useState(false);
-
-  async function handleVaultUnlock() {
-    if (!user || !vaultPassword.trim()) return;
-    setVaultUnlocking(true);
-    setVaultUnlockError('');
-    const result = await unlockVault(user.id, vaultPassword);
-    if (result === 'unlocked' || result === 'created') {
-      setShowVaultUnlock(false);
-      setVaultPassword('');
-      setLoadingMessages(true);
-      loadMessages();
-    } else {
-      setVaultUnlockError(result === 'wrong_password' ? 'Incorrect password. Encrypted messages use your Bubble sign-in password.' : 'Could not unlock right now. Try again.');
-    }
-    setVaultUnlocking(false);
-  }
 
   const bubbleKbdHeight = useBubbleKeyboardHeight(messageKeyboard === 'bubble' && bubbleKeyboardOpen);
   // When the Bubble keyboard opens, the app shrinks — keep the newest message
@@ -887,25 +864,19 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setSending(true);
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const displayContent = type === 'text' ? text.trim() : (extra.content ?? null);
-    let vault: VaultEnvelope | null = null;
-    // Encrypt text-bearing payloads (text, code, location) for every vault
-    // member; falls back to plaintext when the vault is unavailable.
-    if (displayContent !== null && (type === 'text' || type === 'code' || type === 'location')) {
-      vault = await sealTextForConversation(user.id, conversation.id, String(displayContent));
-    }
     const payload: any = {
       conversation_id: conversation.id,
       sender_id: user.id,
       message_type: type,
-      vault,
+      vault: null,
       reply_to: replyTo?.id ?? null,
-      reply_excerpt: vault ? null : replyExcerpt || null,
+      reply_excerpt: replyExcerpt || null,
       reactions: {},
       text_effect: type === 'text' ? textEffect : null,
       text_effect_spans: type === 'text' && textEffectSpans.length > 0 ? textEffectSpans : null,
       sender_language: profile?.native_language ?? null,
       ...extra,
-      content: vault ? null : displayContent,
+      content: displayContent,
     };
     // Optimistic insert — show immediately
     const optimisticMsg: Message = {
@@ -1024,13 +995,12 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     setShowIframeModal(false);
     if (message) {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const sealedCaption = await sealTextForConversation(user!.id, conversation.id, message);
       const textPayload: any = {
         conversation_id: conversation.id,
         sender_id: user!.id,
         message_type: 'text',
-        content: sealedCaption ? null : message,
-        vault: sealedCaption,
+        content: message,
+        vault: null,
         sender_language: profile?.native_language ?? null,
         reply_to: replyTo?.id ?? null,
         reply_excerpt: null,
@@ -1104,21 +1074,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     extra: Partial<Message>,
   ) {
     if (!user) return;
-    // Encrypt the attachment for every vault member; falls back to plaintext
-    // when the vault is unavailable.
-    const sealed = await uploadSealedMedia(user.id, conversation.id, folder, blob, meta);
-    if (!sealed) {
-      const uploaded = await uploadMedia(user.id, folder, blob, meta);
-      await sendMessage(
-        type,
-        { ...extra, media_url: uploaded.media_url, vault: null, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
-        { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
-      );
-      return;
-    }
+    const uploaded = await uploadMedia(user.id, folder, blob, meta);
     await sendMessage(
       type,
-      { ...extra, media_url: sealed.media_url, vault: sealed.vault, file_name: null, file_mime: null, file_size: null },
+      { ...extra, media_url: uploaded.media_url, vault: null, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
       { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
     );
   }
@@ -2157,18 +2116,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           </div>
         ))}
 
-        {messages.length > 0 && !loadingMessages && messages.some(m => m.vault_locked) && !isVaultUnlocked(user?.id ?? '') && (
-          <div className="flex items-center justify-center py-3">
-            <button
-              onClick={() => setShowVaultUnlock(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/20 transition-all text-[13px] font-medium text-amber-600 dark:text-amber-400"
-            >
-              <Lock size={13} />
-              Some messages are locked — tap to unlock
-            </button>
-          </div>
-        )}
-
         {messages.length === 0 && !loadingMessages && messageLoadError && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
             <p className="text-slate-900 dark:text-white font-semibold">Messages couldn't load</p>
@@ -2347,7 +2294,11 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
       {/* Input area — mousedown here must not dismiss the Bubble keyboard, so
           send / GIF / mic / attach stay usable while it's open */}
-      <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 pt-2 sm:pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]" onMouseDown={e => e.stopPropagation()}>
+      <div
+        className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 pt-2 sm:pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        style={{ marginBottom: bubbleKbdHeight }}
+        onMouseDown={e => e.stopPropagation()}
+      >
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
             <Reply size={13} className="text-sky-400 flex-shrink-0 mt-0.5" />
@@ -2596,41 +2547,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                 className="flex-1 py-3 bg-red-500 hover:bg-red-400 text-white font-semibold text-[14px] rounded-xl transition-all shadow-lg shadow-red-500/20"
               >
                 Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Vault unlock — lets you read encrypted messages when this session can't */}
-      {showVaultUnlock && (
-        <div className="fixed inset-0 z-[11000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-sm shadow-2xl p-6">
-            <div className="w-14 h-14 rounded-2xl bg-sky-500/10 flex items-center justify-center mx-auto mb-4">
-              <Lock size={24} className="text-sky-400" />
-            </div>
-            <h2 className="text-slate-900 dark:text-white font-bold text-lg text-center mb-1">Unlock encrypted messages</h2>
-            <p className="text-slate-500 text-[13px] text-center mb-5">Enter your Bubble sign-in password to read encrypted messages on this device.</p>
-            <input
-              type="password"
-              value={vaultPassword}
-              onChange={e => { setVaultPassword(e.target.value); setVaultUnlockError(''); }}
-              onKeyDown={e => { if (e.key === 'Enter') handleVaultUnlock(); }}
-              placeholder="Your password"
-              autoComplete="off"
-              data-1p-ignore="true"
-              data-lpignore="true"
-              className="w-full h-[50px] bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 text-slate-900 dark:text-white text-[15px] focus:outline-none focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/20"
-            />
-            {vaultUnlockError && <p className="text-red-400 text-[13px] text-center mt-2">{vaultUnlockError}</p>}
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => { setShowVaultUnlock(false); setVaultPassword(''); setVaultUnlockError(''); }}
-                className="flex-1 py-3 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.10] text-slate-900 dark:text-white font-semibold text-[14px] rounded-xl transition-all border border-slate-200 dark:border-white/[0.06]">
-                Cancel
-              </button>
-              <button onClick={handleVaultUnlock} disabled={vaultUnlocking || !vaultPassword.trim()}
-                className="flex-1 py-3 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 text-white font-semibold text-[14px] rounded-xl transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2">
-                {vaultUnlocking ? <BubbleLoader size={22} /> : 'Unlock'}
               </button>
             </div>
           </div>
