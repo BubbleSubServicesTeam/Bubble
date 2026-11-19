@@ -413,30 +413,30 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       )}
 
       {/* User footer — settings & sign out, pinned to bottom edge on mobile */}
-      <div className="px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white dark:bg-[#0d1117] border-t border-slate-200 dark:border-white/[0.05] flex items-center gap-2.5">
+      <div className="px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#071a33] border-t border-[#183457] flex items-center gap-2.5 text-white">
         <div className="flex-shrink-0">
           <Avatar profile={profile} size="sm" showStatus />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-slate-900 dark:text-white truncate leading-tight">{myDisplayName}</p>
+          <p className="text-[13px] font-semibold text-white truncate leading-tight">{myDisplayName}</p>
           {myFullName !== myDisplayName && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{myFullName}</p>
+            <p className="text-[11px] text-slate-300 truncate">{myFullName}</p>
           )}
           {profile?.status_message && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{profile.status_message}</p>
+            <p className="text-[11px] text-slate-300 truncate">{profile.status_message}</p>
           )}
         </div>
         <button
           onClick={onSettings}
           title="Settings"
-          className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white"
+          className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all text-slate-300 hover:bg-white/10 hover:text-white"
         >
           <Settings size={14} />
         </button>
         <button
           onClick={signOut}
           title="Sign out"
-          className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all text-slate-500 dark:text-slate-400 hover:bg-red-500/10 hover:text-red-500"
+          className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all text-slate-300 hover:bg-red-500/20 hover:text-red-300"
         >
           <LogOut size={14} />
         </button>

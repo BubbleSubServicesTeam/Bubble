@@ -524,8 +524,12 @@ export default function ChatApp() {
   // Otherwise stretch to the true bottom edge (bottom: 0) so the footer background
   // fills the rounded home-indicator corners instead of showing the page background.
   const appStyle: React.CSSProperties = messageKeyboard === 'system'
-    ? (viewportState ? { height: `${viewportState.height}px` } : { top: 0, bottom: 0 })
-    : (bubbleKbdHeight > 0 ? { height: `${window.innerHeight - bubbleKbdHeight}px` } : { top: 0, bottom: 0 });
+    ? (viewportState
+      ? { top: `${Math.max(viewportState.offsetTop, 0)}px`, height: `${viewportState.height}px` }
+      : { top: 'env(safe-area-inset-top)', bottom: 0 })
+    : (bubbleKbdHeight > 0
+      ? { top: 'env(safe-area-inset-top)', height: `calc(${window.innerHeight - bubbleKbdHeight}px - env(safe-area-inset-top))` }
+      : { top: 'env(safe-area-inset-top)', bottom: 0 });
 
   return (
     <div
