@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Fingerprint, ArrowLeft, KeyRound, LogOut, Delete } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
@@ -27,6 +27,7 @@ export default function PinScreen({
 }: Props) {
   const { user, profile, pinLockedUntil, passwordLockedUntil, unlockWithFingerprint, signOut } = useAuth();
   const [digits, setDigits] = useState<string[]>([]);
+  const digitsRef = useRef('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
@@ -107,6 +108,7 @@ export default function PinScreen({
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
         triggerShake();
+        digitsRef.current = '';
         setDigits([]);
         if (newAttempts >= 5) {
           setError('Bubble is temporarily locked after too many incorrect attempts.');
@@ -119,19 +121,22 @@ export default function PinScreen({
   }
 
   function handlePinChange(v: string) {
-    if (loading || lockRemaining > 0) return;
+    if (loading || lockRemaining > 0 || success) return;
     const nums = v.replace(/\D/g, '').slice(0, pinLength);
+    digitsRef.current = nums;
     setDigits(nums.split(''));
     setError('');
-    if (nums.length === pinLength) submitPin(nums.join(''));
+    if (nums.length === pinLength) void submitPin(nums);
   }
 
   function addDigit(d: string) {
     if (loading || lockRemaining > 0 || success) return;
-    const next = [...digits, d].slice(0, pinLength);
+    const nextValue = `${digitsRef.current}${d}`.slice(0, pinLength);
+    digitsRef.current = nextValue;
+    const next = nextValue.split('');
     setDigits(next);
     setError('');
-    if (next.length === pinLength) submitPin(next.join(''));
+    if (nextValue.length === pinLength) void submitPin(nextValue);
   }
 
   async function handlePasswordUnlock() {
@@ -151,7 +156,8 @@ export default function PinScreen({
 
   function deleteDigit() {
     if (loading) return;
-    setDigits(d => d.slice(0, -1));
+    digitsRef.current = digitsRef.current.slice(0, -1);
+    setDigits(digitsRef.current.split(''));
     setError('');
   }
 
@@ -174,12 +180,12 @@ export default function PinScreen({
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
         e.stopPropagation();
-        handlePinChange(digits.join('') + e.key);
+        handlePinChange(`${digitsRef.current}${e.key}`);
       }
       else if (e.key === 'Backspace') { e.preventDefault(); setDigits(d => d.slice(0, -1)); setError(''); }
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPasswordInput, showFingerprint, digits.length, pinLength, loading, attempts]);
 
