@@ -525,6 +525,7 @@ export function GifMedia({ src, alt, className }: { src: string; alt?: string; c
         loop
         muted
         playsInline
+        preload="metadata"
         className={className ?? 'w-full aspect-square object-cover'}
       />
     );

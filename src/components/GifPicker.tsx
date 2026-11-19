@@ -206,12 +206,12 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
               </div>
             ) : (
               <>
-                <div className="columns-3 gap-1">
+                <div className="grid grid-cols-3 gap-1.5 items-start">
                   {tenorGifs.map(gif => (
                     <button
                       key={gif.id}
                       onClick={() => onSelect(gif.url)}
-                      className="w-full mb-1 rounded-xl overflow-hidden hover:ring-2 hover:ring-sky-500 transition-all"
+                      className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 hover:ring-2 hover:ring-sky-500 transition-all"
                     >
                       <GifMedia src={gif.preview} alt="" className="w-full object-cover" />
                     </button>
@@ -241,12 +241,12 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
                 </button>
               </div>
             ) : (
-              <div className="columns-3 gap-1">
+              <div className="grid grid-cols-3 gap-1.5 items-start">
                 {myGifs.map(gif => (
                   <button
                     key={gif.id}
                     onClick={() => onSelect(gif.url)}
-                    className="w-full mb-1 rounded-xl overflow-hidden hover:ring-2 hover:ring-sky-500 transition-all"
+                    className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 hover:ring-2 hover:ring-sky-500 transition-all"
                   >
                     <GifMedia src={gif.url} alt={gif.title} className="w-full object-cover" />
                   </button>
@@ -304,14 +304,14 @@ export default function GifPicker({ onSelect, onClose, conversationId, onOpenStu
             {collectionGifs.length === 0 ? (
               <p className="text-center text-slate-500 text-sm py-4">No GIFs in this collection</p>
             ) : (
-              <div className="columns-3 gap-1">
+              <div className="grid grid-cols-3 gap-1.5 items-start">
                 {collectionGifs.map(gif => (
                   <button
                     key={gif.id}
                     onClick={() => onSelect(gif.url)}
-                    className="w-full mb-1 rounded-xl overflow-hidden hover:ring-2 hover:ring-sky-500 transition-all"
+                    className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 hover:ring-2 hover:ring-sky-500 transition-all"
                   >
-                    <img src={gif.url} alt={gif.title} className="w-full object-cover" loading="lazy" />
+                    <img src={gif.url} alt={gif.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </button>
                 ))}
               </div>

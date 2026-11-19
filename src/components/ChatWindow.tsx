@@ -1073,7 +1073,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   }
 
   async function sendSealedMedia(
-    type: 'image' | 'file' | 'voicemail',
+    type: 'image' | 'gif' | 'file' | 'voicemail',
     folder: string,
     blob: Blob,
     meta: { file_name: string; file_mime: string },
@@ -1883,8 +1883,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       {msg.vault_locked && msg.message_type !== 'text' && (
                         <p className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
                       )}
-                      {msg.message_type === 'gif' && msg.gif_url && (
-                        <GifMedia src={msg.gif_url} alt="GIF" className="w-full max-h-[460px] object-contain rounded-2xl" />
+                      {msg.message_type === 'gif' && (msg.media_url || msg.gif_url) && (
+                        <GifMedia src={msg.media_url || msg.gif_url || ''} alt="GIF" className="w-full max-h-[460px] object-contain rounded-2xl" />
                       )}
 
                       {msg.message_type === 'image' && msg.media_url && (
