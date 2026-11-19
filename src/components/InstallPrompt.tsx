@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Smartphone, Share, Plus, Monitor, Chrome, Apple, Copy, Check, X, Download } from 'lucide-react';
+import { Smartphone, Share, Plus, Monitor, Chrome, Apple, Copy, Check, X } from 'lucide-react';
 import { useTheme, getLogoUrl } from '../lib/theme';
 
 export default function InstallPrompt({ onContinue }: { onContinue?: () => void }) {
@@ -10,20 +10,6 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
   const isChromeOnIOS = /CriOS/.test(navigator.userAgent) && isIOS;
   const [copied, setCopied] = useState(false);
   const [iconChoice, setIconChoice] = useState<'light' | 'dark'>(() => (localStorage.getItem('bubble-app-icon') === 'dark' ? 'dark' : 'light'));
-  const [installEvent, setInstallEvent] = useState<any>(null);
-  const [installed, setInstalled] = useState(false);
-
-  useEffect(() => {
-    const onBeforeInstall = (e: Event) => { e.preventDefault(); setInstallEvent(e); };
-    const onInstalled = () => setInstalled(true);
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
-  }, []);
-
   useEffect(() => {
     localStorage.setItem('bubble-app-icon', iconChoice);
     let link = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
@@ -32,15 +18,8 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
       link.rel = 'apple-touch-icon';
       document.head.appendChild(link);
     }
-    link.href = iconChoice === 'dark' ? '/logo-dark.svg' : '/logo.svg';
+    link.href = iconChoice === 'dark' ? '/image%20copy%203.png' : '/image%20copy%202.png';
   }, [iconChoice]);
-
-  async function makeApp() {
-    if (!installEvent) return;
-    installEvent.prompt();
-    const choice = await installEvent.userChoice;
-    if (choice.outcome === 'accepted') setInstalled(true);
-  }
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -67,7 +46,7 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300 relative">
+    <div className="fixed inset-0 overflow-y-auto overscroll-y-contain touch-pan-y bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,calc(env(safe-area-inset-bottom)+2rem))]">
       {/* X dismiss button */}
       {onContinue && (
         <button
@@ -78,7 +57,7 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
           <X size={18} />
         </button>
       )}
-      <div className="max-w-md w-full">
+      <div className="max-w-md w-full mx-auto py-2">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 rounded-3xl overflow-hidden shadow-2xl ring-2 ring-slate-200 dark:ring-white/10 mb-4">
@@ -88,8 +67,7 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Chat, Call & GIFs</p>
         </div>
 
-        {!installed && (
-          <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-6 mb-4 backdrop-blur-sm">
+        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-6 mb-4 backdrop-blur-sm">
             <p className="text-slate-900 dark:text-white font-semibold text-sm mb-3">Choose your app icon</p>
             <div className="grid grid-cols-2 gap-3 mb-5">
               {(['light', 'dark'] as const).map(choice => (
@@ -104,27 +82,15 @@ export default function InstallPrompt({ onContinue }: { onContinue?: () => void 
                       : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
                   }`}
                 >
-                  <img src={choice === 'dark' ? '/logo-dark.svg' : '/logo.svg'} alt={`${choice} app icon`} className="w-14 h-14 rounded-2xl" />
+                  <img src={choice === 'dark' ? '/image%20copy%203.png' : '/image%20copy%202.png'} alt={`${choice} Bubble app icon`} className="w-14 h-14 rounded-2xl object-cover" />
                   <span className="text-slate-700 dark:text-slate-300 text-xs font-medium">{choice === 'dark' ? 'Dark' : 'Light'}</span>
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={makeApp}
-              disabled={!installEvent}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all active:scale-[0.98]"
-            >
-              <Download size={16} />
-              Make it an app
-            </button>
-            {!installEvent && (
-              <p className="text-center text-slate-500 dark:text-slate-500 text-xs mt-3">On iPhone or iPad, follow the steps below. Your chosen icon is used when you add Bubble to your Home Screen.</p>
-            )}
-          </div>
-        )}
+            <p className="text-center text-slate-500 dark:text-slate-500 text-xs mt-1">Choose the icon you want to appear when you add Bubble to your Home Screen.</p>
+        </div>
 
-        {/* iPhone / iOS — Safari + Add to Home Screen with copyable link */}
+        {/* iPhone / iOS — Safari + Add to Home Screen with copyable link */
         {isIOS && (
           <>
             {isChromeOnIOS && (

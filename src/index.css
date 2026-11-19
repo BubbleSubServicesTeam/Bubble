@@ -16,6 +16,7 @@
 
   #root {
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    min-height: 100%;
   }
 
   body {
@@ -243,6 +244,9 @@
   }
   .pb-safe-area {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .app-bottom-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 
   /* ──────────────────────────────────────────────────────────────

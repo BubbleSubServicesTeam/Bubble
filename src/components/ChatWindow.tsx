@@ -2352,7 +2352,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       )}
 
       {/* Input area */}
-      <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-2.5">
+      <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 pt-2 sm:pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {replyMsg && (
           <div className="flex items-start gap-2 mb-2 px-3 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/[0.05]">
             <Reply size={13} className="text-sky-400 flex-shrink-0 mt-0.5" />
