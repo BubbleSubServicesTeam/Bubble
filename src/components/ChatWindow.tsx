@@ -33,7 +33,7 @@ import {
   MoreVertical, Trash, LogOut, Ban, Camera,
   Paperclip, Copy, Download, FileText,
   DollarSign, Link, BarChart2, ExternalLink, Eye,
-  Code2, Link2, Trophy, MessageCircle, Sparkles, Maximize2, Minimize2, BookOpen, ScanText,
+  Code2, Link2, MessageCircle, Sparkles, Maximize2, Minimize2, BookOpen, ScanText,
   Bookmark, BookmarkCheck, FolderOpen, Palette, Star, StarOff
 } from 'lucide-react';
 import { useNotifications } from '../lib/notifications';
@@ -2441,7 +2441,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         )}
       </div>
       </>
-      )}
 
       {/* Edit chat info modal */}
       {showEditInfo && canEditInfo && (
