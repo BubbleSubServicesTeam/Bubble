@@ -288,7 +288,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       setReplyExcerpt(lensSelected.map(hit => hit.text).join('\n').slice(0, 1200));
     }
     closeLens();
-    inputRef.current?.focus();
   }
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -1885,7 +1884,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         <p className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
                       )}
                       {msg.message_type === 'gif' && (msg.media_url || msg.gif_url) && (
-                        <GifMedia src={msg.media_url || msg.gif_url || ''} alt="GIF" className="w-full max-h-[460px] object-contain rounded-2xl" />
+                        <GifMedia src={msg.media_url || msg.gif_url || ''} alt="GIF" mime={msg.file_mime} className="w-full max-h-[460px] object-contain rounded-2xl" />
                       )}
 
                       {msg.message_type === 'image' && msg.media_url && (
@@ -2098,7 +2097,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
                   {/* Actions */}
                   <div className={`flex items-center gap-0.5 flex-shrink-0 self-end mb-1 transition-opacity duration-150 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                      <MsgAction onClick={startLensReply} title="Reply">
+                      <MsgAction onClick={() => { setReplyTo(msg); setReplyExcerpt(getReplyPreview(msg)); }} title="Reply">
                         <Reply size={13} />
                       </MsgAction>
                       {msg.message_type === 'text' && !msg.vault_locked && (

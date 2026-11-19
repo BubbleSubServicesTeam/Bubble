@@ -516,8 +516,8 @@ export function isVideoUrl(url: string): boolean {
     lower.includes('/video/') || lower.includes('media_formats/mp4');
 }
 
-export function GifMedia({ src, alt, className }: { src: string; alt?: string; className?: string }) {
-  if (isVideoUrl(src)) {
+export function GifMedia({ src, alt, className, mime }: { src: string; alt?: string; className?: string; mime?: string | null }) {
+  if (isVideoUrl(src) || mime?.startsWith('video/')) {
     return (
       <video
         src={src}
