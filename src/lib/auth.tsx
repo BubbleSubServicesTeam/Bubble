@@ -609,6 +609,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPinSetupRequired(false);
     pinStateResolved.current = false;
     signedInHandled.current = false;
+    // Drop the session in the UI immediately so the chat list never flashes
+    // on screen after tapping log out.
+    setUser(null);
+    setProfile(null);
+    setLoading(false);
     await supabase.auth.signOut();
   }
 

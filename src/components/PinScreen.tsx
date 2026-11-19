@@ -303,7 +303,10 @@ export default function PinScreen({
 
         {/* PIN dots — only show in PIN mode, not password or fingerprint mode */}
         {!showPasswordInput && !showFingerprint && (
-          <div className="flex items-center gap-3.5 h-8">
+          <div
+            className="flex items-center gap-3.5 h-8"
+            onPointerDown={() => { if (!pinKeyboardOpen) setPinKeyboardOpen(true); }}
+          >
             {Array.from({ length: pinLength }).map((_, i) => (
               <div
                 key={i}

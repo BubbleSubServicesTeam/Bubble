@@ -724,9 +724,9 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
       {/* Accent character popup */}
       {accentPopup && createPortal(
         <>
-          <div className="fixed inset-0 z-[10001]" onClick={() => setAccentPopup(null)} />
+          <div className="fixed inset-0 z-[30001]" onClick={() => setAccentPopup(null)} />
           <div
-            className="fixed z-[10002] bg-white dark:bg-slate-700 border border-slate-200 dark:border-white/20 rounded-xl shadow-2xl p-1.5 flex gap-1"
+            className="fixed z-[30002] bg-white dark:bg-slate-700 border border-slate-200 dark:border-white/20 rounded-xl shadow-2xl p-1.5 flex gap-1"
             style={{ left: accentPopup.x, top: accentPopup.y - 50, transform: 'translateX(-50%)' }}
           >
             {(ACCENTS[accentPopup.key] ?? []).map(a => (
@@ -746,7 +746,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
       {pressedPreview && createPortal(
         <div
-          className="fixed z-[10002] pointer-events-none flex items-center justify-center w-14 h-14 -translate-x-1/2 rounded-t-2xl rounded-b-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-3xl font-medium shadow-xl"
+          className="fixed z-[30002] pointer-events-none flex items-center justify-center w-14 h-14 -translate-x-1/2 rounded-t-2xl rounded-b-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-3xl font-medium shadow-xl"
           style={{ left: pressedPreview.x, top: pressedPreview.y - 58 }}
         >
           {shiftOn ? pressedPreview.key.toUpperCase() : pressedPreview.key}
@@ -756,7 +756,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
 
       {swipe && createPortal(
         <div
-          className="fixed z-[10001] pointer-events-none -translate-x-1/2 text-[11px] font-medium leading-none text-slate-400 dark:text-slate-500"
+          className="fixed z-[30001] pointer-events-none -translate-x-1/2 text-[11px] font-medium leading-none text-slate-400 dark:text-slate-500"
           style={{ left: swipe.x, top: swipe.y - 14 }}
         >
           {swipe.digit}
@@ -768,7 +768,7 @@ export default function KeyboardPassword({ label, value, onChange, placeholder, 
       {active && createPortal(
       <div
         ref={kbdRef}
-        className="fixed inset-x-0 bottom-0 z-[10000] select-none"
+        className="fixed inset-x-0 bottom-0 z-[30000] select-none"
         style={{ touchAction: 'none', animation: 'kbdSlideUp 0.25s ease-out' }}
       >
         <div className={`w-full bg-slate-50 dark:bg-[#080c14] px-2 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] ${isLargeKeyboard ? 'space-y-[6px]' : 'space-y-[4px]'}`}>

@@ -263,7 +263,7 @@ export default function AuthPage({ initialScreen = 'signin' }: { initialScreen?:
           </p>
         </div>
 
-        <div className="bg-white dark:bg-white/[0.03] backdrop-blur-2xl border border-slate-200 dark:border-white/[0.07] rounded-3xl shadow-2xl overflow-y-auto max-h-[85vh] scrollbar-thin">
+        <div className="bg-white dark:bg-white/[0.03] backdrop-blur-2xl border border-slate-200 dark:border-white/[0.07] rounded-3xl shadow-2xl overflow-y-auto scrollbar-thin" style={{ maxHeight: 'calc(100dvh - var(--kbd-h, 0px) - 12rem)' }}>
 
           {/* ──── SIGN IN ──── */}
           {screen === 'signin' && (
