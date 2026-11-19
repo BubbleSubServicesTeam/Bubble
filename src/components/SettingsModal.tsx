@@ -1748,6 +1748,63 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                 </button>
               </div>
 
+              {/* End-to-end encryption / outside platforms switch */}
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Shield size={16} className="text-green-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-slate-900 dark:text-white font-semibold text-[14px] mb-1">Data Privacy</p>
+                    <p className="text-slate-500 dark:text-slate-500 text-[13px] leading-relaxed">
+                      Choose who can read your messages and personal info.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-white/[0.04] rounded-2xl p-1">
+                  <button
+                    onClick={async () => { if (profile?.allow_external_ai_access) await updateProfile({ allow_external_ai_access: false }); }}
+                    className={`flex flex-col items-center gap-1 py-3 rounded-xl text-[12px] font-semibold transition-all ${
+                      !profile?.allow_external_ai_access
+                        ? 'bg-white dark:bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Lock size={13} />
+                      Keep End-to-End Encryption
+                    </span>
+                    <span className={`text-[10px] font-normal ${!profile?.allow_external_ai_access ? 'text-green-600 dark:text-green-500' : 'text-slate-400'}`}>Recommended</span>
+                  </button>
+                  <button
+                    onClick={async () => { if (!profile?.allow_external_ai_access) await updateProfile({ allow_external_ai_access: true }); }}
+                    className={`flex flex-col items-center gap-1 py-3 rounded-xl text-[12px] font-semibold transition-all ${
+                      profile?.allow_external_ai_access
+                        ? 'bg-white dark:bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Globe size={13} />
+                      Allow Outside Platforms
+                    </span>
+                    <span className={`text-[10px] font-normal ${profile?.allow_external_ai_access ? 'text-red-500' : 'text-slate-400'}`}>Less private</span>
+                  </button>
+                </div>
+                {profile?.allow_external_ai_access ? (
+                  <div className="flex items-start gap-2 mt-3 bg-red-500/[0.08] border border-red-500/[0.18] rounded-xl px-3 py-2.5">
+                    <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-500 text-[12px] leading-snug">
+                      Outside platforms like Grok and Claude may access your messages and personal info. Your data is no longer private.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-3">
+                    Your messages and personal info stay encrypted and unreadable to anyone outside your chats — including AI platforms like Grok and Claude.
+                  </p>
+                )}
+              </div>
+
               <LocationPrivacySettings />
               <TrustedPeopleSettings />
               <NotificationPrivacySettings />
