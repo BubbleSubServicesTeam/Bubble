@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Fingerprint, ArrowLeft, KeyRound, LogOut } from 'lucide-react';
+import { Fingerprint, ArrowLeft, KeyRound, LogOut, Delete } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 import { useCaptureShield } from '../lib/captureShield';
@@ -39,7 +39,6 @@ export default function PinScreen({
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
   const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(false);
-  const [pinKeyboardOpen, setPinKeyboardOpen] = useState(true);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [pinRemaining, setPinRemaining] = useState(0);
@@ -127,6 +126,14 @@ export default function PinScreen({
     if (nums.length === pinLength) submitPin(nums.join(''));
   }
 
+  function addDigit(d: string) {
+    if (loading || lockRemaining > 0 || success) return;
+    const next = [...digits, d].slice(0, pinLength);
+    setDigits(next);
+    setError('');
+    if (next.length === pinLength) submitPin(next.join(''));
+  }
+
   async function handlePasswordUnlock() {
     if (!password.trim() || passwordRemaining > 0) return;
     setPasswordLoading(true);
@@ -163,7 +170,7 @@ export default function PinScreen({
   // back to this handler when it's dismissed.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (showPasswordInput || showFingerprint || pinKeyboardOpen) return;
+      if (showPasswordInput || showFingerprint) return;
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
         e.stopPropagation();
@@ -174,7 +181,7 @@ export default function PinScreen({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPasswordInput, showFingerprint, pinKeyboardOpen, digits.length, pinLength, loading, attempts]);
+  }, [showPasswordInput, showFingerprint, digits.length, pinLength, loading, attempts]);
 
   const captureHidden = useCaptureShield(3000);
   const compact = showPasswordInput && passwordKeyboardOpen;
@@ -303,10 +310,7 @@ export default function PinScreen({
 
         {/* PIN dots — only show in PIN mode, not password or fingerprint mode */}
         {!showPasswordInput && !showFingerprint && (
-          <div
-            className="flex items-center gap-3.5 h-8"
-            onPointerDown={() => { if (!pinKeyboardOpen) setPinKeyboardOpen(true); }}
-          >
+          <div className="flex items-center gap-3.5 h-8">
             {Array.from({ length: pinLength }).map((_, i) => (
               <div
                 key={i}
@@ -376,18 +380,36 @@ export default function PinScreen({
         {/* ──── PIN MODE: Bubble keyboard (same as sign in / sign up / password) ──── */}
         {!showPasswordInput && !showFingerprint && !loading && (
           <>
-            <div className="w-full">
-              <KeyboardPassword
-                label="PIN"
-                value={digits.join('')}
-                onChange={handlePinChange}
-                placeholder={`${pinLength} digits`}
-                numeric
-                showField={false}
-                active={pinKeyboardOpen}
-                onActivate={() => setPinKeyboardOpen(true)}
-                onDismiss={() => setPinKeyboardOpen(false)}
-              />
+            <div className="grid grid-cols-3 gap-3 w-full max-w-[260px] mx-auto">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => addDigit(d)}
+                  disabled={lockRemaining > 0}
+                  className="h-16 rounded-2xl bg-white dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] shadow-sm text-slate-900 dark:text-white text-[22px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+                >
+                  {d}
+                </button>
+              ))}
+              <div />
+              <button
+                type="button"
+                onClick={() => addDigit('0')}
+                disabled={lockRemaining > 0}
+                className="h-16 rounded-2xl bg-white dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] shadow-sm text-slate-900 dark:text-white text-[22px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+              >
+                0
+              </button>
+              <button
+                type="button"
+                onClick={deleteDigit}
+                disabled={lockRemaining > 0}
+                className="h-16 rounded-2xl flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition-all disabled:opacity-40"
+                title="Delete"
+              >
+                <Delete size={22} />
+              </button>
             </div>
 
             {/* Unlock options: fingerprint + password + log out */}
