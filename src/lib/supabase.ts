@@ -97,20 +97,12 @@ export type Conversation = {
   ownership_mode?: 'single' | 'dual' | 'everyone';
 };
 
-export type VaultEnvelope = {
-  eph: JsonWebKey;
-  body: { iv: string; c: string };
-  keys: { d: string; iv: string; k: string }[];
-};
-
 export type Message = {
   id: string;
   conversation_id: string;
   sender_id: string;
   message_type: 'text' | 'image' | 'gif' | 'voicemail' | 'call_started' | 'call_ended' | 'file' | 'poll' | 'form' | 'money' | 'iframe' | 'code' | 'location';
   content: string | null;
-  vault?: VaultEnvelope | null;
-  vault_locked?: boolean;
   gif_url: string | null;
   media_url: string | null;
   file_name: string | null;

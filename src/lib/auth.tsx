@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import { supabase, Profile, PROFILE_COLUMNS } from './supabase';
 import { verifyFingerprint, verifyFingerprintWithPattern, type TouchPattern } from './fingerprint';
 import { registerDeviceSession, updateSessionActivity } from './deviceSessions';
-import { unlockVault, lockVault, rewrapVaultKey, rekeyLegacyVaultMessages, restoreVaultSession } from './messageVault';
 import type { User } from '@supabase/supabase-js';
 
 declare global {
@@ -501,7 +500,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (reAuthErr) return 'Current password is incorrect.';
     const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
     if (updateErr) return updateErr.message;
-    if (user) await rewrapVaultKey(user.id, newPassword);
     return null;
   }
 
@@ -523,18 +521,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (data.user) {
       setUser(data.user);
-      // Vault unlock failure never blocks sign-in; encrypted messages just stay
-      // locked until the next successful password sign-in.
-      restoreVaultSession(data.user.id).then(restored => {
-        if (restored) {
-          rekeyLegacyVaultMessages(data.user!.id);
-          return;
-        }
-        // Password is only in scope during signIn — unlock synchronously below
-        unlockVault(data.user.id, password).then(result => {
-          if (result === 'unlocked') rekeyLegacyVaultMessages(data.user!.id);
-        });
-      });
       let hasCachedPin = false;
       try { hasCachedPin = localStorage.getItem(`bubble-has-pin-${data.user.id}`) === '1'; } catch { /* ignore */ }
       if (!hasCachedPin) setLoading(false);
@@ -605,7 +591,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     intentionalSignOut.current = true;
-    lockVault();
     if (user) {
       const cur = profileRef.current;
       if (cur?.status === 'auto') {

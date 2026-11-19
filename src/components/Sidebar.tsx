@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { supabase, Conversation, Profile, Message, smartName, getDisplayName } from '../lib/supabase';
+import { useState, useEffect } from 'react';
+import { supabase, Conversation, Profile, smartName, getDisplayName } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useTheme, getLogoUrl } from '../lib/theme';
 import { useAppLang } from '../lib/i18n';
@@ -7,7 +7,6 @@ import Avatar from './Avatar';
 import { Plus, Search, Settings, LogOut, MessageCircle, Trash2, Smile, Camera, X, AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import { ContactPriorityMap, conversationPriority, priorityRank } from '../lib/contactPriority';
-import { revealMessage } from '../lib/messageVault';
 
 type Props = {
   conversations: Conversation[];
@@ -37,43 +36,6 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
     try { return (localStorage.getItem('bubble-chat-sort') as 'recent' | 'active' | 'unread' | 'name') || 'recent'; } catch { return 'recent'; }
   });
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
-  const [decrypted, setDecrypted] = useState<Record<string, string>>({});
-  const decryptAttemptedRef = useRef<Set<string>>(new Set());
-
-  // Encrypted (vaulted) last messages have no plaintext server-side — decrypt
-  // each conversation's latest text locally so previews show real content.
-  // Attempt each message at most once; results are kept in `decrypted`.
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    (async () => {
-      for (const conv of conversations) {
-        const msg = conv.last_message as (Message & { vault?: unknown }) | undefined;
-        if (!msg || msg.deleted_at || msg.content || !msg.vault) continue;
-        if (decryptAttemptedRef.current.has(conv.id)) continue;
-        decryptAttemptedRef.current.add(conv.id);
-        const revealed = await revealMessage(user.id, msg as Message);
-        if (cancelled) return;
-        if (revealed.content) {
-          setDecrypted(prev => ({ ...prev, [conv.id]: revealed.content! }));
-          continue;
-        }
-        // The message may have been restored server-side since this list was
-        // fetched; pick up the current plaintext if it exists.
-        const { data: fresh } = await supabase
-          .from('messages')
-          .select('content')
-          .eq('id', (msg as Message).id)
-          .maybeSingle();
-        if (cancelled) return;
-        if (fresh?.content) {
-          setDecrypted(prev => ({ ...prev, [conv.id]: fresh.content! }));
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [user, conversations]);
-
   async function permanentlyDeleteConv(conv: Conversation) {
     if (!profile) return;
     await supabase.from('conversation_members').delete().eq('conversation_id', conv.id).eq('user_id', profile.user_id);
@@ -165,10 +127,6 @@ export default function Sidebar({ conversations, contactPriorities, loading, sel
       default: {
         const content = msg.content ?? '';
         if (content) return `${prefix}${content}`;
-        // Encrypted (vaulted) text messages have no plaintext content server-side;
-        // decrypt locally so the preview shows the real text.
-        if ((msg as any).vault && decrypted[conv.id] === undefined) return `${prefix}Encrypted message`;
-        if ((msg as any).vault) return `${prefix}${decrypted[conv.id]}`;
         return `${prefix}${content}`;
       }
     }

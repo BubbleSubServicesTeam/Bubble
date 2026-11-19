@@ -3,15 +3,15 @@ import KeyboardPassword from './KeyboardPassword';
 import { useMessageKeyboard, useBubbleKeyboardHeight } from '../lib/messageKeyboard';
 import TextEffectText from './TextEffectText';
 import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEffectSpan, type TextRange } from '../lib/textEffects';
-import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS, type VaultEnvelope } from '../lib/supabase';
+import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
 import { getBrowserTranslationLang, translateText } from '../lib/translate';
-import { revealMessage, revealMessages, uploadMedia, rekeyLegacyVaultMessages } from '../lib/messageVault';
+import { uploadMedia } from '../lib/mediaUpload';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
 import ProfileModal from './ProfileModal';
-import { Bell, Languages, Lock } from 'lucide-react';
+import { Bell, Languages } from 'lucide-react';
 import GifPicker from './GifPicker';
 import GroupInfoModal from './GroupInfoModal';
 import AttachMenu from './AttachMenu';
@@ -612,7 +612,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           .eq('id', payload.new.id)
           .maybeSingle();
         if (row) {
-          const data = user ? await revealMessage(user.id, row as Message) : row as Message;
+          const data = row as Message;
           setMessages(prev => {
             if (prev.some(m => m.id === data.id)) return prev;
             // Also dedup optimistic messages: same sender + same content within 5 seconds
@@ -660,7 +660,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         event: 'UPDATE', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${conversation.id}`
       }, async (payload) => {
-        const updated = user ? await revealMessage(user.id, payload.new as Message) : payload.new as Message;
+        const updated = payload.new as Message;
         if (updated.deleted_at) {
           setMessages(prev => prev.filter(m => m.id !== updated.id));
         } else {
@@ -764,7 +764,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     setMessageLoadError(false);
     if (msgResult.data) {
-      const msgs = user ? await revealMessages(user.id, msgResult.data as Message[]) : msgResult.data as Message[];
+      const msgs = msgResult.data as Message[];
       if (membersResult.data) {
         for (const msg of msgs) {
           const msgTime = new Date(msg.created_at).getTime();
@@ -784,7 +784,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       try { localStorage.setItem(cacheKey, JSON.stringify(msgs)); } catch { /* ignore */ }
     }
     setLoadingMessages(false);
-    if (user) void rekeyLegacyVaultMessages(user.id);
     setTimeout(() => inputRef.current?.focus(), 200);
   }
 
@@ -875,7 +874,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       conversation_id: conversation.id,
       sender_id: user.id,
       message_type: type,
-      vault: null,
       reply_to: replyTo?.id ?? null,
       reply_excerpt: replyExcerpt || null,
       reactions: {},
@@ -1007,8 +1005,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         sender_id: user!.id,
         message_type: 'text',
         content: message,
-        vault: null,
-        sender_language: profile?.native_language ?? null,
+          sender_language: profile?.native_language ?? null,
         reply_to: replyTo?.id ?? null,
         reply_excerpt: null,
         reactions: {},
@@ -1084,7 +1081,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     const uploaded = await uploadMedia(user.id, folder, blob, meta);
     await sendMessage(
       type,
-      { ...extra, media_url: uploaded.media_url, vault: null, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
+      { ...extra, media_url: uploaded.media_url, file_name: uploaded.file_name, file_mime: uploaded.file_mime, file_size: uploaded.file_size },
       { media_url: URL.createObjectURL(blob), file_name: meta.file_name, file_mime: meta.file_mime, file_size: blob.size },
     );
   }
@@ -1154,10 +1151,9 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     const previousContent = message.content ?? '';
     const nextContent = editText.trim();
-    if (!user || message.vault_locked) return;
+    if (!user) return;
     const { error } = await supabase.from('messages').update({
       content: nextContent,
-      vault: null,
       edited_at: new Date().toISOString(),
     }).eq('id', editingId);
     if (error) return;
@@ -1175,8 +1171,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     const { error } = user
       ? await supabase.from('messages').update({
           content: undoEdit.previousContent,
-          vault: null,
-          edited_at: null,
+              edited_at: null,
         }).eq('id', undoEdit.messageId)
       : { error: new Error('Not signed in') };
     if (!error) {
@@ -1837,14 +1832,10 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                           </div>
                         ) : (
                           <div className="px-3.5 py-2" data-no-translate data-msg-text={showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? '')} data-msg-id={msg.id}>
-                            {msg.vault_locked ? (
-                              <p className="flex items-center gap-1.5 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
-                            ) : (
-                            <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+                                  <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
                               {(msg.text_effect || msg.text_effect_spans?.length) && (showOriginalIds.has(msg.id) || !translations[msg.id]?.translatedText) ? <TextEffectText text={msg.content ?? ''} effect={msg.text_effect ?? null} spans={msg.text_effect_spans} /> : renderTextContent(showOriginalIds.has(msg.id) ? (msg.content ?? '') : (translations[msg.id]?.translatedText ?? msg.content ?? ''), isMe)}
                               {msg.edited_at && <span className="text-[10px] opacity-60 ml-1.5">(edited)</span>}
                             </p>
-                            )}
                             {translations[msg.id] && !showOriginalIds.has(msg.id) && (
                               <button
                                 onClick={() => toggleShowOriginal(msg.id)}
@@ -1870,9 +1861,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                         )
                       )}
 
-                      {msg.vault_locked && msg.message_type !== 'text' && (
-                        <p className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] italic opacity-70"><Lock size={12} /> Locked on this device</p>
-                      )}
                       {msg.message_type === 'gif' && (msg.media_url || msg.gif_url) && (
                         <GifMedia src={msg.media_url || msg.gif_url || ''} alt="GIF" mime={msg.file_mime} className="w-full max-h-[460px] object-contain rounded-2xl" />
                       )}
@@ -2090,7 +2078,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       <MsgAction onClick={() => { setReplyTo(msg); setReplyExcerpt(getReplyPreview(msg)); }} title="Reply">
                         <Reply size={13} />
                       </MsgAction>
-                      {msg.message_type === 'text' && !msg.vault_locked && (
+                      {msg.message_type === 'text' && (
                         <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy">
                           {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
                         </MsgAction>
@@ -2106,7 +2094,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       <MsgAction onClick={() => toggleSaveMessage(msg)} title={savedMsgIds.has(msg.id) ? 'Unsave' : 'Save'}>
                         {savedMsgIds.has(msg.id) ? <BookmarkCheck size={13} className="text-sky-400" /> : <Bookmark size={13} />}
                       </MsgAction>
-                      {isMe && !msg.vault_locked && ['text', 'code', 'iframe'].includes(msg.message_type) && (
+                      {isMe && ['text', 'code', 'iframe'].includes(msg.message_type) && (
                         <MsgAction onClick={() => { setEditingId(msg.id); setEditText(msg.content ?? ''); }} title="Edit message">
                           <Edit2 size={13} />
                         </MsgAction>
