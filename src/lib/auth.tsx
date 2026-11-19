@@ -92,22 +92,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { userRef.current = user; }, [user]);
 
   async function fetchProfile(userId: string): Promise<Profile | null> {
+    const legacyColumns = PROFILE_COLUMNS.replace(', allow_external_ai_access', '');
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        const [{ data, error }, { data: ownContact }] = await Promise.all([
-          supabase
+        let { data, error } = await supabase
+          .from('profiles')
+          .select(PROFILE_COLUMNS)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        // A deployment may briefly be ahead of the database migration. Keep the
+        // account usable by loading the established profile fields instead.
+        if (error?.message.includes('allow_external_ai_access')) {
+          const fallback = await supabase
             .from('profiles')
-            .select(PROFILE_COLUMNS)
+            .select(legacyColumns)
             .eq('user_id', userId)
-            .maybeSingle(),
-          // Restricted contact columns (address, city, state, postal_code, country) are no longer
-          // directly readable via SELECT — fetch them through the owner-scoped RPC.
-          supabase.rpc('get_own_contact_info'),
-        ]);
+            .maybeSingle();
+          data = fallback.data ? { ...fallback.data, allow_external_ai_access: false } : null;
+          error = fallback.error;
+        }
+
+        let ownContact: Record<string, unknown> | null = null;
+        try {
+          const contactResult = await supabase.rpc('get_own_contact_info');
+          const contactData = Array.isArray(contactResult.data) ? contactResult.data[0] : contactResult.data;
+          ownContact = contactData ?? null;
+        } catch {
+          ownContact = null;
+        }
 
         if (data) {
-          const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
-          const merged = { ...data, ...contactRow };
+          const merged = { ...data, ...ownContact } as Profile;
           setProfileLoadFailed(false);
           setPinLockedUntil(merged.pin_locked_until ?? null);
           setPasswordLockedUntil(merged.password_locked_until ?? null);
@@ -115,11 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return merged;
         }
 
-        if (error) {
-          console.warn('[auth] Profile fetch error:', error.message);
-        }
-
-        // Increasing pause before retrying (trigger may not have fired yet)
+        if (error) console.warn('[auth] Profile fetch error:', error.message);
         if (attempt < 4) await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
       } catch (err) {
         console.warn('[auth] Profile fetch failed:', err);
