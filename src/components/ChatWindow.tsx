@@ -2303,7 +2303,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
           send / GIF / mic / attach stay usable while it's open */}
       <div
         className="flex-shrink-0 border-t border-slate-200 dark:border-white/[0.05] bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm px-2 sm:px-3 pt-2 sm:pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-        style={{ marginBottom: bubbleKbdHeight }}
         onMouseDown={e => e.stopPropagation()}
       >
         {replyMsg && (
