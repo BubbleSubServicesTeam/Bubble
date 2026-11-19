@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Fingerprint, ArrowLeft, KeyRound, LogOut, Delete } from 'lucide-react';
+import { Fingerprint, ArrowLeft, KeyRound, LogOut, Delete, Keyboard, Eye, EyeOff } from 'lucide-react';
 import BubbleLoader from './BubbleLoader';
 import KeyboardPassword from './KeyboardPassword';
 import { useCaptureShield } from '../lib/captureShield';
@@ -40,6 +40,8 @@ export default function PinScreen({
   const [showFingerprint, setShowFingerprint] = useState(false);
   const [bioMode, setBioMode] = useState<'touch' | 'none'>('none');
   const [passwordKeyboardOpen, setPasswordKeyboardOpen] = useState(false);
+  const [useNativeKeyboard, setUseNativeKeyboard] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [pinRemaining, setPinRemaining] = useState(0);
@@ -353,16 +355,46 @@ export default function PinScreen({
               <KeyRound size={16} className="text-sky-400" />
               <p className="text-slate-900 dark:text-white font-semibold text-[15px]">Enter Password</p>
             </div>
-            <KeyboardPassword
-              label="Password"
-              value={password}
-              onChange={setPassword}
-              placeholder="Enter your password"
-              onSubmit={handlePasswordUnlock}
-              active={passwordKeyboardOpen}
-              onActivate={() => setPasswordKeyboardOpen(true)}
-              onDismiss={() => setPasswordKeyboardOpen(false)}
-            />
+            {useNativeKeyboard ? (
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') handlePasswordUnlock(); }}
+                  placeholder="Enter your password"
+                  autoFocus
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="off"
+                  className="w-full h-[54px] bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 pr-11 text-slate-900 dark:text-white text-[15px] focus:outline-none focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
+            ) : (
+              <KeyboardPassword
+                label="Password"
+                value={password}
+                onChange={setPassword}
+                placeholder="Enter your password"
+                onSubmit={handlePasswordUnlock}
+                active={passwordKeyboardOpen}
+                onActivate={() => setPasswordKeyboardOpen(true)}
+                onDismiss={() => setPasswordKeyboardOpen(false)}
+              />
+            )}
             {passwordError && (
               <p className="text-red-400 text-[13px] text-center">{passwordError}</p>
             )}
@@ -372,6 +404,13 @@ export default function PinScreen({
               className="w-full py-3.5 bg-sky-500 hover:bg-sky-400 disabled:bg-sky-500/30 text-white font-semibold text-[15px] rounded-xl transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2"
             >
               {passwordLoading ? <BubbleLoader size={22} className="pin-loader" /> : 'Unlock'}
+            </button>
+            <button
+              onClick={() => setUseNativeKeyboard(v => !v)}
+              className="w-full flex items-center justify-center gap-1.5 text-[13px] text-sky-500 hover:text-sky-400 transition-colors"
+            >
+              <Keyboard size={14} />
+              {useNativeKeyboard ? 'Use Bubble keyboard' : 'Use phone keyboard'}
             </button>
             <button
               onClick={() => { setShowPasswordInput(false); setPassword(''); setPasswordError(''); }}
