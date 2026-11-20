@@ -107,7 +107,7 @@ export default function NewChatModal({ onClose, onCreated, preloadedProfiles }: 
     setUploadingAvatar(true);
     try {
       const ext = file.name.split('.').pop() ?? 'jpg';
-      const path = `group-avatars/${Date.now()}.${ext}`;
+      const path = `group-avatars/${user.id}/${Date.now()}.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from('media').upload(path, file, { contentType: file.type, upsert: true });
       if (uploadErr) throw new Error(uploadErr.message);
