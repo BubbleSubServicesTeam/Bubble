@@ -1535,32 +1535,37 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  // Render text with auto-linked URLs
+  // Render text with auto-linked URLs (https://, http://, www., and bare domains)
   function renderTextContent(content: string, mine: boolean = false) {
     if (!content) return null;
-    const urlRegex = /https?:\/\/[^\s]+/g;
-    const parts: { text: string; isUrl: boolean }[] = [];
+    const tld = 'com|org|net|io|dev|app|co|me|ai|gg|tv|xyz|info|edu|gov|biz|online|site|store|tech|blog|news|page|link|us|uk|ca|au|de|fr|nl|se|no|es|it|pt|pl|cz|fi|ch|dk|is|to|so|fm|cc|sh|re|md|jp|kr|in|br|mx|ru|ua|cn';
+    const urlRegex = new RegExp(`(?:https?:\\/\\/|www\\.)[^\\s<>"]+?[^[\\s<>".,;:!?')\\]}]+(?:[.,;:!?')\\]}]+)?|\\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\\.(?:${tld})\\b(?:\\/[^\\s<>"]*)?(?:[?#][^\\s<>"]*)?`, 'gi');
+    const parts: { text: string; url: string | null }[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
-    while ((match = urlRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ text: content.slice(lastIndex, match.index), isUrl: false });
+    const matches: RegExpExecArray[] = [];
+    while ((match = urlRegex.exec(content)) !== null) matches.push(match);
+    for (const m of matches) {
+      if (m.index > lastIndex) {
+        parts.push({ text: content.slice(lastIndex, m.index), url: null });
       }
-      parts.push({ text: match[0], isUrl: true });
-      lastIndex = match.index + match[0].length;
+      const raw = m[0];
+      const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      parts.push({ text: raw, url: href });
+      lastIndex = m.index + raw.length;
     }
     if (lastIndex < content.length) {
-      parts.push({ text: content.slice(lastIndex), isUrl: false });
+      parts.push({ text: content.slice(lastIndex), url: null });
     }
     if (parts.length === 0) {
       return <span>{content}</span>;
     }
     return parts.map((part, i) => {
-      if (part.isUrl) {
+      if (part.url) {
         return (
           <a
             key={i}
-            href={part.text}
+            href={part.url}
             target="_blank"
             rel="noopener noreferrer"
             className="underline font-medium hover:opacity-80 transition-all break-all"
