@@ -22,7 +22,7 @@ import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
   X, Check, Camera, AlertTriangle,
   ArrowLeft, Eye, EyeOff, Mail, Trash2, User, Shield, Sun, Moon, Palette, DollarSign, Lock, Delete, Globe, ChevronDown, Ban,
-  Fingerprint, Plus, KeyRound, Smartphone, Monitor, Tablet, LogOut, Code2, QrCode, Copy, RefreshCw, Loader2
+  Fingerprint, Plus, KeyRound, Smartphone, Monitor, Tablet, LogOut, Code2, QrCode, Copy, RefreshCw, Loader2, PhoneCall
 } from 'lucide-react';
 import FingerprintScanner from './FingerprintScanner';
 import { getBiometricCapability, enrollFingerprintWithPattern, listFingerprints, deleteFingerprint, FingerprintRecord, type TouchPattern } from '../lib/fingerprint';
@@ -1873,6 +1873,36 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
                   value={profile?.native_language ?? ''}
                   onChange={async (lang) => { await updateProfile({ native_language: lang || null }); }}
                 />
+              </div>
+
+              <div className="border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <PhoneCall size={16} className="text-sky-500" />
+                    <h3 className="text-slate-900 dark:text-white font-semibold text-[15px]">Live Call Translation</h3>
+                  </div>
+                  <button
+                    onClick={async () => { await updateProfile({ call_voice_translation_enabled: !profile?.call_voice_translation_enabled }); }}
+                    disabled={!profile?.native_language}
+                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-40 ${profile?.call_voice_translation_enabled ? 'bg-sky-500' : 'bg-slate-300 dark:bg-white/20'}`}
+                    title={!profile?.native_language ? 'Set your language first' : undefined}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${profile?.call_voice_translation_enabled ? 'translate-x-5' : ''}`} />
+                  </button>
+                </div>
+                <p className="text-slate-500 dark:text-slate-400 text-[13px] leading-relaxed">
+                  On calls, whatever you say is translated and spoken aloud in the other person's language — in a natural voice, automatically. Works both ways.
+                </p>
+                <div>
+                  <p className="text-slate-600 dark:text-slate-300 text-[13px] font-medium mb-2">Language you also understand (never translated for you)</p>
+                  <LanguagePicker
+                    value={profile?.call_voice_translation_secondary_language ?? ''}
+                    onChange={async (lang) => { await updateProfile({ call_voice_translation_secondary_language: lang || null }); }}
+                  />
+                  <p className="text-slate-500 dark:text-slate-400 text-[12px] leading-relaxed mt-2">
+                    Speech already in this language is played as-is instead of being translated. For example, set Spanish here and you'll keep hearing Spanish directly, while other languages come through in your language.
+                  </p>
+                </div>
               </div>
 
               <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-4 space-y-2.5">

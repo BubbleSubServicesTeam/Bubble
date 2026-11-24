@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCall } from '../lib/calls';
 import { showPushNotification } from '../lib/push';
-import { Phone, Video, Mic, MicOff, VideoOff, PhoneOff, Users, Minimize2, Maximize2, ArrowLeft, X } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { startVoiceTranslation, type VoiceTranslationHandle, type ProfileLangInfo, type VoiceTranslationSignal } from '../lib/callVoiceTranslation';
+import { Phone, Video, Mic, MicOff, VideoOff, PhoneOff, Users, Minimize2, Maximize2, ArrowLeft, X, Languages } from 'lucide-react';
 
 export default function CallModal() {
   const { activeCall, localStream, remoteStream, acceptCall, rejectCall, endCall, toggleMic, toggleCam } = useCall();
@@ -12,6 +15,78 @@ export default function CallModal() {
   const [minimized, setMinimized] = useState(false);
   const ringRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const { user, profile } = useAuth();
+
+  // ---- Live voice translation (audio calls) ----
+  const vtEnabled = !!profile?.call_voice_translation_enabled;
+  const [vtSpeaking, setVtSpeaking] = useState(false);
+  const [captions, setCaptions] = useState<{ text: string; mine: boolean; id: number }[]>([]);
+  const vtEngineRef = useRef<VoiceTranslationHandle | null>(null);
+  const vtChannelRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!activeCall || activeCall.state !== 'active' || activeCall.type !== 'audio' || !user || !vtEnabled) return;
+    let cancelled = false;
+    const conversationId = activeCall.conversationId;
+    const callId = activeCall.callId;
+    const isGroup = activeCall.isGroup;
+
+    (async () => {
+      const peerUserIds = activeCall.peerIds.filter(id => id !== user.id);
+      const { data: peerProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, native_language, call_voice_translation_secondary_language')
+        .in('user_id', peerUserIds);
+      if (cancelled) return;
+
+      const peers: ProfileLangInfo[] = [
+        { userId: user.id, nativeLanguage: profile?.native_language ?? null, secondaryLanguage: profile?.call_voice_translation_secondary_language ?? null },
+        ...(peerProfiles ?? []).map((p: any) => ({
+          userId: p.user_id,
+          nativeLanguage: p.native_language ?? null,
+          secondaryLanguage: p.call_voice_translation_secondary_language ?? null,
+        })),
+      ];
+
+      const ch = supabase.channel(`call_vt_${conversationId}`, { config: { broadcast: { self: false } } });
+      vtChannelRef.current = ch;
+      let handler: ((p: VoiceTranslationSignal) => void) | null = null;
+      ch.on('broadcast', { event: 'vt' }, ({ payload }: { payload: VoiceTranslationSignal }) => {
+        if (payload && payload.callId === callId) handler?.(payload);
+      });
+
+      ch.subscribe((status) => {
+        if (status !== 'SUBSCRIBED' || cancelled) return;
+        vtEngineRef.current = startVoiceTranslation({
+          callId,
+          myUserId: user.id,
+          isGroup,
+          peers,
+          sendSignal: (payload) => { try { ch.send({ type: 'broadcast', event: 'vt', payload }); } catch { /* channel closing */ } },
+          onSignal: (h) => { handler = h; },
+          onCaption: (line) => {
+            setCaptions(prev => [...prev.slice(-2), { text: line.text, mine: line.mine, id: line.id }]);
+            setTimeout(() => setCaptions(prev => prev.filter(c => c.id !== line.id)), 6000);
+          },
+          onSpeakingChange: setVtSpeaking,
+        });
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      vtEngineRef.current?.stop();
+      vtEngineRef.current = null;
+      if (vtChannelRef.current) { try { supabase.removeChannel(vtChannelRef.current); } catch { /* ignore */ } vtChannelRef.current = null; }
+      setVtSpeaking(false);
+      setCaptions([]);
+    };
+  }, [activeCall?.callId, activeCall?.state, activeCall?.type, user, vtEnabled]);
+
+  // Duck the incoming call audio while a translated voice is speaking
+  useEffect(() => {
+    if (remoteAudioRef.current) remoteAudioRef.current.volume = vtSpeaking ? 0.2 : 1;
+  }, [vtSpeaking, remoteStream]);
 
   useEffect(() => { setMinimized(false); }, [activeCall?.state]);
 
@@ -276,6 +351,21 @@ export default function CallModal() {
               <p className="text-white text-2xl font-bold">{activeCall.conversationName}</p>
               <p className="text-slate-400 text-sm mt-1">{statusText()}</p>
             </div>
+            {captions.length > 0 && (
+              <div className="absolute bottom-6 left-4 right-4 flex flex-col items-center gap-2 pointer-events-none">
+                {captions.map(c => (
+                  <div
+                    key={c.id}
+                    className={`max-w-[85%] rounded-2xl px-4 py-2 text-[14px] leading-relaxed backdrop-blur-md shadow-lg ${
+                      c.mine ? 'bg-sky-500/80 text-white' : 'bg-black/70 text-white'
+                    }`}
+                  >
+                    {!c.mine && <Languages size={12} className="inline mr-1.5 -mt-0.5 opacity-70" />}
+                    {c.text}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Top bar */}
