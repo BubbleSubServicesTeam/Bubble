@@ -239,7 +239,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try { hasCachedPin = localStorage.getItem(`bubble-has-pin-${session.user.id}`) === '1'; } catch { /* ignore */ }
           if (!hasCachedPin) setLoading(false);
           (async () => {
+            // Safety timeout: never leave the loading screen up if the profile fetch stalls
+            const profileTimeout = setTimeout(() => setLoading(false), 8000);
             const p = await fetchProfile(session.user.id);
+            clearTimeout(profileTimeout);
             if (!p) {
               setProfileLoadFailed(true);
               setLoading(false);
@@ -268,7 +271,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             registerDeviceSession(session.user.id, session.access_token).catch(() => {});
           }
           (async () => {
+            // Safety timeout: never leave the loading screen up if the profile fetch stalls
+            const profileTimeout = setTimeout(() => setLoading(false), 8000);
             const p = await fetchProfile(session.user.id);
+            clearTimeout(profileTimeout);
             if (!p) {
               setProfileLoadFailed(true);
               setLoading(false);
@@ -524,7 +530,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let hasCachedPin = false;
       try { hasCachedPin = localStorage.getItem(`bubble-has-pin-${data.user.id}`) === '1'; } catch { /* ignore */ }
       if (!hasCachedPin) setLoading(false);
+      const profileTimeout = setTimeout(() => setLoading(false), 8000);
       const p = await fetchProfile(data.user.id);
+      clearTimeout(profileTimeout);
       // If profile fetch failed, create a minimal profile from the user object
       if (!p) {
         const fallback: Profile = {
@@ -583,9 +591,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: profileError.message, needsVerification: false, userId };
       }
     }
-    // Sign out the auto-session from signUp, then send OTP for email verification
-    if (data.session) await supabase.auth.signOut();
-    await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    // Sign out the auto-session from signUp, then send OTP for email verification.
+    // Race with timeouts so a stalled request can't leave the sign-up button loading forever.
+    if (data.session) {
+      await Promise.race([supabase.auth.signOut(), new Promise(resolve => setTimeout(resolve, 5000))]);
+    }
+    await Promise.race([
+      supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } }),
+      new Promise(resolve => setTimeout(resolve, 10000)),
+    ]);
     return { error: null, needsVerification: true, userId };
   }
 
