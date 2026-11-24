@@ -470,12 +470,21 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function toggleSaveMessage(msg: Message) {
     if (!user) return;
     const isSaved = savedMsgIds.has(msg.id);
-    if (isSaved) {
-      await supabase.from('saved_messages').delete().eq('user_id', user.id).eq('message_id', msg.id);
-      setSavedMsgIds(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
-    } else {
-      await supabase.from('saved_messages').insert({ user_id: user.id, message_id: msg.id, conversation_id: conversation.id });
-      setSavedMsgIds(prev => new Set(prev).add(msg.id));
+    // Optimistic: flip the bookmark immediately, revert if the write fails
+    setSavedMsgIds(prev => {
+      const n = new Set(prev);
+      if (isSaved) n.delete(msg.id); else n.add(msg.id);
+      return n;
+    });
+    const { error } = isSaved
+      ? await supabase.from('saved_messages').delete().eq('user_id', user.id).eq('message_id', msg.id)
+      : await supabase.from('saved_messages').insert({ user_id: user.id, message_id: msg.id, conversation_id: conversation.id });
+    if (error) {
+      setSavedMsgIds(prev => {
+        const n = new Set(prev);
+        if (isSaved) n.add(msg.id); else n.delete(msg.id);
+        return n;
+      });
     }
   }
 

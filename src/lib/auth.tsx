@@ -635,21 +635,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function updateProfile(updates: Partial<Profile>) {
     if (!user) return;
-    const patch: Record<string, any> = { ...updates };
+    // Optimistic update: apply locally right away so taps feel instant, then
+    // confirm with the server; roll back if the write fails.
+    const prevProfile = profile;
+    const optimistic: Partial<Profile> = { ...updates };
     if (updates.first_name !== undefined || updates.last_name !== undefined) {
       const normalizeName = (value: string) => value.trim().replace(/\s+/g, ' ').split(' ').map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join(' ');
-      const fn = normalizeName(updates.first_name ?? profile?.first_name ?? '');
-      const ln = normalizeName(updates.last_name ?? profile?.last_name ?? '');
-      patch.first_name = fn;
-      patch.last_name = ln;
-      patch.display_name = [fn, ln].filter(Boolean).join(' ') || profile?.display_name;
+      optimistic.first_name = normalizeName(updates.first_name ?? profile?.first_name ?? '');
+      optimistic.last_name = normalizeName(updates.last_name ?? profile?.last_name ?? '');
+      optimistic.display_name = [optimistic.first_name, optimistic.last_name].filter(Boolean).join(' ') || profile?.display_name;
     }
-    const { data } = await supabase.from('profiles').update(patch).eq('user_id', user.id).select(PROFILE_COLUMNS).maybeSingle();
-    if (data) {
-      const { data: ownContact } = await supabase.rpc('get_own_contact_info');
-      const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
-      setProfile({ ...data, ...contactRow });
+    if (prevProfile) setProfile({ ...prevProfile, ...optimistic });
+
+    const patch: Record<string, any> = { ...updates };
+    if (optimistic.display_name !== undefined) {
+      patch.first_name = optimistic.first_name;
+      patch.last_name = optimistic.last_name;
+      patch.display_name = optimistic.display_name;
     }
+    const { data, error } = await supabase.from('profiles').update(patch).eq('user_id', user.id).select(PROFILE_COLUMNS).maybeSingle();
+    if (error || !data) {
+      if (prevProfile) setProfile(prevProfile);
+      return;
+    }
+    const { data: ownContact } = await supabase.rpc('get_own_contact_info');
+    const contactRow = Array.isArray(ownContact) ? ownContact[0] : ownContact;
+    setProfile({ ...data, ...contactRow });
   }
 
   async function sendDeleteVerification(email: string) {
