@@ -1581,7 +1581,8 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   function renderTextContent(content: string, mine: boolean = false) {
     if (!content) return null;
     const tld = 'com|org|net|io|dev|app|co|me|ai|gg|tv|xyz|info|edu|gov|biz|online|site|store|tech|blog|news|page|link|us|uk|ca|au|de|fr|nl|se|no|es|it|pt|pl|cz|fi|ch|dk|is|to|so|fm|cc|sh|re|md|jp|kr|in|br|mx|ru|ua|cn';
-    const urlRegex = new RegExp(`(?:https?:\\/\\/|www\\.)[^\\s<>"]+?[^[\\s<>".,;:!?')\\]}]+(?:[.,;:!?')\\]}]+)?|\\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\\.(?:${tld})\\b(?:\\/[^\\s<>"]*)?(?:[?#][^\\s<>"]*)?`, 'gi');
+    // Scheme/www links grab everything up to whitespace; bare domains require a known TLD.
+    const urlRegex = new RegExp(`(?:https?:\\/\\/|www\\.)[^\\s<>"]+|\\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\\.(?:${tld})\\b(?:\\/[^\\s<>"]*)?(?:[?#][^\\s<>"]*)?`, 'gi');
     const parts: { text: string; url: string | null }[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
@@ -1591,10 +1592,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
       if (m.index > lastIndex) {
         parts.push({ text: content.slice(lastIndex, m.index), url: null });
       }
-      const raw = m[0];
-      const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-      parts.push({ text: raw, url: href });
-      lastIndex = m.index + raw.length;
+      // Trim punctuation that's part of the sentence, not the link
+      const trimmed = m[0].replace(/[.,;:!?'")\]}]+$/, '');
+      const leading = m[0].slice(0, m[0].length - trimmed.length);
+      const href = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+      parts.push({ text: trimmed, url: href });
+      if (leading) parts.push({ text: leading, url: null });
+      lastIndex = m.index + m[0].length;
     }
     if (lastIndex < content.length) {
       parts.push({ text: content.slice(lastIndex), url: null });
