@@ -859,6 +859,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   async function sendMessage(type: Message['message_type'] = 'text', extra: Partial<Message> = {}, display: Partial<Message> = {}) {
     if (!user) return;
     if (type === 'text' && !text.trim()) return;
+    // A sent message ends the dictation session so spoken words can't leak
+    // into the next message
+    if (dictationActiveRef.current) {
+      dictationActiveRef.current = false;
+      recognitionRef.current?.stop();
+      setListening(false);
+    }
     // Send push notification to other members for text messages
     if (type === 'text') {
       const senderName = profile?.display_name ?? 'Someone';
@@ -1319,6 +1326,13 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     }
     setShowEmojiFor(null);
   }
+
+  useEffect(() => {
+    return () => {
+      dictationActiveRef.current = false;
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    };
+  }, []);
 
   function toggleDictation() {
     if (listening) {
@@ -1847,7 +1861,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
                   {/* Bubble */}
                   {(() => { const isMedia = msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'file' || msg.message_type === 'iframe' || msg.message_type === 'code' || msg.message_type === 'location'; return (
-                  <div className={`flex flex-col ${isMedia ? 'w-full' : 'max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className={`flex flex-col ${isMedia ? 'w-full' : 'w-full sm:max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
                     {!isMe && conversation.is_group && isFirst && (
                       <button onClick={() => msg.sender && setShowProfile(msg.sender as Profile)} className="text-[11px] text-slate-500 font-medium mb-1 ml-1 hover:text-sky-500 transition-colors">{getSenderName(msg)}</button>
                     )}
@@ -1862,7 +1876,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       </div>
                     )}
 
-                    <div className={`relative rounded-2xl overflow-hidden ${
+                    <div className={`relative rounded-2xl overflow-hidden ${msg.message_type === 'text' ? 'w-full sm:w-auto sm:min-w-[80px]' : ''} ${
                       msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'voicemail' || msg.message_type === 'poll' || msg.message_type === 'form' || msg.message_type === 'iframe' || msg.message_type === 'money' || msg.message_type === 'code' || msg.message_type === 'location' ? '' :
                       isMe ? 'bg-sky-500 text-white shadow-[0_1px_2px_rgba(2,132,199,0.25)]' : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-100 text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
                     } ${replyTarget ? 'rounded-tl-md rounded-tr-md' : ''}`}>
