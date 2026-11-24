@@ -17,6 +17,7 @@ import DeveloperSettings from './DeveloperSettings';
 import LocationPrivacySettings from './LocationPrivacySettings';
 import TrustedPeopleSettings from './TrustedPeopleSettings';
 import WhatsAppImportCard from './WhatsAppImportCard';
+import FailedAttemptsList from './FailedAttemptsList';
 import SelfSuspensionSection from './SelfSuspensionSection';
 import NotificationPrivacySettings from './NotificationPrivacySettings';
 import {
@@ -139,12 +140,11 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
   function pinAddDigit(digit: string, forConfirm: boolean) {
     const limit = pinLength;
     if (forConfirm) {
-      if (pinConfirmDigits.length >= limit) return;
-      setPinConfirmDigits(d => [...d, digit]);
+      setPinConfirmDigits(d => (d.length >= limit || d.includes(digit) ? d : [...d, digit]));
     } else {
-      if (pinDigits.length >= limit) return;
-      setPinDigits(d => [...d, digit]);
+      setPinDigits(d => (d.length >= limit || d.includes(digit) ? d : [...d, digit]));
     }
+    setPinError('');
   }
 
   function pinDeleteDigit(forConfirm: boolean) {
@@ -155,6 +155,23 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
     }
     setPinError('');
   }
+
+  // Physical keyboard entry while the PIN setup modal is open
+  useEffect(() => {
+    if (!showPinSetup || (pinSetupStep !== 'enter_new' && pinSetupStep !== 'confirm_new')) return;
+    function onKey(e: KeyboardEvent) {
+      const forConfirm = pinSetupStep === 'confirm_new';
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        pinAddDigit(e.key, forConfirm);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        pinDeleteDigit(forConfirm);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showPinSetup, pinSetupStep, pinLength]);
 
   async function savePinIfMatch() {
     if (pinDigits.length !== pinLength || pinConfirmDigits.length !== pinLength) return;
@@ -1558,6 +1575,7 @@ export default function SettingsModal({ onClose, initialTab, initialSub, onTabCh
           {tab === 'security' && (
             <div className="p-6 space-y-4">
               <SelfSuspensionSection />
+              <FailedAttemptsList />
               {/* Lock Method — tab-style switcher like auth page */}
               <div>
                 <h3 className="text-slate-900 dark:text-white font-semibold text-[15px] mb-1">Lock Method</h3>

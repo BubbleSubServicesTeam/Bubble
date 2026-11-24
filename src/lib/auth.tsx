@@ -387,6 +387,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
+  async function logFailedAttempt(attemptType: 'pin' | 'password', valueTyped: string) {
+    if (!user) return;
+    try {
+      await supabase.from('failed_login_attempts').insert({
+        attempt_type: attemptType,
+        email_attempted: user.email ?? null,
+        value_typed: valueTyped.slice(0, 100),
+      });
+    } catch { /* logging must never break unlock */ }
+  }
+
   async function unlockWithPin(pin: string): Promise<boolean> {
     if (!profile?.pin_hash) return false;
     if (pinLockedUntil && new Date(pinLockedUntil) > new Date()) return false;
@@ -397,6 +408,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       supabase.rpc('clear_pin_failures').then(() => {}).catch(() => {});
       return true;
     }
+    void logFailedAttempt('pin', pin);
     try {
       const { data } = await supabase.rpc('record_pin_failure');
       const row = Array.isArray(data) ? data[0] : data;
@@ -430,6 +442,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ),
     ]);
     if (result.error) {
+      void logFailedAttempt('password', password);
       try {
         const { data } = await supabase.rpc('record_password_failure');
         const row = Array.isArray(data) ? data[0] : data;

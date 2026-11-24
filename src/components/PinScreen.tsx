@@ -28,6 +28,7 @@ export default function PinScreen({
   const { user, profile, pinLockedUntil, passwordLockedUntil, unlockWithFingerprint, signOut } = useAuth();
   const [digits, setDigits] = useState<string[]>([]);
   const digitsRef = useRef('');
+  const submittingRef = useRef(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
@@ -96,28 +97,33 @@ export default function PinScreen({
   }
 
   async function submitPin(pin: string) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
-    if (setupMode && onSetupComplete) {
-      await onSetupComplete(pin, pinLength);
-      setSuccess(true);
-      setLoading(false);
-    } else {
-      const ok = await onUnlock(pin);
-      if (ok) {
-        onConfirmUnlock();
-        return;
+    try {
+      if (setupMode && onSetupComplete) {
+        await onSetupComplete(pin, pinLength);
+        setSuccess(true);
       } else {
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        triggerShake();
-        digitsRef.current = '';
-        setDigits([]);
-        if (newAttempts >= 5) {
-          setError('Bubble is temporarily locked after too many incorrect attempts.');
+        const ok = await onUnlock(pin);
+        if (ok) {
+          onConfirmUnlock();
+          return;
         } else {
-          setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
+          const newAttempts = attempts + 1;
+          setAttempts(newAttempts);
+          triggerShake();
+          digitsRef.current = '';
+          setDigits([]);
+          if (newAttempts >= 5) {
+            setError('Bubble is temporarily locked after too many incorrect attempts.');
+          } else {
+            setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`);
+          }
         }
       }
+    } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }
@@ -130,7 +136,6 @@ export default function PinScreen({
     setError('');
     if (nums.length === pinLength) void submitPin(nums);
   }
-
   function addDigit(d: string) {
     if (loading || lockRemaining > 0 || success) return;
     const nextValue = `${digitsRef.current}${d}`.slice(0, pinLength);
@@ -162,6 +167,12 @@ export default function PinScreen({
     setDigits(digitsRef.current.split(''));
     setError('');
   }
+  function deleteDigit() {
+    if (loading) return;
+    digitsRef.current = digitsRef.current.slice(0, -1);
+    setDigits(digitsRef.current.split(''));
+    setError('');
+  }
 
   // Blur any focused input/textarea when the PIN screen appears so
   // physical-keyboard digits don't leak into the chat text box underneath
@@ -182,9 +193,9 @@ export default function PinScreen({
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
         e.stopPropagation();
-        handlePinChange(`${digitsRef.current}${e.key}`);
+        addDigit(e.key);
       }
-      else if (e.key === 'Backspace') { e.preventDefault(); setDigits(d => d.slice(0, -1)); setError(''); }
+      else if (e.key === 'Backspace') { e.preventDefault(); deleteDigit(); }
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
