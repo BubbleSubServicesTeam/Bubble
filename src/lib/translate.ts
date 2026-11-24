@@ -139,3 +139,61 @@ export async function translateBatch(texts: string[], targetLang: string): Promi
     return none;
   }
 }
+
+// Full-metadata batch variant for chat message translation: one request covers every
+// pending message instead of one request per message.
+export type BatchTranslationItem =
+  | { translatedText: string; detectedLangName: string | null; targetLangName: string | null }
+  | 'same-language'
+  | null;
+
+export async function translateBatchFull(texts: string[], targetLang: string): Promise<BatchTranslationItem[]> {
+  const results: BatchTranslationItem[] = texts.map(() => null);
+  if (texts.length === 0 || !targetLang) return results;
+  const missing: number[] = [];
+  texts.forEach((text, i) => {
+    const cached = cache.get(`${targetLang}:${text}`);
+    if (!cached) { missing.push(i); return; }
+    if (cached.status === 'translated') {
+      results[i] = {
+        translatedText: cached.result.translatedText,
+        detectedLangName: cached.result.detectedLangName,
+        targetLangName: cached.result.targetLangName,
+      };
+    } else if (cached.status === 'same-language') {
+      results[i] = 'same-language';
+    }
+  });
+  if (missing.length === 0) return results;
+  try {
+    const resp = await postToTranslator({ texts: missing.map(i => texts[i]), targetLang });
+    if (resp.ok) {
+      const data: unknown = await resp.json();
+      const items = (data as { translations?: unknown })?.translations;
+      if (Array.isArray(items) && items.length === missing.length) {
+        items.forEach((item: TranslatorItem & { detectedLangName?: unknown; targetLangName?: unknown } | null, j: number) => {
+          const idx = missing[j];
+          const text = texts[idx];
+          if (!item) return;
+          if (item.sameLanguage) {
+            results[idx] = 'same-language';
+            cache.set(`${targetLang}:${text}`, { status: 'same-language' });
+            return;
+          }
+          if (typeof item.translatedText === 'string' && item.translatedText.trim()) {
+            const detectedLangName = typeof item.detectedLangName === 'string' ? item.detectedLangName : null;
+            const targetLangName = typeof item.targetLangName === 'string' ? item.targetLangName : null;
+            results[idx] = { translatedText: item.translatedText, detectedLangName, targetLangName };
+            cache.set(`${targetLang}:${text}`, {
+              status: 'translated',
+              result: { translatedText: item.translatedText, detectedLang: null, detectedLangName, targetLangName },
+            });
+          }
+        });
+      }
+    }
+  } catch {
+    // leave remaining entries null — caller treats them as failed
+  }
+  return results;
+}

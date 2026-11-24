@@ -6,7 +6,7 @@ import { applyTextEffectSpan, remapTextEffectSpans, type TextEffect, type TextEf
 import { supabase, Conversation, Profile, Message, smartName, effectiveStatus, SENDER_PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useCall } from '../lib/calls';
-import { getBrowserTranslationLang, translateText } from '../lib/translate';
+import { getBrowserTranslationLang, translateBatchFull } from '../lib/translate';
 import { uploadMedia } from '../lib/mediaUpload';
 import { GifMedia, isVideoUrl } from './GifStudio';
 import Avatar from './Avatar';
@@ -127,6 +127,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
   const [showEmojiFor, setShowEmojiFor] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const dictationActiveRef = useRef(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1226,37 +1227,55 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     langRef.current = nativeLang;
   }, [nativeLang]);
 
-  // Auto-translate friends' text messages into the viewer's language
+  // Auto-translate friends' text messages into the viewer's language.
+  // Batches every pending message into a single translation request.
+  const pendingMsgs = messages.filter(msg =>
+    msg.message_type === 'text' && msg.content &&
+    !(msg.sender_id === user?.id && (!msg.sender_language || msg.sender_language === nativeLang)) &&
+    !(msg.sender_language && msg.sender_language === nativeLang) &&
+    !translations[msg.id] && !translationErrors.has(msg.id) && !translatingIds.has(msg.id)
+  );
   useEffect(() => {
     if (!nativeLang) return;
     const lang = nativeLang;
+    if (pendingMsgs.length === 0) return;
     const lettersOnly = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
-    messages.forEach(msg => {
-      if (msg.message_type !== 'text' || !msg.content) return;
-      if (msg.sender_id === user?.id && (!msg.sender_language || msg.sender_language === nativeLang)) return;
-      // Skip messages where the sender explicitly declared the same language as ours
-      if (msg.sender_language && msg.sender_language === nativeLang) return;
-      if (translations[msg.id] || translationErrors.has(msg.id)) return;
-      if (translatingIds.has(msg.id)) return;
-
-      setTranslatingIds(prev => new Set(prev).add(msg.id));
-      translateText(msg.content, lang).then(outcome => {
-        if (langRef.current !== lang) return;
-        setTranslatingIds(prev => { const n = new Set(prev); n.delete(msg.id); return n; });
-        if (outcome.status === 'translated' && lettersOnly(outcome.result.translatedText) !== lettersOnly(msg.content ?? '')) {
-          const { result } = outcome;
-          setTranslations(prev => ({
-            ...prev,
-            [msg.id]: {
-              translatedText: result.translatedText,
-              detectedLangName: result.detectedLangName,
-              targetLangName: result.targetLangName,
-            },
-          }));
-        }
-        // 'same-language' and 'error' both do nothing — don't show "Translation unavailable"
-        // for same-language messages, and silently skip errors instead of cluttering the UI
+    setTranslatingIds(prev => {
+      const next = new Set(prev);
+      pendingMsgs.forEach(m => next.add(m.id));
+      return next;
+    });
+    translateBatchFull(pendingMsgs.map(m => m.content!), lang).then(results => {
+      if (langRef.current !== lang) return;
+      const doneIds = new Set(pendingMsgs.map(m => m.id));
+      setTranslatingIds(prev => {
+        const n = new Set(prev);
+        doneIds.forEach(id => n.delete(id));
+        return n;
       });
+      const newTranslations: typeof translations = {};
+      const errors: string[] = [];
+      results.forEach((result, i) => {
+        const msg = pendingMsgs[i];
+        if (result && result !== 'same-language' && lettersOnly(result.translatedText) !== lettersOnly(msg.content ?? '')) {
+          newTranslations[msg.id] = {
+            translatedText: result.translatedText,
+            detectedLangName: result.detectedLangName,
+            targetLangName: result.targetLangName,
+          };
+        } else if (!result) {
+          errors.push(msg.id);
+        }
+        // 'same-language' and 'error' both do nothing visible — don't show
+        // "Translation unavailable" for same-language messages; errors are
+        // recorded so we don't retry them on every re-render
+      });
+      if (Object.keys(newTranslations).length > 0) {
+        setTranslations(prev => ({ ...prev, ...newTranslations }));
+      }
+      if (errors.length > 0) {
+        setTranslationErrors(prev => new Set([...prev, ...errors]));
+      }
     });
   }, [messages, nativeLang]);
 
@@ -1303,17 +1322,22 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
   function toggleDictation() {
     if (listening) {
+      dictationActiveRef.current = false;
       recognitionRef.current?.stop();
       setListening(false);
       return;
     }
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert('Speech recognition not supported in this browser.'); return; }
+    if (!SR) { alert('Speech recognition not supported in this browser. Try Chrome or Safari.'); return; }
     const rec = new SR();
-    rec.continuous = false;
+    rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = 'en-US';
+    rec.lang = (profile?.native_language ?? getBrowserTranslationLang()) === 'en'
+      ? 'en-US'
+      : (profile?.native_language ?? 'en-US');
     let accumulated = '';
+    // track the base text (before dictation) so each onresult pass is idempotent
+    let baseText: string | null = null;
     rec.onresult = (e: any) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -1325,15 +1349,33 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
         }
       }
       setText(prev => {
-        const base = prev.replace(/\s+$/, '');
-        const finalPart = accumulated ? (base && !base.endsWith(' ') ? ' ' : '') + accumulated.trim() : '';
+        if (baseText === null) baseText = prev;
+        const base = baseText.replace(/\s+$/, '');
+        const finalPart = accumulated.trim() ? (base ? ' ' : '') + accumulated.trim() : '';
         const interimPart = interim ? (finalPart || base ? ' ' : '') + interim : '';
         return base + finalPart + interimPart;
       });
     };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    rec.start();
+    rec.onerror = (e: any) => {
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
+        dictationActiveRef.current = false;
+        setListening(false);
+        alert('Microphone access was blocked. Allow it in your browser settings and try again.');
+        return;
+      }
+      // 'no-speech' and 'audio-capture' are transient — the onend restart handles them
+    };
+    rec.onend = () => {
+      // Chrome and Safari stop the recognizer after a pause; restart while the
+      // user still expects dictation to be live.
+      if (dictationActiveRef.current) {
+        try { rec.start(); } catch { setListening(false); }
+        return;
+      }
+      setListening(false);
+    };
+    dictationActiveRef.current = true;
+    try { rec.start(); } catch { dictationActiveRef.current = false; return; }
     recognitionRef.current = rec;
     setListening(true);
   }

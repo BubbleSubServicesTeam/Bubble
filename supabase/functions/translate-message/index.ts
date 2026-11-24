@@ -112,8 +112,68 @@ async function translateOne(text: string, targetLang: string) {
   };
 }
 
+async function translateManyDeepL(texts: string[], targetLang: string, apiKey: string): Promise<(TranslationHit | null)[]> {
+  try {
+    const host = apiKey.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
+    const resp = await fetch(`${host}/v2/translate`, {
+      method: "POST",
+      headers: { "Authorization": `DeepL-Auth-Key ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ text: texts, target_lang: DEEPL_TARGETS[targetLang] ?? targetLang.toUpperCase() }),
+    });
+    if (!resp.ok) return texts.map(() => null);
+    const data = await resp.json();
+    const translations = data?.translations;
+    if (!Array.isArray(translations) || translations.length !== texts.length) return texts.map(() => null);
+    return translations.map((item: any) =>
+      item?.text
+        ? {
+            translatedText: item.text as string,
+            detectedLang: typeof item.detected_source_language === "string" ? item.detected_source_language.toLowerCase() : null,
+          }
+        : null
+    );
+  } catch {
+    return texts.map(() => null);
+  }
+}
+
 async function translateMany(texts: string[], targetLang: string) {
+  const deeplKey = Deno.env.get("DEEPL_API_KEY");
   const results: (Awaited<ReturnType<typeof translateOne>>)[] = new Array(texts.length).fill(null);
+  if (deeplKey) {
+    // DeepL supports up to 50 texts per call — one request instead of one per message.
+    const hits = await translateManyDeepL(texts, targetLang, deeplKey);
+    for (let i = 0; i < texts.length; i++) {
+      const hit = hits[i];
+      if (!hit) continue;
+      const sameLanguage = !!hit.detectedLang && hit.detectedLang.split("-")[0].toLowerCase() === targetLang;
+      results[i] = {
+        translatedText: hit.translatedText,
+        sameLanguage,
+        detectedLang: hit.detectedLang,
+        detectedLangName: hit.detectedLang ? (LANG_NAMES[hit.detectedLang.split("-")[0].toLowerCase()] ?? hit.detectedLang) : null,
+        targetLangName: LANG_NAMES[targetLang] ?? targetLang,
+      };
+    }
+    // Any texts DeepL failed on fall back to the free endpoints individually.
+    const fallbackIdx = results.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
+    if (fallbackIdx.length > 0) {
+      await Promise.all(fallbackIdx.map(async i => {
+        const free = await translateWithFreeEndpoints(texts[i], targetLang);
+        if (free) {
+          const sameLanguage = !!free.detectedLang && free.detectedLang.split("-")[0].toLowerCase() === targetLang;
+          results[i] = {
+            translatedText: free.translatedText,
+            sameLanguage,
+            detectedLang: free.detectedLang,
+            detectedLangName: free.detectedLang ? (LANG_NAMES[free.detectedLang.split("-")[0].toLowerCase()] ?? free.detectedLang) : null,
+            targetLangName: LANG_NAMES[targetLang] ?? targetLang,
+          };
+        }
+      }));
+    }
+    return results;
+  }
   let next = 0;
   const worker = async () => {
     while (next < texts.length) {

@@ -29,6 +29,10 @@
       "hasChanged": false,
       "hash": "e2be761879df7fe498fef16d47126f63fe9ee168ccb848f3ccb536f54cc49791"
     },
+    "qr-login": {
+      "hasChanged": false,
+      "hash": "eef19171ac546c0ddf40c2ceb91b5f66c7aeb09c41cbb18178e32a963b511415"
+    },
     "send-push": {
       "hasChanged": false,
       "hash": "3429c8d213c8935378635d8f39ad028c9abc8ea8f5f71d20468b1fb18fb11bcf"
@@ -39,11 +43,7 @@
     },
     "translate-message": {
       "hasChanged": false,
-      "hash": "0e825f828eef97e3dd38597a3f01c00da343135da8b2cfa3b22dde62502cdaba"
-    },
-    "qr-login": {
-      "hasChanged": false,
-      "hash": "eef19171ac546c0ddf40c2ceb91b5f66c7aeb09c41cbb18178e32a963b511415"
+      "hash": "875263082452e63562770a2babcc7ad5699fc074c0d18cde0bdfaea74ae7d5ef"
     }
   }
 }
