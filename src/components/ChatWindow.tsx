@@ -803,34 +803,20 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
     if (!el) return;
     initialPositionKeyRef.current = conversation.id;
     markAsRead();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-      if (openPosition === 'last_read' && lastReadAt) {
-        const firstUnread = messages.find(message => new Date(message.created_at).getTime() > new Date(lastReadAt).getTime());
-        const target = firstUnread ? el.querySelector<HTMLElement>(`[data-message-id="${firstUnread.id}"]`) : null;
-        if (target) {
-          el.scrollTo({ top: Math.max(0, target.offsetTop - el.offsetTop), behavior: 'auto' });
-          return;
-        }
+
+    if (openPosition === 'last_read' && lastReadAt) {
+      const firstUnread = messages.find(message => new Date(message.created_at).getTime() > new Date(lastReadAt).getTime());
+      const target = firstUnread ? el.querySelector<HTMLElement>(`[data-message-id="${firstUnread.id}"]`) : null;
+      if (target) {
+        el.scrollTop = Math.max(0, target.offsetTop - el.offsetTop);
+        return;
       }
-        let userScrolled = false;
-        const stopPinning = () => { userScrolled = true; };
-        el.addEventListener('wheel', stopPinning, { passive: true });
-        el.addEventListener('touchstart', stopPinning, { passive: true });
-        el.addEventListener('pointerdown', stopPinning, { passive: true });
-        const pinUntil = performance.now() + 800;
-        const pinToBottom = () => {
-          if (userScrolled || performance.now() > pinUntil) {
-            el.removeEventListener('wheel', stopPinning);
-            el.removeEventListener('touchstart', stopPinning);
-            el.removeEventListener('pointerdown', stopPinning);
-            return;
-          }
-          el.scrollTop = el.scrollHeight;
-          requestAnimationFrame(pinToBottom);
-        };
-        pinToBottom();
-      });
+    }
+
+    // Set the position in the same render pass so opening a chat never shows the top first.
+    el.scrollTop = el.scrollHeight;
+    requestAnimationFrame(() => {
+      if (initialPositionKeyRef.current === conversation.id) el.scrollTop = el.scrollHeight;
     });
   }, [openPositionLoaded, lastReadLoaded, loadingMessages, messages.length, openPosition, lastReadAt, conversation.id]);
 
@@ -1870,7 +1856,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
 
                   {/* Bubble */}
                   {(() => { const isMedia = msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'file' || msg.message_type === 'iframe' || msg.message_type === 'code' || msg.message_type === 'location'; return (
-                  <div className={`flex flex-col ${isMedia ? 'w-full' : 'w-full sm:max-w-[85%]'} ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className={`flex flex-col ${isMedia ? 'w-full max-w-[min(720px,calc(100vw-3rem))]' : 'w-fit max-w-[92%] sm:max-w-[min(92%,720px)]'} ${isMe ? 'items-end' : 'items-start'}`}>
                     {!isMe && conversation.is_group && isFirst && (
                       <button onClick={() => msg.sender && setShowProfile(msg.sender as Profile)} className="text-[11px] text-slate-500 font-medium mb-1 ml-1 hover:text-sky-500 transition-colors">{getSenderName(msg)}</button>
                     )}
@@ -1885,7 +1871,7 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       </div>
                     )}
 
-                    <div className={`relative rounded-2xl overflow-hidden ${msg.message_type === 'text' ? 'w-full sm:w-auto sm:min-w-[80px]' : ''} ${
+                    <div className={`relative rounded-2xl overflow-hidden ${msg.message_type === 'text' ? 'w-fit max-w-full min-w-[80px]' : ''} ${
                       msg.message_type === 'gif' || msg.message_type === 'image' || msg.message_type === 'voicemail' || msg.message_type === 'poll' || msg.message_type === 'form' || msg.message_type === 'iframe' || msg.message_type === 'money' || msg.message_type === 'code' || msg.message_type === 'location' ? '' :
                       isMe ? 'bg-sky-500 text-white shadow-[0_1px_2px_rgba(2,132,199,0.25)]' : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-100 text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
                     } ${replyTarget ? 'rounded-tl-md rounded-tr-md' : ''}`}>
@@ -2107,6 +2093,39 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                       )}
                     </div>
 
+                    {/* Actions */}
+                    <div className={`flex items-center gap-0.5 w-fit mt-1 transition-opacity duration-150 ${isMe ? 'self-end flex-row-reverse' : 'self-start flex-row'} ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                      <MsgAction onClick={() => { setReplyTo(msg); setReplyExcerpt(getReplyPreview(msg)); }} title="Reply">
+                        <Reply size={13} />
+                      </MsgAction>
+                      {msg.message_type === 'text' && (
+                        <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy">
+                          {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                        </MsgAction>
+                      )}
+                      {msg.message_type === 'code' && (
+                        <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy code">
+                          {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                        </MsgAction>
+                      )}
+                      <MsgAction onClick={() => setShowEmojiFor(showEmojiFor === msg.id ? null : msg.id)} title="React">
+                        <Smile size={13} />
+                      </MsgAction>
+                      <MsgAction onClick={() => toggleSaveMessage(msg)} title={savedMsgIds.has(msg.id) ? 'Unsave' : 'Save'}>
+                        {savedMsgIds.has(msg.id) ? <BookmarkCheck size={13} className="text-sky-400" /> : <Bookmark size={13} />}
+                      </MsgAction>
+                      {isMe && ['text', 'code', 'iframe'].includes(msg.message_type) && (
+                        <MsgAction onClick={() => { setEditingId(msg.id); setEditText(msg.content ?? ''); }} title="Edit message">
+                          <Edit2 size={13} />
+                        </MsgAction>
+                      )}
+                      {isMe && (
+                        <MsgAction onClick={() => deleteMessage(msg.id)} title="Delete">
+                          <Trash2 size={13} />
+                        </MsgAction>
+                      )}
+                    </div>
+
                     {/* Reactions */}
                     {Object.keys(reactions).length > 0 && (
                       <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -2147,38 +2166,6 @@ export default function ChatWindow({ conversation, onOpenGifStudio, onBack, onLe
                   </div>
                   ); })()}
 
-                  {/* Actions */}
-                  <div className={`flex items-center gap-0.5 flex-shrink-0 self-end mb-1 transition-opacity duration-150 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                      <MsgAction onClick={() => { setReplyTo(msg); setReplyExcerpt(getReplyPreview(msg)); }} title="Reply">
-                        <Reply size={13} />
-                      </MsgAction>
-                      {msg.message_type === 'text' && (
-                        <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy">
-                          {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
-                        </MsgAction>
-                      )}
-                      {msg.message_type === 'code' && (
-                        <MsgAction onClick={() => copyMessage(msg.content ?? '', msg.id)} title="Copy code">
-                          {copiedId === msg.id ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
-                        </MsgAction>
-                      )}
-                      <MsgAction onClick={() => setShowEmojiFor(showEmojiFor === msg.id ? null : msg.id)} title="React">
-                        <Smile size={13} />
-                      </MsgAction>
-                      <MsgAction onClick={() => toggleSaveMessage(msg)} title={savedMsgIds.has(msg.id) ? 'Unsave' : 'Save'}>
-                        {savedMsgIds.has(msg.id) ? <BookmarkCheck size={13} className="text-sky-400" /> : <Bookmark size={13} />}
-                      </MsgAction>
-                      {isMe && ['text', 'code', 'iframe'].includes(msg.message_type) && (
-                        <MsgAction onClick={() => { setEditingId(msg.id); setEditText(msg.content ?? ''); }} title="Edit message">
-                          <Edit2 size={13} />
-                        </MsgAction>
-                      )}
-                      {isMe && (
-                        <MsgAction onClick={() => deleteMessage(msg.id)} title="Delete">
-                          <Trash2 size={13} />
-                        </MsgAction>
-                      )}
-                  </div>
                 </div>
               );
             })}
